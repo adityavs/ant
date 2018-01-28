@@ -20,9 +20,9 @@ package org.apache.tools.ant.util;
 
 import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.ProjectComponent;
@@ -55,6 +55,7 @@ public class ConcatFileInputStream extends InputStream {
      * Close the stream.
      * @throws IOException if there is an error.
      */
+    @Override
     public void close() throws IOException {
         closeCurrent();
         eof = true;
@@ -65,6 +66,7 @@ public class ConcatFileInputStream extends InputStream {
      * @return the byte (0 - 255) or -1 if this is the end of the stream.
      * @throws IOException if there is an error.
      */
+    @Override
     public int read() throws IOException {
         int result = readCurrent();
         if (result == EOF && !eof) {
@@ -119,7 +121,7 @@ public class ConcatFileInputStream extends InputStream {
             log("Opening " + file[index], Project.MSG_VERBOSE);
             try {
                 currentStream = new BufferedInputStream(
-                    new FileInputStream(file[index]));
+                    Files.newInputStream(file[index].toPath()));
             } catch (IOException eyeOhEx) {
                 log("Failed to open " + file[index], Project.MSG_ERR);
                 throw eyeOhEx;

@@ -19,14 +19,13 @@ package org.apache.tools.ant.util;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 import org.apache.tools.ant.BuildException;
@@ -34,6 +33,8 @@ import org.apache.tools.ant.Project;
 import org.apache.tools.ant.ProjectComponent;
 import org.apache.tools.ant.types.Resource;
 import org.apache.tools.ant.types.ResourceCollection;
+import org.apache.tools.ant.types.resources.PropertyResource;
+import org.apache.tools.ant.types.resources.StringResource;
 
 /**
  * This is a common abstract base case for script runners.
@@ -51,6 +52,11 @@ public abstract class ScriptRunnerBase {
     /** Script content */
     private String script = "";
 
+    private String encoding;
+
+    /** Enable script compilation. */
+    private boolean compiled;
+
     /** Project this runner is used in */
     private Project project;
 
@@ -58,7 +64,7 @@ public abstract class ScriptRunnerBase {
     private ClassLoader scriptLoader;
 
     /** Beans to be provided to the script */
-    private Map beans = new HashMap();
+    private final Map<String, Object> beans = new HashMap<>();
 
     /**
      * Add a list of named objects to the list to be exported to the script
@@ -66,19 +72,17 @@ public abstract class ScriptRunnerBase {
      * @param dictionary a map of objects to be placed into the script context
      *        indexed by String names.
      */
-    public void addBeans(Map dictionary) {
-        for (Iterator i = dictionary.keySet().iterator(); i.hasNext();) {
-            String key = (String) i.next();
+    public void addBeans(Map<String, ?> dictionary) {
+        dictionary.forEach((k, v) -> {
             try {
-                Object val = dictionary.get(key);
-                addBean(key, val);
+                addBean(k, v);
             } catch (BuildException ex) {
                 // The key is in the dictionary but cannot be retrieved
                 // This is usually due references that refer to tasks
                 // that have not been taskdefed in the current run.
                 // Ignore
             }
-        }
+        });
     }
 
     /**
@@ -94,7 +98,6 @@ public abstract class ScriptRunnerBase {
         for (int i = 1; isValid && i < key.length(); i++) {
             isValid = Character.isJavaIdentifierPart(key.charAt(i));
         }
-
         if (isValid) {
             beans.put(key, bean);
         }
@@ -104,7 +107,7 @@ public abstract class ScriptRunnerBase {
      * Get the beans used for the script.
      * @return the map of beans.
      */
-    protected Map getBeans() {
+    protected Map<String, Object> getBeans() {
         return beans;
     }
 
@@ -187,39 +190,64 @@ public abstract class ScriptRunnerBase {
     }
 
     /**
+     * Whether to use script compilation if available.
+     * @since Ant 1.10.2
+     * @param compiled if true, compile the script if possible.
+     */
+    public final void setCompiled(boolean compiled) {
+        this.compiled = compiled;
+    }
+
+    /**
+     * Get the compiled attribute.
+     * @since Ant 1.10.2
+     * @return the attribute.
+     */
+    public final boolean getCompiled() {
+        return compiled;
+    }
+
+    /**
+     * Set encoding of the script from an external file; optional.
+     * @since Ant 1.10.2
+     * @param encoding  encoding of the external file containing the script source.
+     */
+    public void setEncoding(String encoding) {
+        this.encoding = encoding;
+    }
+
+    /**
      * Load the script from an external file; optional.
      * @param file the file containing the script source.
      */
     public void setSrc(File file) {
         String filename = file.getPath();
-        if (!file.exists()) {
-            throw new BuildException("file " + filename + " not found.");
-        }
-        try {
-            readSource(new FileReader(file), filename);
-        } catch (FileNotFoundException e) {
+
+        try (InputStream in = Files.newInputStream(file.toPath())) {
+            final Charset charset = null == encoding ? Charset.defaultCharset()
+                : Charset.forName(encoding);
+
+            readSource(in, filename, charset);
+        } catch (IOException e) {
             //this can only happen if the file got deleted a short moment ago
-            throw new BuildException("file " + filename + " not found.");
+            throw new BuildException("file " + filename + " not found.", e);
         }
     }
 
     /**
      * Read some source in from the given reader
-     * @param reader the reader; this is closed afterwards.
+     * @param in the input stream to pass into a buffered reader.
      * @param name the name to use in error messages
+     * @param charset the encoding for the reader, may be null.
      */
-    private void readSource(Reader reader, String name) {
-        BufferedReader in = null;
-        try {
-            in = new BufferedReader(reader);
-            script += FileUtils.safeReadFully(in);
+    private void readSource(InputStream in, String name, Charset charset) {
+        try (Reader reader =
+            new BufferedReader(new InputStreamReader(in, charset))) {
+            script += FileUtils.safeReadFully(reader);
         } catch (IOException ex) {
             throw new BuildException("Failed to read " + name, ex);
-        } finally {
-            FileUtils.close(in);
         }
     }
-
 
     /**
      * Add a resource to the source list.
@@ -228,17 +256,24 @@ public abstract class ScriptRunnerBase {
      * @throws BuildException if the resource cannot be read
      */
     public void loadResource(Resource sourceResource) {
+        if (sourceResource instanceof StringResource) {
+            script += ((StringResource) sourceResource).getValue();
+            return;
+        }
+        if (sourceResource instanceof PropertyResource) {
+            script += ((PropertyResource) sourceResource).getValue();
+            return;
+        }
+
         String name = sourceResource.toLongString();
-        InputStream in = null;
-        try {
-            in = sourceResource.getInputStream();
+        try (InputStream in = sourceResource.getInputStream()) {
+            readSource(in, name, Charset.defaultCharset());
         } catch (IOException e) {
             throw new BuildException("Failed to open " + name, e);
         } catch (UnsupportedOperationException e) {
             throw new BuildException(
-                "Failed to open " + name + " -it is not readable", e);
+                "Failed to open " + name + " - it is not readable", e);
         }
-        readSource(new InputStreamReader(in), name);
     }
 
     /**
@@ -248,9 +283,7 @@ public abstract class ScriptRunnerBase {
      * @throws BuildException if a resource cannot be read
      */
     public void loadResources(ResourceCollection collection) {
-        for (Resource resource : collection) {
-            loadResource(resource);
-        }
+        collection.forEach(this::loadResource);
     }
 
     /**
@@ -326,8 +359,7 @@ public abstract class ScriptRunnerBase {
      */
     protected void checkLanguage() {
         if (language == null) {
-            throw new BuildException(
-                "script language must be specified");
+            throw new BuildException("script language must be specified");
         }
     }
 
@@ -356,5 +388,4 @@ public abstract class ScriptRunnerBase {
         Thread.currentThread().setContextClassLoader(
                  origLoader);
     }
-
 }

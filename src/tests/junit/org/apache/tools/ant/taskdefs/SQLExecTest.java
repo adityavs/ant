@@ -26,8 +26,8 @@ import java.io.File;
 import java.net.URL;
 import java.util.logging.Logger;
 
-import org.apache.tools.ant.Project;
 import org.apache.tools.ant.BuildException;
+import org.apache.tools.ant.Project;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -50,17 +50,17 @@ import static org.junit.Assert.fail;
 public class SQLExecTest {
 
     // some database keys, see #getProperties(int)
-    public final static int NULL = 0;
-    public final static int ORACLE = 1;
-    public final static int MYSQL = 2;
+    public static final int NULL = 0;
+    public static final int ORACLE = 1;
+    public static final int MYSQL = 2;
 
     // keys used in properties.
-    public final static String DRIVER = "driver";
-    public final static String USER = "user";
-    public final static String PASSWORD = "password";
-    public final static String URL = "url";
-    public final static String PATH = "path";
-    public final static String SQL = "sql";
+    public static final String DRIVER = "driver";
+    public static final String USER = "user";
+    public static final String PASSWORD = "password";
+    public static final String URL = "url";
+    public static final String PATH = "path";
+    public static final String SQL = "sql";
 
     @Before
     public void setUp() throws Exception {
@@ -70,13 +70,13 @@ public class SQLExecTest {
 
    // simple test to ensure that the caching does work...
     @Test
-    public void testDriverCaching(){
+    public void testDriverCaching() {
         SQLExec sql = createTask(getProperties(NULL));
         assertTrue(!SQLExec.getLoaderMap().containsKey(NULL_DRIVER));
         try {
             sql.execute();
             fail("BuildException should have been thrown");
-        } catch (BuildException e){
+        } catch (BuildException e) {
             assertContains("No suitable Driver", e.getMessage());
         }
         assertTrue(SQLExec.getLoaderMap().containsKey(NULL_DRIVER));
@@ -104,13 +104,13 @@ public class SQLExecTest {
 
     @Ignore
     @Test
-    public void testOracle(){
+    public void testOracle() {
         doMultipleCalls(1000, ORACLE, true, false);
     }
 
     @Ignore
     @Test
-    public void testMySQL(){
+    public void testMySQL() {
         doMultipleCalls(1000, MYSQL, true, false);
     }
 
@@ -122,15 +122,15 @@ public class SQLExecTest {
      * @param caching should caching be enabled ?
      * @param catchexception true to catch exception for each call, false if not.
      */
-    protected void doMultipleCalls(int calls, int database, boolean caching, boolean catchexception){
+    protected void doMultipleCalls(int calls, int database, boolean caching, boolean catchexception) {
         Properties props = getProperties(database);
-        for (int i = 0; i < calls; i++){
+        for (int i = 0; i < calls; i++) {
             SQLExec sql = createTask(props);
             sql.setCaching(caching);
             try  {
                 sql.execute();
-            } catch (BuildException e){
-                if (!catchexception){
+            } catch (BuildException e) {
+                if (!catchexception) {
                     throw e;
                 }
             }
@@ -141,15 +141,15 @@ public class SQLExecTest {
      * Create a task from a set of properties
      * @see #getProperties(int)
      */
-    protected SQLExec createTask(Properties props){
+    protected SQLExec createTask(Properties props) {
         SQLExec sql = new SQLExec();
-        sql.setProject( new Project() );
-        sql.setDriver( props.getProperty(DRIVER) );
-        sql.setUserid( props.getProperty(USER) );
-        sql.setPassword( props.getProperty(PASSWORD) );
-        sql.setUrl( props.getProperty(URL) );
-        sql.createClasspath().setLocation( new File(props.getProperty(PATH)) );
-        sql.addText( props.getProperty(SQL) );
+        sql.setProject(new Project());
+        sql.setDriver(props.getProperty(DRIVER));
+        sql.setUserid(props.getProperty(USER));
+        sql.setPassword(props.getProperty(PASSWORD));
+        sql.setUrl(props.getProperty(URL));
+        sql.createClasspath().setLocation(new File(props.getProperty(PATH)));
+        sql.addText(props.getProperty(SQL));
         return sql;
     }
 
@@ -157,7 +157,7 @@ public class SQLExecTest {
      * try to find the path from a resource (jar file or directory name)
      * so that it can be used as a classpath to load the resource.
      */
-    protected String findResourcePath(String resource){
+    protected String findResourcePath(String resource) {
         resource = resource.replace('.', '/') + ".class";
         URL url = getClass().getClassLoader().getResource(resource);
         if (url == null) {
@@ -179,10 +179,12 @@ public class SQLExecTest {
      * If you want to test on your specific base, you'd better
      * tweak this to make it run or add your own database.
      * The driver lib should be dropped into the system classloader.
+     *
+     * @param database int
      */
-    protected Properties getProperties(int database){
+    protected Properties getProperties(int database) {
         Properties props = null;
-        switch (database){
+        switch (database) {
             case ORACLE:
                 props = getProperties("oracle.jdbc.driver.OracleDriver", "test", "test", "jdbc:oracle:thin:@127.0.0.1:1521:orcl");
                 break;
@@ -200,8 +202,15 @@ public class SQLExecTest {
         return props;
     }
 
-    /** helper method to build properties */
-    protected Properties getProperties(String driver, String user, String pwd, String url){
+    /**
+     * helper method to build properties
+     *
+     * @param driver String
+     * @param user String
+     * @param pwd String
+     * @param url String
+     */
+    protected Properties getProperties(String driver, String user, String pwd, String url) {
         Properties props = new Properties();
         props.put(DRIVER, driver);
         props.put(USER, user);
@@ -214,7 +223,7 @@ public class SQLExecTest {
 //--- NULL JDBC driver just for simple test since there are no db driver
 // available as a default in Ant :)
 
-    public final static String NULL_DRIVER = NullDriver.class.getName();
+    public static final String NULL_DRIVER = NullDriver.class.getName();
 
     public static class NullDriver implements Driver {
         public Connection connect(String url, Properties info)
@@ -317,8 +326,7 @@ public class SQLExecTest {
         assertEquals(0, s.lastDelimiterPosition(new StringBuffer("; "), "; "));
         assertEquals(1, s.lastDelimiterPosition(new StringBuffer("ab"), ";"));
         s.setDelimiter("GO");
-        assertEquals(1,
-                     s.lastDelimiterPosition(new StringBuffer("abcd"), "GO "));
+        assertEquals(1, s.lastDelimiterPosition(new StringBuffer("abcd"), "GO "));
         assertEquals(0, s.lastDelimiterPosition(new StringBuffer("go"), "go"));
         assertEquals(0, s.lastDelimiterPosition(new StringBuffer("ab"), "GO"));
     }

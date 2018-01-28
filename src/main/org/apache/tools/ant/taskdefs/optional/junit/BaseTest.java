@@ -33,7 +33,7 @@ public abstract class BaseTest {
     protected boolean fork = false;
     protected String ifProperty = null;
     protected String unlessProperty = null;
-    protected Vector formatters = new Vector();
+    protected Vector<FormatterElement> formatters = new Vector<>();
     /** destination directory */
     protected File destDir = null;
 
@@ -41,7 +41,8 @@ public abstract class BaseTest {
     protected String errorProperty;
     // CheckStyle:VisibilityModifier ON
 
-    private Object ifCond, unlessCond;
+    private Object ifCond;
+    private Object unlessCond;
     private boolean skipNonTests;
 
     /**
@@ -132,6 +133,7 @@ public abstract class BaseTest {
 
     /**
      * The if expression
+     * @return Object
      * @since Ant 1.8.0
      */
     public Object getIfCondition() {
@@ -163,6 +165,7 @@ public abstract class BaseTest {
 
     /**
      * The unless expression
+     * @return Object
      * @since Ant 1.8.0
      */
     public Object getUnlessCondition() {

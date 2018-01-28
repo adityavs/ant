@@ -30,11 +30,10 @@ import org.apache.tools.ant.types.Resource;
 import org.apache.tools.ant.util.FileUtils;
 
 /**
- *
  * A Resource representation of anything that is accessed via a Java classloader.
  * The core methods to set/resolve the classpath are provided.
- * @since Ant 1.8.0
  *
+ * @since Ant 1.8.0
  */
 
 public abstract class AbstractClasspathResource extends Resource {
@@ -107,10 +106,11 @@ public abstract class AbstractClasspathResource extends Resource {
      * Use the reference to locate the loader. If the loader is not
      * found, taskdef will use the specified classpath and register it
      * with the specified name.
-     *
+     * <p>
      * This allow multiple taskdef/typedef to use the same class loader,
      * so they can be used together. It eliminate the need to
      * put them in the CLASSPATH.
+     * </p>
      *
      * @param r the reference to locate the loader.
      */
@@ -124,6 +124,7 @@ public abstract class AbstractClasspathResource extends Resource {
      *
      * <p>Only relevant if a classpath has been specified.</p>
      *
+     * @param b boolean
      * @since Ant 1.8.0
      */
     public void setParentFirst(boolean b) {
@@ -132,6 +133,7 @@ public abstract class AbstractClasspathResource extends Resource {
 
     /**
      * Overrides the super version.
+     *
      * @param r the Reference to set.
      */
     public void setRefid(Reference r) {
@@ -144,6 +146,7 @@ public abstract class AbstractClasspathResource extends Resource {
     /**
      * Learn whether this resource exists. This implementation opens the input stream
      * as the test.
+     *
      * @return true if this resource exists.
      */
     public boolean isExists() {
@@ -151,19 +154,16 @@ public abstract class AbstractClasspathResource extends Resource {
             return  ((Resource) getCheckedRef()).isExists();
         }
         dieOnCircularReference();
-        InputStream is = null;
-        try {
-            is = getInputStream();
+        try (InputStream is = getInputStream()) {
             return is != null;
         } catch (IOException ex) {
             return false;
-        } finally {
-            FileUtils.close(is);
         }
     }
 
     /**
      * Return an InputStream for reading the contents of this Resource.
+     *
      * @return an InputStream object.
      * @throws IOException if an error occurs.
      */
@@ -177,31 +177,36 @@ public abstract class AbstractClasspathResource extends Resource {
         return !classLoader.needsCleanup()
             ? openInputStream(classLoader.getLoader())
             : new FilterInputStream(openInputStream(classLoader.getLoader())) {
-                    public void close() throws IOException {
-                        FileUtils.close(in);
-                        classLoader.cleanup();
+                @Override
+                public void close() throws IOException {
+                    FileUtils.close(in);
+                    classLoader.cleanup();
+                }
+
+                @Override
+                protected void finalize() throws Throwable {
+                    try {
+                        close();
+                    } finally {
+                        super.finalize();
                     }
-                    protected void finalize() throws Throwable {
-                        try {
-                            close();
-                        } finally {
-                            super.finalize();
-                        }
-                    }
-                };
+                }
+            };
     }
 
     /**
      * combines the various ways that could specify a ClassLoader and
      * potentially creates one that needs to be cleaned up when it is
      * no longer needed so that classes can get garbage collected.
+     *
+     * @return ClassLoaderWithFlag
      */
     protected ClassLoaderWithFlag getClassLoader() {
         ClassLoader cl = null;
-        boolean clNeedsCleanup = false;
         if (loader != null) {
             cl = (ClassLoader) loader.getReferencedObject();
         }
+        boolean clNeedsCleanup = false;
         if (cl == null) {
             if (getClasspath() != null) {
                 Path p = getClasspath().concatSystemClasspath("ignore");
@@ -226,6 +231,7 @@ public abstract class AbstractClasspathResource extends Resource {
 
     /**
      * open the input stream from a specific classloader
+     *
      * @param cl the classloader to use. Will be null if the system classloader is used
      * @return an open input stream for the resource
      * @throws IOException if an error occurs.
@@ -254,8 +260,15 @@ public abstract class AbstractClasspathResource extends Resource {
             loader = l;
             cleanup = needsCleanup && l instanceof AntClassLoader;
         }
-        public ClassLoader getLoader() { return loader; }
-        public boolean needsCleanup() { return cleanup; }
+
+        public ClassLoader getLoader() {
+            return loader;
+        }
+
+        public boolean needsCleanup() {
+            return cleanup;
+        }
+
         public void cleanup() {
             if (cleanup) {
                 ((AntClassLoader) loader).cleanup();

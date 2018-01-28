@@ -29,6 +29,10 @@ import org.apache.tools.ant.taskdefs.condition.Os;
  * A set of helper methods related to locating executables or checking
  * conditions of a given Java installation.
  *
+ * <p>Starting with Java 10 we've stopped adding <code>JAVA_</code>
+ * and <code>VERSION_</code> attributes for new major version numbers
+ * of the JVM.</p>
+ *
  * @since Ant 1.5
  */
 public final class JavaEnvUtils {
@@ -54,6 +58,9 @@ public final class JavaEnvUtils {
 
     /** floating version of the JVM */
     private static int javaVersionNumber;
+
+    /** Version of currently running VM. */
+    private static final DeweyDecimal parsedJavaVersion;
 
     /** Version constant for Java 1.0 */
     public static final String JAVA_1_0 = "1.0";
@@ -100,15 +107,32 @@ public final class JavaEnvUtils {
     /** Number Version constant for Java 1.8 */
     public static final int VERSION_1_8 = 18;
 
-    /** Version constant for Java 1.9 */
+    /**
+     * Version constant for Java 1.9
+     * @deprecated use #JAVA_9 instead
+     */
     public static final String JAVA_1_9 = "1.9";
-    /** Number Version constant for Java 1.9 */
+    /**
+     * Number Version constant for Java 1.9
+     * @deprecated use #VERSION_9 instead
+     */
     public static final int VERSION_1_9 = 19;
+
+    /**
+     * Version constant for Java 9
+     * @since Ant 1.9.8
+     */
+    public static final String JAVA_9 = "9";
+    /**
+     * Number Version constant for Java 9
+     * @since Ant 1.9.8
+     */
+    public static final int VERSION_9 = 90;
 
     /** Whether this is the Kaffe VM */
     private static boolean kaffeDetected;
 
-    /** Wheter this is a GNU Classpath based VM */
+    /** Whether this is a GNU Classpath based VM */
     private static boolean classpathDetected;
 
     /** Whether this is the GNU VM (gcj/gij) */
@@ -158,13 +182,22 @@ public final class JavaEnvUtils {
             Class.forName("java.lang.reflect.Executable");
             javaVersion = JAVA_1_8;
             javaVersionNumber++;
-            checkForJava9();
-            javaVersion = JAVA_1_9;
-            javaVersionNumber++;
+            Class.forName("java.lang.module.ModuleDescriptor");
+            javaVersion = JAVA_9;
+            javaVersionNumber = VERSION_9;
+            // at least Java9 and this should properly support the purely numeric version property
+            String v = System.getProperty("java.specification.version");
+            DeweyDecimal pv = new DeweyDecimal(v);
+            javaVersionNumber = pv.get(0) * 10;
+            if (pv.getSize() > 1) {
+                javaVersionNumber += pv.get(1);
+            }
+            javaVersion = pv.toString();
         } catch (Throwable t) {
             // swallow as we've hit the max class version that
             // we have
         }
+        parsedJavaVersion = new DeweyDecimal(javaVersion);
         kaffeDetected = false;
         try {
             Class.forName("kaffe.util.NotImplemented");
@@ -197,7 +230,11 @@ public final class JavaEnvUtils {
 
     /**
      * Returns the version of Java this class is running under.
-     * @return the version of Java as a String, e.g. "1.6"
+     *
+     * <p>Up until Java 8 Java version numbers were 1.VERSION -
+     * e.g. 1.8.x for Java 8, starting with Java 9 it became 9.x.</p>
+     *
+     * @return the version of Java as a String, e.g. "1.6" or "9"
      */
     public static String getJavaVersion() {
         return javaVersion;
@@ -205,60 +242,58 @@ public final class JavaEnvUtils {
 
 
     /**
-     * Checks for a give Java 9 runtime.
-     * At the time of writing the actual version of the JDK was 1.9.0_b06.
-     * Searching for new classes gave no hits, so we need another aproach.
-     * Searching for changes (grep -r -i -n "@since 1.9" .) in the sources gave
-     * only one hit: a new constant in the class SourceVersion.
-     * So we have to check that ...
-     *
-     * @throws Exception if we can't load the class or don't find the new constant.
-     *    This is the behavior when searching for new features on older versions.
-     * @since Ant 1.9.4
-     */
-    private static void checkForJava9() throws Exception {
-    	Class<?> clazz = Class.forName("javax.lang.model.SourceVersion");
-    	clazz.getDeclaredField("RELEASE_9");
-    }
-
-
-    /**
      * Returns the version of Java this class is running under.
-     * This number can be used for comparisons; it will always be
+     * <p>This number can be used for comparisons.</p>
      * @return the version of Java as a number 10x the major/minor,
-     * e.g Java1.5 has a value of 15
+     * e.g Java1.5 has a value of 15 and Java9 the value 90 - major
+     * will be 1 for all versions of Java prior to Java 9, minor will
+     * be 0 for all versions of Java starting with Java 9.
+     * @deprecated use #getParsedJavaVersion instead
      */
     public static int getJavaVersionNumber() {
         return javaVersionNumber;
     }
 
     /**
-     * Compares the current Java version to the passed in String -
-     * assumes the argument is one of the constants defined in this
-     * class.
-     * Note that Ant now requires JDK 1.5+ so {@link #JAVA_1_0} through
-     * {@link #JAVA_1_4} need no longer be tested for.
-     * @param version the version to check against the current version.
-     * @return true if the version of Java is the same as the given version.
-     * @since Ant 1.5
+     * Returns the version of Java this class is running under.
+     * <p>This number can be used for comparisons.</p>
+     * @return the version of Java as major.minor, e.g Java1.5 has a
+     * value of 1.5 and Java9 the value 9 - major will be 1 for all
+     * versions of Java prior to Java 9, minor will be 0 for all
+     * versions of Java starting with Java 9.
      */
-    public static boolean isJavaVersion(String version) {
-        return javaVersion.equals(version);
+    public static DeweyDecimal getParsedJavaVersion() {
+        return parsedJavaVersion;
     }
 
     /**
      * Compares the current Java version to the passed in String -
      * assumes the argument is one of the constants defined in this
      * class.
-     * Note that Ant now requires JDK 1.5+ so {@link #JAVA_1_0} through
-     * {@link #JAVA_1_4} need no longer be tested for.
+     * Note that Ant now requires JDK 1.8+ so {@link #JAVA_1_0} through
+     * {@link #JAVA_1_7} need no longer be tested for.
+     * @param version the version to check against the current version.
+     * @return true if the version of Java is the same as the given version.
+     * @since Ant 1.5
+     */
+    public static boolean isJavaVersion(String version) {
+        return javaVersion.equals(version)
+            || (javaVersion.equals(JAVA_9) && JAVA_1_9.equals(version));
+    }
+
+    /**
+     * Compares the current Java version to the passed in String -
+     * assumes the argument is one of the constants defined in this
+     * class.
+     * Note that Ant now requires JDK 1.8+ so {@link #JAVA_1_0} through
+     * {@link #JAVA_1_7} need no longer be tested for.
      * @param version the version to check against the current version.
      * @return true if the version of Java is the same or higher than the
      * given version.
      * @since Ant 1.7
      */
     public static boolean isAtLeastJavaVersion(String version) {
-        return javaVersion.compareTo(version) >= 0;
+        return parsedJavaVersion.compareTo(new DeweyDecimal(version)) >= 0;
     }
 
     /**
@@ -385,7 +420,7 @@ public final class JavaEnvUtils {
             // fall back to JRE bin directory, also catches JDK 1.0 and 1.1
             // where java.home points to the root of the JDK and Mac OS X where
             // the whole directory layout is different from Sun's
-            // and also catches JDK 1.9 (and probably later) which
+            // and also catches JDK 9 (and probably later) which
             // merged JDK and JRE dirs
             return getJreExecutable(command);
         }
@@ -426,49 +461,45 @@ public final class JavaEnvUtils {
 
     private static void buildJrePackages() {
         jrePackages = new Vector<String>();
-        switch(javaVersionNumber) {
-            case VERSION_1_9:
-            case VERSION_1_8:
-            case VERSION_1_7:
-            case VERSION_1_6:
-            case VERSION_1_5:
-                //In Java1.5, the apache stuff moved.
-                jrePackages.addElement("com.sun.org.apache");
-                //fall through.
-            case VERSION_1_4:
-                if (javaVersionNumber == VERSION_1_4) {
-                    jrePackages.addElement("org.apache.crimson");
-                    jrePackages.addElement("org.apache.xalan");
-                    jrePackages.addElement("org.apache.xml");
-                    jrePackages.addElement("org.apache.xpath");
-                }
-                jrePackages.addElement("org.ietf.jgss");
-                jrePackages.addElement("org.w3c.dom");
-                jrePackages.addElement("org.xml.sax");
-                // fall through
-            case VERSION_1_3:
-                jrePackages.addElement("org.omg");
-                jrePackages.addElement("com.sun.corba");
-                jrePackages.addElement("com.sun.jndi");
-                jrePackages.addElement("com.sun.media");
-                jrePackages.addElement("com.sun.naming");
-                jrePackages.addElement("com.sun.org.omg");
-                jrePackages.addElement("com.sun.rmi");
-                jrePackages.addElement("sunw.io");
-                jrePackages.addElement("sunw.util");
-                // fall through
-            case VERSION_1_2:
-                jrePackages.addElement("com.sun.java");
-                jrePackages.addElement("com.sun.image");
-                // are there any here that we forgot?
-                // fall through
-            case VERSION_1_1:
-            default:
-                //things like sun.reflection, sun.misc, sun.net
-                jrePackages.addElement("sun");
-                jrePackages.addElement("java");
-                jrePackages.addElement("javax");
-                break;
+        if (isAtLeastJavaVersion(JAVA_1_1)) {
+            //things like sun.reflection, sun.misc, sun.net
+            jrePackages.addElement("sun");
+            jrePackages.addElement("java");
+            jrePackages.addElement("javax");
+        }
+        if (isAtLeastJavaVersion(JAVA_1_2)) {
+            jrePackages.addElement("com.sun.java");
+            jrePackages.addElement("com.sun.image");
+            // are there any here that we forgot?
+        }
+        if (isAtLeastJavaVersion(JAVA_1_3)) {
+            jrePackages.addElement("org.omg");
+            jrePackages.addElement("com.sun.corba");
+            jrePackages.addElement("com.sun.jndi");
+            jrePackages.addElement("com.sun.media");
+            jrePackages.addElement("com.sun.naming");
+            jrePackages.addElement("com.sun.org.omg");
+            jrePackages.addElement("com.sun.rmi");
+            jrePackages.addElement("sunw.io");
+            jrePackages.addElement("sunw.util");
+        }
+        if (isAtLeastJavaVersion(JAVA_1_4)) {
+            if (javaVersionNumber == VERSION_1_4) {
+                jrePackages.addElement("org.apache.crimson");
+                jrePackages.addElement("org.apache.xalan");
+                jrePackages.addElement("org.apache.xml");
+                jrePackages.addElement("org.apache.xpath");
+            }
+            jrePackages.addElement("org.ietf.jgss");
+            jrePackages.addElement("org.w3c.dom");
+            jrePackages.addElement("org.xml.sax");
+        }
+        if (isAtLeastJavaVersion(JAVA_1_5)) {
+            //In Java1.5, the apache stuff moved.
+            jrePackages.addElement("com.sun.org.apache");
+        }
+        if (isAtLeastJavaVersion(JAVA_1_7)) {
+            jrePackages.addElement("jdk");
         }
     }
 
@@ -477,52 +508,47 @@ public final class JavaEnvUtils {
      * @return a list of test classes depending on the java version.
      */
     public static Vector<String> getJrePackageTestCases() {
-        Vector<String> tests = new Vector<String>();
+        Vector<String> tests = new Vector<>();
         tests.addElement("java.lang.Object");
-        switch(javaVersionNumber) {
-            case VERSION_1_9:
-            case VERSION_1_8:
-            case VERSION_1_7:
-            case VERSION_1_6:
-            case VERSION_1_5:
-                tests.addElement(
-                    "com.sun.org.apache.xerces.internal.jaxp.datatype.DatatypeFactoryImpl ");
-                // Fall through
-            case VERSION_1_4:
-                tests.addElement("sun.audio.AudioPlayer");
-                if (javaVersionNumber == VERSION_1_4) {
-                	// only for 1.4, not for higher versions which fall through
-                    tests.addElement("org.apache.crimson.parser.ContentModel");
-                    tests.addElement("org.apache.xalan.processor.ProcessorImport");
-                    tests.addElement("org.apache.xml.utils.URI");
-                    tests.addElement("org.apache.xpath.XPathFactory");
-                }
-                tests.addElement("org.ietf.jgss.Oid");
-                tests.addElement("org.w3c.dom.Attr");
-                tests.addElement("org.xml.sax.XMLReader");
-                // fall through
-            case VERSION_1_3:
-                tests.addElement("org.omg.CORBA.Any");
-                tests.addElement("com.sun.corba.se.internal.corba.AnyImpl");
-                tests.addElement("com.sun.jndi.ldap.LdapURL");
-                tests.addElement("com.sun.media.sound.Printer");
-                tests.addElement("com.sun.naming.internal.VersionHelper");
-                tests.addElement("com.sun.org.omg.CORBA.Initializer");
-                tests.addElement("sunw.io.Serializable");
-                tests.addElement("sunw.util.EventListener");
-                // fall through
-            case VERSION_1_2:
-                tests.addElement("javax.accessibility.Accessible");
-                tests.addElement("sun.misc.BASE64Encoder");
-                tests.addElement("com.sun.image.codec.jpeg.JPEGCodec");
-                // fall through
-            case VERSION_1_1:
-            default:
-                //things like sun.reflection, sun.misc, sun.net
-                tests.addElement("sun.reflect.SerializationConstructorAccessorImpl");
-                tests.addElement("sun.net.www.http.HttpClient");
-                tests.addElement("sun.audio.AudioPlayer");
-                break;
+        if (isAtLeastJavaVersion(JAVA_1_1)) {
+            //things like sun.reflection, sun.misc, sun.net
+            tests.addElement("sun.reflect.SerializationConstructorAccessorImpl");
+            tests.addElement("sun.net.www.http.HttpClient");
+            tests.addElement("sun.audio.AudioPlayer");
+        }
+        if (isAtLeastJavaVersion(JAVA_1_2)) {
+            tests.addElement("javax.accessibility.Accessible");
+            tests.addElement("sun.misc.BASE64Encoder");
+            tests.addElement("com.sun.image.codec.jpeg.JPEGCodec");
+        }
+        if (isAtLeastJavaVersion(JAVA_1_3)) {
+            tests.addElement("org.omg.CORBA.Any");
+            tests.addElement("com.sun.corba.se.internal.corba.AnyImpl");
+            tests.addElement("com.sun.jndi.ldap.LdapURL");
+            tests.addElement("com.sun.media.sound.Printer");
+            tests.addElement("com.sun.naming.internal.VersionHelper");
+            tests.addElement("com.sun.org.omg.CORBA.Initializer");
+            tests.addElement("sunw.io.Serializable");
+            tests.addElement("sunw.util.EventListener");
+        }
+        if (isAtLeastJavaVersion(JAVA_1_4)) {
+            tests.addElement("sun.audio.AudioPlayer");
+            if (javaVersionNumber == VERSION_1_4) {
+                // only for 1.4, not for higher versions
+                tests.addElement("org.apache.crimson.parser.ContentModel");
+                tests.addElement("org.apache.xalan.processor.ProcessorImport");
+                tests.addElement("org.apache.xml.utils.URI");
+                tests.addElement("org.apache.xpath.XPathFactory");
+            }
+            tests.addElement("org.ietf.jgss.Oid");
+            tests.addElement("org.w3c.dom.Attr");
+            tests.addElement("org.xml.sax.XMLReader");
+        }
+        if (isAtLeastJavaVersion(JAVA_1_5)) {
+            tests.addElement("com.sun.org.apache.xerces.internal.jaxp.datatype.DatatypeFactoryImpl");
+        }
+        if (isAtLeastJavaVersion(JAVA_1_7)) {
+            tests.addElement("jdk.net.Sockets");
         }
         return tests;
     }
@@ -539,26 +565,21 @@ public final class JavaEnvUtils {
     }
 
     /**
-     *
      * Writes the command into a temporary DCL script and returns the
      * corresponding File object.
      * It is the job of the caller to delete the file on exit.
-     * @param cmd the command.
+     * @param cmds the command.
      * @return the file containing the command.
      * @throws IOException if there is an error writing to the file.
      */
-    public static File createVmsJavaOptionFile(String[] cmd)
+    public static File createVmsJavaOptionFile(String[] cmds)
             throws IOException {
         File script = FILE_UTILS.createTempFile("ANT", ".JAVA_OPTS", null, false, true);
-        BufferedWriter out = null;
-        try {
-            out = new BufferedWriter(new FileWriter(script));
-            for (int i = 0; i < cmd.length; i++) {
-                out.write(cmd[i]);
+        try (BufferedWriter out = new BufferedWriter(new FileWriter(script))) {
+            for (int i = 0; i < cmds.length; i++) {
+                out.write(cmds[i]);
                 out.newLine();
             }
-        } finally {
-            FileUtils.close(out);
         }
         return script;
     }

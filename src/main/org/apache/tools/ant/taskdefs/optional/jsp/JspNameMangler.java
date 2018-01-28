@@ -33,7 +33,7 @@ public class JspNameMangler implements JspMangler {
     /**
      * this is the list of keywords which can not be used as classnames
      */
-    public static final String[] keywords = {
+    public static final String[] keywords = { //NOSONAR
             "assert",
             "abstract", "boolean", "break", "byte",
             "case", "catch", "char", "class",
@@ -58,6 +58,7 @@ public class JspNameMangler implements JspMangler {
      * @param jspFile file
      * @return java filename
      */
+    @Override
     public String mapJspToJavaName(File jspFile) {
         return mapJspToBaseName(jspFile) + ".java";
     }
@@ -67,23 +68,22 @@ public class JspNameMangler implements JspMangler {
      * map from a jsp file to a base name; does not deal with extensions
      *
      * @param jspFile jspFile file
-     * @return exensionless potentially remapped name
+     * @return extensionless potentially remapped name
      */
     private String mapJspToBaseName(File jspFile) {
-        String className;
-        className = stripExtension(jspFile);
+        String className = stripExtension(jspFile);
 
         // since we don't mangle extensions like the servlet does,
         // we need to check for keywords as class names
-        for (int i = 0; i < keywords.length; ++i) {
-            if (className.equals(keywords[i])) {
+        for (String keyword : keywords) {
+            if (className.equals(keyword)) {
                 className += "%";
                 break;
             }
         }
 
         // Fix for invalid characters. If you think of more add to the list.
-        StringBuffer modifiedClassName = new StringBuffer(className.length());
+        StringBuilder modifiedClassName = new StringBuilder(className.length());
         // first char is more restrictive than the rest
         char firstChar = className.charAt(0);
         if (Character.isJavaIdentifierStart(firstChar)) {
@@ -148,6 +148,7 @@ public class JspNameMangler implements JspMangler {
      * @param path not used
      * @return null always.
      */
+    @Override
     public String mapPath(String path) {
         return null;
     }

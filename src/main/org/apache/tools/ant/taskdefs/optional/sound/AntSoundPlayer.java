@@ -36,7 +36,7 @@ import javax.sound.sampled.UnsupportedAudioFileException;
 import org.apache.tools.ant.BuildEvent;
 import org.apache.tools.ant.BuildListener;
 import org.apache.tools.ant.Project;
-
+import org.apache.tools.ant.util.FileUtils;
 
 
 /**
@@ -59,10 +59,6 @@ public class AntSoundPlayer implements LineListener, BuildListener {
     private File fileFail = null;
     private int loopsFail = 0;
     private Long durationFail = null;
-
-    /** Constructor for AntSoundPlayer. */
-    public AntSoundPlayer() {
-    }
 
     /**
      * @param file the location of the audio file to be played when the
@@ -102,14 +98,13 @@ public class AntSoundPlayer implements LineListener, BuildListener {
 
         AudioInputStream audioInputStream = null;
 
-
         try {
             audioInputStream = AudioSystem.getAudioInputStream(file);
         } catch (UnsupportedAudioFileException uafe) {
             project.log("Audio format is not yet supported: "
                 + uafe.getMessage());
         } catch (IOException ioe) {
-            ioe.printStackTrace();
+            ioe.printStackTrace(); //NOSONAR
         }
 
         if (audioInputStream != null) {
@@ -117,23 +112,28 @@ public class AntSoundPlayer implements LineListener, BuildListener {
             DataLine.Info   info = new DataLine.Info(Clip.class, format,
                                              AudioSystem.NOT_SPECIFIED);
             try {
-                audioClip = (Clip) AudioSystem.getLine(info);
-                audioClip.addLineListener(this);
-                audioClip.open(audioInputStream);
-            } catch (LineUnavailableException e) {
-                project.log("The sound device is currently unavailable");
-                return;
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+                try {
+                    audioClip = (Clip) AudioSystem.getLine(info);
+                    audioClip.addLineListener(this);
+                    audioClip.open(audioInputStream);
+                } catch (LineUnavailableException e) {
+                    project.log("The sound device is currently unavailable");
+                    return;
+                } catch (IOException e) {
+                    e.printStackTrace(); //NOSONAR
+                }
 
-            if (duration != null) {
-                playClip(audioClip, duration.longValue());
-            } else {
-                playClip(audioClip, loops);
+                if (duration != null) {
+                    playClip(audioClip, duration.longValue());
+                } else {
+                    playClip(audioClip, loops);
+                }
+                if (audioClip != null) {
+                    audioClip.drain();
+                }
+            } finally {
+                FileUtils.close(audioClip);
             }
-            audioClip.drain();
-            audioClip.close();
         } else {
             project.log("Can't get data from file " + file.getName());
         }
@@ -175,6 +175,7 @@ public class AntSoundPlayer implements LineListener, BuildListener {
      * clip if required.
      * @param event the line event to follow
      */
+    @Override
     public void update(LineEvent event) {
         if (event.getType().equals(LineEvent.Type.STOP)) {
             Line line = event.getLine();
@@ -187,6 +188,7 @@ public class AntSoundPlayer implements LineListener, BuildListener {
      *  Fired before any targets are started.
      * @param event ignored
      */
+    @Override
     public void buildStarted(BuildEvent event) {
     }
 
@@ -196,6 +198,7 @@ public class AntSoundPlayer implements LineListener, BuildListener {
      * @param event the build finished event.
      *  @see BuildEvent#getException()
      */
+    @Override
     public void buildFinished(BuildEvent event) {
         if (event.getException() == null && fileSuccess != null) {
             // build successful!
@@ -210,6 +213,7 @@ public class AntSoundPlayer implements LineListener, BuildListener {
      * @param event ignored.
      *  @see BuildEvent#getTarget()
      */
+    @Override
     public void targetStarted(BuildEvent event) {
     }
 
@@ -219,6 +223,7 @@ public class AntSoundPlayer implements LineListener, BuildListener {
      * @param event ignored.
      *  @see BuildEvent#getException()
      */
+    @Override
     public void targetFinished(BuildEvent event) {
     }
 
@@ -227,6 +232,7 @@ public class AntSoundPlayer implements LineListener, BuildListener {
      * @param event ignored.
      *  @see BuildEvent#getTask()
      */
+    @Override
     public void taskStarted(BuildEvent event) {
     }
 
@@ -236,6 +242,7 @@ public class AntSoundPlayer implements LineListener, BuildListener {
      * @param event ignored.
      *  @see BuildEvent#getException()
      */
+    @Override
     public void taskFinished(BuildEvent event) {
     }
 
@@ -245,6 +252,7 @@ public class AntSoundPlayer implements LineListener, BuildListener {
      *  @see BuildEvent#getMessage()
      *  @see BuildEvent#getPriority()
      */
+    @Override
     public void messageLogged(BuildEvent event) {
     }
 }

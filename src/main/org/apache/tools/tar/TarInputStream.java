@@ -62,7 +62,7 @@ public class TarInputStream extends FilterInputStream {
 
     /**
      * This contents of this array is not used at all in this class,
-     * it is only here to avoid repreated object creation during calls
+     * it is only here to avoid repeated object creation during calls
      * to the no-arg read method.
      */
     protected byte[] oneBuf;
@@ -177,6 +177,9 @@ public class TarInputStream extends FilterInputStream {
      */
     @Override
     public int available() throws IOException {
+        if (isDirectory()) {
+            return 0;
+        }
         if (entrySize - entryOffset > Integer.MAX_VALUE) {
             return Integer.MAX_VALUE;
         }
@@ -195,6 +198,9 @@ public class TarInputStream extends FilterInputStream {
      */
     @Override
     public long skip(long numToSkip) throws IOException {
+        if (numToSkip <= 0 || isDirectory()) {
+            return 0;
+        }
         // REVIEW
         // This is horribly inefficient, but it ensures that we
         // properly skip over bytes via the TarBuffer...
@@ -270,7 +276,7 @@ public class TarInputStream extends FilterInputStream {
             while (numToSkip > 0) {
                 long skipped = skip(numToSkip);
                 if (skipped <= 0) {
-                    throw new RuntimeException("failed to skip current tar"
+                    throw new IOException("failed to skip current tar"
                                                + " entry");
                 }
                 numToSkip -= skipped;
@@ -325,11 +331,11 @@ public class TarInputStream extends FilterInputStream {
             currEntry.setName(encoding.decode(longNameData));
         }
 
-        if (currEntry.isPaxHeader()){ // Process Pax headers
+        if (currEntry.isPaxHeader()) { // Process Pax headers
             paxHeaders();
         }
 
-        if (currEntry.isGNUSparse()){ // Process sparse files
+        if (currEntry.isGNUSparse()) { // Process sparse files
             readGNUSparse();
         }
 
@@ -408,7 +414,7 @@ public class TarInputStream extends FilterInputStream {
         return hasHitEOF ? null : headerBuf;
     }
 
-    private void paxHeaders() throws IOException{
+    private void paxHeaders() throws IOException {
         Map<String, String> headers = parsePaxHeaders(this);
         getNextEntry(); // Get the actual file entry
         applyPaxHeadersToCurrentEntry(headers);
@@ -417,18 +423,18 @@ public class TarInputStream extends FilterInputStream {
     Map<String, String> parsePaxHeaders(InputStream i) throws IOException {
         Map<String, String> headers = new HashMap<String, String>();
         // Format is "length keyword=value\n";
-        while(true){ // get length
+        while (true) { // get length
             int ch;
             int len = 0;
             int read = 0;
-            while((ch = i.read()) != -1) {
+            while ((ch = i.read()) != -1) {
                 read++;
-                if (ch == ' '){ // End of length string
+                if (ch == ' ') { // End of length string
                     // Get keyword
                     ByteArrayOutputStream coll = new ByteArrayOutputStream();
-                    while((ch = i.read()) != -1) {
+                    while ((ch = i.read()) != -1) {
                         read++;
-                        if (ch == '='){ // end of keyword
+                        if (ch == '=') { // end of keyword
                             String keyword = coll.toString("UTF-8");
                             // Get rest of entry
                             final int restLen = len - read;
@@ -457,7 +463,7 @@ public class TarInputStream extends FilterInputStream {
                 len *= 10;
                 len += ch - '0';
             }
-            if (ch == -1){ // EOF
+            if (ch == -1) { // EOF
                 break;
             }
         }
@@ -476,28 +482,28 @@ public class TarInputStream extends FilterInputStream {
          * uid,uname
          * SCHILY.devminor, SCHILY.devmajor: don't have setters/getters for those
          */
-        for (Entry<String, String> ent : headers.entrySet()){
+        for (Entry<String, String> ent : headers.entrySet()) {
             String key = ent.getKey();
             String val = ent.getValue();
-            if ("path".equals(key)){
+            if ("path".equals(key)) {
                 currEntry.setName(val);
-            } else if ("linkpath".equals(key)){
+            } else if ("linkpath".equals(key)) {
                 currEntry.setLinkName(val);
-            } else if ("gid".equals(key)){
+            } else if ("gid".equals(key)) {
                 currEntry.setGroupId(Long.parseLong(val));
-            } else if ("gname".equals(key)){
+            } else if ("gname".equals(key)) {
                 currEntry.setGroupName(val);
-            } else if ("uid".equals(key)){
+            } else if ("uid".equals(key)) {
                 currEntry.setUserId(Long.parseLong(val));
-            } else if ("uname".equals(key)){
+            } else if ("uname".equals(key)) {
                 currEntry.setUserName(val);
-            } else if ("size".equals(key)){
+            } else if ("size".equals(key)) {
                 currEntry.setSize(Long.parseLong(val));
-            } else if ("mtime".equals(key)){
+            } else if ("mtime".equals(key)) {
                 currEntry.setModTime((long) (Double.parseDouble(val) * 1000));
-            } else if ("SCHILY.devminor".equals(key)){
+            } else if ("SCHILY.devminor".equals(key)) {
                 currEntry.setDevMinor(Integer.parseInt(val));
-            } else if ("SCHILY.devmajor".equals(key)){
+            } else if ("SCHILY.devmajor".equals(key)) {
                 currEntry.setDevMajor(Integer.parseInt(val));
             }
         }
@@ -535,7 +541,7 @@ public class TarInputStream extends FilterInputStream {
     /**
      * Reads a byte from the current tar archive entry.
      *
-     * This method simply calls read( byte[], int, int ).
+     * This method simply calls read(byte[], int, int).
      *
      * @return The byte read, or -1 at EOF.
      * @throws IOException on error
@@ -563,7 +569,7 @@ public class TarInputStream extends FilterInputStream {
     public int read(byte[] buf, int offset, int numToRead) throws IOException {
         int totalRead = 0;
 
-        if (entryOffset >= entrySize) {
+        if (entryOffset >= entrySize || isDirectory()) {
             return -1;
         }
 
@@ -652,9 +658,16 @@ public class TarInputStream extends FilterInputStream {
      * Whether this class is able to read the given entry.
      *
      * <p>May return false if the current entry is a sparse file.</p>
+     *
+     * @param te TarEntry
+     * @return boolean
      */
     public boolean canReadEntryData(TarEntry te) {
         return !te.isGNUSparse();
+    }
+
+    private boolean isDirectory() {
+        return currEntry != null && currEntry.isDirectory();
     }
 }
 

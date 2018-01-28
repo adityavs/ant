@@ -76,12 +76,12 @@ public class MSVSSCREATE extends MSVSS {
      *
      * @param   quiet The boolean value for quiet.
      */
-    public final void setQuiet (boolean quiet) {
+    public final void setQuiet(boolean quiet) {
         super.setInternalQuiet(quiet);
     }
 
     /**
-     * Autoresponce behaviour. Valid options are Y and N.
+     * Autoresponse behaviour. Valid options are Y and N.
      *
      * @param response The auto response value.
      */

@@ -36,7 +36,7 @@ import java.util.BitSet;
  * <pre>
  *  CompressCommons
  * Commons Compress
- * CompressCommons 
+ * CompressCommons
  * essCommons Compr
  * mmons CompressCo
  * mons CompressCom
@@ -141,7 +141,7 @@ class BlockSort {
 
     /**
      * Array instance identical to Data's sfmap, both are used only
-     * temporarily and indepently, so we do not need to allocate
+     * temporarily and independently, so we do not need to allocate
      * additional memory.
      */
     private final char[] quadrant;
@@ -251,7 +251,7 @@ class BlockSort {
      * bucket 'ra' with sort index 5.  The fully sorted order then becomes.
      *
      * fmap = { 5, 3, 0, 4, 1, 2 }
-     * 
+     *
      */
 
     /**
@@ -261,12 +261,12 @@ class BlockSort {
      * @param eclass points from the index of a character inside the
      *        block to the first index in fmap that contains the
      *        bucket of its suffix that is sorted in this step.
-     * @param lo lower boundary of the fmap-interval to be sorted 
-     * @param hi upper boundary of the fmap-interval to be sorted 
+     * @param lo lower boundary of the fmap-interval to be sorted
+     * @param hi upper boundary of the fmap-interval to be sorted
      */
-    private void fallbackSimpleSort(int[] fmap, 
-                                    int[] eclass, 
-                                    int lo, 
+    private void fallbackSimpleSort(int[] fmap,
+                                    int[] eclass,
+                                    int lo,
                                     int hi) {
         if (lo == hi) {
             return;
@@ -291,7 +291,7 @@ class BlockSort {
             for (j = i + 1; j <= hi && ec_tmp > eclass[fmap[j]]; j++) {
                 fmap[j - 1] = fmap[j];
             }
-            fmap[j-1] = tmp;
+            fmap[j - 1] = tmp;
         }
     }
 
@@ -312,7 +312,9 @@ class BlockSort {
     private void fvswap(int[] fmap, int yyp1, int yyp2, int yyn) {
         while (yyn > 0) {
             fswap(fmap, yyp1, yyp2);
-            yyp1++; yyp2++; yyn--;
+            yyp1++;
+            yyp2++;
+            yyn--;
         }
     }
 
@@ -326,7 +328,7 @@ class BlockSort {
     }
 
     private int[] fpop(int sp) {
-        return new int[] { stack_ll[sp], stack_hh[sp] };
+        return new int[] {stack_ll[sp], stack_hh[sp]};
     }
 
     /**
@@ -336,12 +338,12 @@ class BlockSort {
      * @param eclass points from the index of a character inside the
      *        block to the first index in fmap that contains the
      *        bucket of its suffix that is sorted in this step.
-     * @param loSt lower boundary of the fmap-interval to be sorted 
-     * @param hiSt upper boundary of the fmap-interval to be sorted 
+     * @param loSt lower boundary of the fmap-interval to be sorted
+     * @param hiSt upper boundary of the fmap-interval to be sorted
      */
-    private void fallbackQSort3(int[] fmap, 
-                                int[] eclass, 
-                                int loSt, 
+    private void fallbackQSort3(int[] fmap,
+                                int[] eclass,
+                                int loSt,
                                 int hiSt) {
         int lo, unLo, ltLo, hi, unHi, gtHi, n;
 
@@ -351,7 +353,8 @@ class BlockSort {
 
         while (sp > 0) {
             int[] s = fpop(--sp);
-            lo = s[0]; hi = s[1];
+            lo = s[0];
+            hi = s[1];
 
             if (hi - lo < FALLBACK_QSORT_SMALL_THRESH) {
                 fallbackSimpleSort(fmap, eclass, lo, hi);
@@ -359,16 +362,16 @@ class BlockSort {
             }
 
             /* LBZ2: Random partitioning.  Median of 3 sometimes fails to
-               avoid bad cases.  Median of 9 seems to help but 
+               avoid bad cases.  Median of 9 seems to help but
                looks rather expensive.  This too seems to work but
-               is cheaper.  Guidance for the magic constants 
+               is cheaper.  Guidance for the magic constants
                7621 and 32768 is taken from Sedgewick's algorithms
                book, chapter 35.
             */
             r = ((r * 7621) + 1) % 32768;
             long r3 = r % 3, med;
             if (r3 == 0) {
-                med = eclass[fmap[lo]]; 
+                med = eclass[fmap[lo]];
             } else if (r3 == 1) {
                 med = eclass[fmap[(lo + hi) >>> 1]];
             } else {
@@ -386,10 +389,11 @@ class BlockSort {
                         break;
                     }
                     n = eclass[fmap[unLo]] - (int) med;
-                    if (n == 0) { 
-                        fswap(fmap, unLo, ltLo); 
-                        ltLo++; unLo++; 
-                        continue; 
+                    if (n == 0) {
+                        fswap(fmap, unLo, ltLo);
+                        ltLo++;
+                        unLo++;
+                        continue;
                     }
                     if (n > 0) {
                         break;
@@ -402,9 +406,10 @@ class BlockSort {
                     }
                     n = eclass[fmap[unHi]] - (int) med;
                     if (n == 0) {
-                        fswap(fmap, unHi, gtHi); 
-                        gtHi--; unHi--; 
-                        continue; 
+                        fswap(fmap, unHi, gtHi);
+                        gtHi--;
+                        unHi--;
+                        continue;
                     }
                     if (n < 0) {
                         break;
@@ -414,7 +419,9 @@ class BlockSort {
                 if (unLo > unHi) {
                     break;
                 }
-                fswap(fmap, unLo, unHi); unLo++; unHi--;
+                fswap(fmap, unLo, unHi);
+                unLo++;
+                unHi--;
             }
 
             if (gtHi < ltLo) {
@@ -445,8 +452,10 @@ class BlockSort {
     private int[] eclass;
 
     private int[] getEclass() {
-        return eclass == null
-            ? (eclass = new int[quadrant.length / 2]) : eclass;
+        if (eclass == null) {
+            eclass = new int[quadrant.length / 2];
+        }
+        return eclass;
     }
 
     /*
@@ -465,7 +474,6 @@ class BlockSort {
      *        partially sorted order
      * @param block the original data
      * @param nblock size of the block
-     * @param off offset of first byte to sort in block
      */
     final void fallbackSort(int[] fmap, byte[] block, int nblock) {
         final int[] ftab = new int[257];
@@ -508,7 +516,7 @@ class BlockSort {
           --*/
 
         /*-- LBZ2: set sentinel bits for block-end detection --*/
-        for (i = 0; i < 32; i++) { 
+        for (i = 0; i < 32; i++) {
             bhtab.set(nblock + 2 * i);
             bhtab.clear(nblock + 2 * i + 1);
         }
@@ -577,9 +585,9 @@ class BlockSort {
      * Possibly because the number of elems to sort is usually small, typically
      * &lt;= 20.
      */
-    private static final int[] INCS = { 1, 4, 13, 40, 121, 364, 1093, 3280,
-                                        9841, 29524, 88573, 265720, 797161,
-                                        2391484 };
+    private static final int[] INCS = {1, 4, 13, 40, 121, 364, 1093, 3280,
+                                       9841, 29524, 88573, 265720, 797161,
+                                       2391484};
 
     /**
      * This is the most hammered method of this class.
@@ -636,17 +644,17 @@ class BlockSort {
                     // unrolled version:
 
                     // start inline mainGTU
-                    boolean onceRunned = false;
+                    boolean onceRun = false;
                     int a = 0;
 
                     HAMMER: while (true) {
-                        if (onceRunned) {
+                        if (onceRun) {
                             fmap[j] = a;
-                            if ((j -= h) <= mj) {
+                            if ((j -= h) <= mj) { //NOSONAR
                                 break HAMMER;
                             }
                         } else {
-                            onceRunned = true;
+                            onceRun = true;
                         }
 
                         a = fmap[j - h];
@@ -660,7 +668,7 @@ class BlockSort {
                                 if (block[i1 + 3] == block[i2 + 3]) {
                                     if (block[i1 + 4] == block[i2 + 4]) {
                                         if (block[i1 + 5] == block[i2 + 5]) {
-                                            if (block[(i1 += 6)] == block[(i2 += 6)]) {
+                                            if (block[(i1 += 6)] == block[(i2 += 6)]) { //NOSONAR
                                                 int x = lastShadow;
                                                 X: while (x > 0) {
                                                     x -= 4;
@@ -673,10 +681,10 @@ class BlockSort {
                                                                         if (quadrant[i1 + 2] == quadrant[i2 + 2]) {
                                                                             if (block[i1 + 4] == block[i2 + 4]) {
                                                                                 if (quadrant[i1 + 3] == quadrant[i2 + 3]) {
-                                                                                    if ((i1 += 4) >= lastPlus1) {
+                                                                                    if ((i1 += 4) >= lastPlus1) { //NOSONAR
                                                                                         i1 -= lastPlus1;
                                                                                     }
-                                                                                    if ((i2 += 4) >= lastPlus1) {
+                                                                                    if ((i2 += 4) >= lastPlus1) { //NOSONAR
                                                                                         i2 -= lastPlus1;
                                                                                     }
                                                                                     workDoneShadow++;
@@ -937,7 +945,7 @@ class BlockSort {
         for (int i = 0; i < BZip2Constants.NUM_OVERSHOOT_BYTES; i++) {
             block[lastShadow + i + 2] = block[(i % (lastShadow + 1)) + 1];
         }
-        for (int i = lastShadow + BZip2Constants.NUM_OVERSHOOT_BYTES +1; --i >= 0;) {
+        for (int i = lastShadow + BZip2Constants.NUM_OVERSHOOT_BYTES + 1; --i >= 0;) {
             quadrant[i] = 0;
         }
         block[0] = block[lastShadow + 1];
@@ -973,7 +981,7 @@ class BlockSort {
             runningOrder[i] = i;
         }
 
-        for (int h = 364; h != 1;) {
+        for (int h = 364; h != 1;) { //NOSONAR
             h /= 3;
             for (int i = h; i <= 255; i++) {
                 final int vv = runningOrder[i];

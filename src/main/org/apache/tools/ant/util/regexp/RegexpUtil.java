@@ -33,7 +33,7 @@ public class RegexpUtil {
      * @return true if the flag is set
      */
     public static boolean hasFlag(int options, int flag) {
-        return ((options & flag) > 0);
+        return (options & flag) > 0;
     }
 
     /**
@@ -44,16 +44,16 @@ public class RegexpUtil {
      * @return the options with the flag unset
      */
     public static int removeFlag(int options, int flag) {
-        return (options & (0xFFFFFFFF - flag));
+        return options & (0xFFFFFFFF - flag);
     }
 
     /**
      * convert regex option flag characters to regex options
      * <dl>
-     *   <li>g -  Regexp.REPLACE_ALL</li>
-     *   <li>i -  RegexpMatcher.MATCH_CASE_INSENSITIVE</li>
-     *   <li>m -  RegexpMatcher.MATCH_MULTILINE</li>
-     *   <li>s -  RegexpMatcher.MATCH_SINGLELINE</li>
+     *   <dt>g</dt><dd>Regexp.REPLACE_ALL</dd>
+     *   <dt>i</dt><dd>RegexpMatcher.MATCH_CASE_INSENSITIVE</dd>
+     *   <dt>m</dt><dd>RegexpMatcher.MATCH_MULTILINE</dd>
+     *   <dt>s</dt><dd>RegexpMatcher.MATCH_SINGLELINE</dd>
      * </dl>
      * @param flags the string containing the flags
      * @return the Regexp option bits

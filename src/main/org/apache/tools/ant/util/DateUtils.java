@@ -26,6 +26,8 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Helper methods to deal with date/time formatting with a specific
@@ -66,12 +68,12 @@ public final class DateUtils {
      * some other code is using the format in parallel.
      * Deprecated since ant 1.8
      */
+    @Deprecated
     public static final DateFormat DATE_HEADER_FORMAT
         = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss ", Locale.US);
 
-    private static final DateFormat DATE_HEADER_FORMAT_INT
-    = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss ", Locale.US);
-
+    private static final DateFormat DATE_HEADER_FORMAT_INT =
+        new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss ", Locale.US);
 
 // code from Magesh moved from DefaultLogger and slightly modified
     private static final MessageFormat MINUTE_SECONDS
@@ -88,6 +90,34 @@ public final class DateUtils {
 
     private static final ChoiceFormat SECONDS_FORMAT =
             new ChoiceFormat(LIMITS, SECONDS_PART);
+
+    /**
+     * Provides a thread-local US-style date format. Exactly as used by
+     * {@code <touch>}, to minute precision:
+     * {@code SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.US)}
+     * @since Ant 1.10.2
+     */
+    public static final ThreadLocal<DateFormat> EN_US_DATE_FORMAT_MIN =
+        new ThreadLocal<DateFormat>() {
+            @Override
+            protected DateFormat initialValue() {
+                return new SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.US);
+            }
+        };
+
+    /**
+     * Provides a thread-local US-style date format. Exactly as used by
+     * {@code <touch>}, to second precision:
+     * {@code SimpleDateFormat("MM/dd/yyyy hh:mm:ss a", Locale.US)}
+     * @since Ant 1.10.2
+     */
+    public static final ThreadLocal<DateFormat> EN_US_DATE_FORMAT_SEC =
+        new ThreadLocal<DateFormat>() {
+            @Override
+            protected DateFormat initialValue() {
+                return new SimpleDateFormat("MM/dd/yyyy hh:mm:ss a", Locale.US);
+            }
+        };
 
     static {
         MINUTE_SECONDS.setFormat(0, MINUTES_FORMAT);
@@ -123,7 +153,7 @@ public final class DateUtils {
 
 
     /**
-     * Format an elapsed time into a plurialization correct string.
+     * Format an elapsed time into a pluralization correct string.
      * It is limited only to report elapsed time in minutes and
      * seconds and has the following behavior.
      * <ul>
@@ -166,7 +196,7 @@ public final class DateUtils {
      * moon period = 29.53058 days ~= 30, year = 365.2422 days
      *
      * days moon phase advances on first day of year compared to preceding year
-     *  = 365.2422 - 12*29.53058 ~= 11
+     *  = 365.2422 - 12 * 29.53058 ~= 11
      *
      * years in Metonic cycle (time until same phases fall on the same days of
      *  the month) = 18.6 ~= 19
@@ -178,7 +208,7 @@ public final class DateUtils {
      *
      * 6 moons ~= 177 days
      * 177 ~= 8 reported phases * 22
-     * + 11/22 for rounding
+     * + 11 / 22 for rounding
      * </pre>
      *
      * @param cal the calendar.
@@ -215,7 +245,7 @@ public final class DateUtils {
                                   cal.get(Calendar.DAY_OF_MONTH),
                                   cal.get(Calendar.DAY_OF_WEEK),
                                   cal.get(Calendar.MILLISECOND));
-        StringBuffer tzMarker = new StringBuffer(offset < 0 ? "-" : "+");
+        StringBuilder tzMarker = new StringBuilder(offset < 0 ? "-" : "+");
         offset = Math.abs(offset);
         int hours = offset / (ONE_HOUR * ONE_MINUTE * ONE_SECOND);
         int minutes = offset / (ONE_MINUTE * ONE_SECOND) - ONE_HOUR * hours;
@@ -297,5 +327,61 @@ public final class DateUtils {
         } catch (ParseException px) {
             return parseIso8601Date(datestr);
         }
+    }
+
+    final private static ThreadLocal<DateFormat> iso8601WithTimeZone =
+        new ThreadLocal<DateFormat>() {
+            @Override protected DateFormat initialValue() {
+              // An arbitrary easy-to-read format to normalize to.
+              return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS Z");
+            }
+        };
+    final private static Pattern iso8601normalizer = Pattern.compile(
+        "^(\\d{4,}-\\d{2}-\\d{2})[Tt ]" +           // yyyy-MM-dd
+        "(\\d{2}:\\d{2}(:\\d{2}(\\.\\d{3})?)?) ?" + // HH:mm:ss.SSS
+        "(?:Z|([+-]\\d{2})(?::?(\\d{2}))?)?$");     // Z
+
+    /**
+     * Parse a lenient ISO 8601, ms since epoch, or {@code <touch>}-style date.
+     * That is:
+     * <ul>
+     * <li>Milliseconds since 1970-01-01 00:00</li>
+     * <li><code>YYYY-MM-DD{T| }HH:MM[:SS[.SSS]][ ][&plusmn;ZZ[[:]ZZ]]</code></li>
+     * <li><code>MM/DD/YYYY HH:MM[:SS] {AM|PM}</code></li></ul>
+     * where {a|b} indicates that you must choose one of a or b, and [c]
+     * indicates that you may use or omit c. &plusmn;ZZZZ is the timezone offset, and
+     * may be literally "Z" to mean GMT.
+     *
+     * @param dateStr String
+     * @return Date
+     * @throws ParseException if date string does not match ISO 8601
+     * @since Ant 1.10.2
+     */
+    public static Date parseLenientDateTime(String dateStr) throws ParseException {
+        try {
+            return new Date(Long.parseLong(dateStr));
+        } catch (NumberFormatException ignored) {
+        }
+
+        try {
+            return EN_US_DATE_FORMAT_MIN.get().parse(dateStr);
+        } catch (ParseException ignored) {
+        }
+
+        try {
+           return EN_US_DATE_FORMAT_SEC.get().parse(dateStr);
+        } catch (ParseException ignored) {
+        }
+
+        Matcher m = iso8601normalizer.matcher(dateStr);
+        if (!m.find()) {
+            throw new ParseException(dateStr, 0);
+        }
+        String normISO = m.group(1) + " "
+            + (m.group(3) == null ? m.group(2) + ":00" : m.group(2))
+            + (m.group(4) == null ? ".000 " : " ")
+            + (m.group(5) == null ? "+00" : m.group(5))
+            + (m.group(6) == null ? "00" : m.group(6));
+        return iso8601WithTimeZone.get().parse(normISO);
     }
 }

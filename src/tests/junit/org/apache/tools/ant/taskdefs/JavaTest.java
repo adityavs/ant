@@ -41,6 +41,7 @@ import org.junit.Test;
 import org.junit.internal.AssumptionViolatedException;
 
 import static org.apache.tools.ant.AntAssert.assertContains;
+import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -76,14 +77,15 @@ public class JavaTest {
 
         //final String propname="tests-classpath.value";
         //String testClasspath=System.getProperty(propname);
-        //System.out.println("Test cp="+testClasspath);
-        String runFatal=System.getProperty("junit.run.fatal.tests");
-        if(runFatal!=null)
-            runFatalTests=true;
+        //System.out.println("Test cp=" + testClasspath);
+        String runFatal = System.getProperty("junit.run.fatal.tests");
+        if (runFatal != null) {
+            runFatalTests = true;
+        }
     }
 
     @Test
-    public void testNoJarNoClassname(){
+    public void testNoJarNoClassname() {
         try {
             buildRule.executeTarget("testNoJarNoClassname");
             fail("Build exception should have been thrown - parameter validation");
@@ -118,8 +120,92 @@ public class JavaTest {
             buildRule.executeTarget("testClassnameAndJar");
             fail("Build exception should have been thrown - both classname and JAR are not allowed");
         } catch (BuildException ex) {
-            assertEquals("Cannot use 'jar' and 'classname' attributes in same command.", ex.getMessage());
+            assertEquals("Cannot use 'jar' with 'classname' or 'module' attributes in same command.", ex.getMessage());
         }
+    }
+
+    @Test
+    public void testJarAndModule() {
+        try {
+            buildRule.executeTarget("testJarAndModule");
+            fail("Build exception should have been thrown - both module and JAR are not allowed");
+        } catch (BuildException ex) {
+            assertEquals("Cannot use 'jar' and 'module' attributes in same command", ex.getMessage());
+        }
+    }
+
+    @Test
+    public void testModuleAndJar() {
+        try {
+            buildRule.executeTarget("testModuleAndJar");
+            fail("Build exception should have been thrown - both module and JAR are not allowed");
+        } catch (BuildException ex) {
+            assertEquals("Cannot use 'jar' with 'classname' or 'module' attributes in same command.", ex.getMessage());
+        }
+    }
+
+    @Test
+    public void testClassnameAndModule() {
+        buildRule.executeTarget("testClassnameAndModule");
+    }
+
+    @Test
+    public void testModuleAndClassname() {
+        buildRule.executeTarget("testModuleAndClassname");
+    }
+
+    @Test
+    public void testModule() {
+        buildRule.executeTarget("testModule");
+    }
+
+    @Test
+    public void testModuleCommandLine() {
+        final String moduleName = "TestModule"; //NOI18N
+        final String arg = "appArg";    //NOI18N
+        final Java java = new Java();
+        java.setFork(true);
+        java.setModule(moduleName);
+        java.setJvmargs("-Xmx128M");
+        java.setArgs(arg);
+        final String[] cmdLine = java.getCommandLine().getCommandline();
+        Assert.assertNotNull("Has command line.", cmdLine);
+        assertEquals("Command line should have 5 elements", 5, cmdLine.length);
+        assertEquals("Last command line element should be java argument: " + arg,
+                arg,
+                cmdLine[cmdLine.length - 1]);
+        assertEquals("The command line element at index 3 should be module name: " + moduleName,
+                moduleName,
+                cmdLine[cmdLine.length - 2]);
+        assertEquals("The command line element at index 2 should be -m",
+                "-m",
+                cmdLine[cmdLine.length - 3]);
+    }
+
+    @Test
+    public void testModuleAndClassnameCommandLine() {
+        final String moduleName = "TestModule"; //NOI18N
+        final String className = "org.apache.Test"; //NOI18N
+        final String moduleClassPair = String.format("%s/%s", moduleName, className);
+        final String arg = "appArg";    //NOI18N
+        final Java java = new Java();
+        java.setFork(true);
+        java.setModule(moduleName);
+        java.setClassname(className);
+        java.setJvmargs("-Xmx128M");    //NOI18N
+        java.setArgs(arg);
+        final String[] cmdLine = java.getCommandLine().getCommandline();
+        Assert.assertNotNull("Has command line.", cmdLine);
+        assertEquals("Command line should have 5 elements", 5, cmdLine.length);
+        assertEquals("Last command line element should be java argument: " + arg,
+                arg,
+                cmdLine[cmdLine.length - 1]);
+        assertEquals("The command line element at index 3 should be module class pair: " + moduleClassPair,
+                moduleClassPair,
+                cmdLine[cmdLine.length - 2]);
+        assertEquals("The command line element at index 2 should be -m",
+                "-m",
+                cmdLine[cmdLine.length - 3]);
     }
 
     @Test
@@ -309,7 +395,7 @@ public class JavaTest {
         // wait a little bit for the task to wait for input
         Thread.sleep(100);
 
-        // write some stuff in the input stream to be catched by the input task
+        // write some stuff in the input stream to be caught by the input task
         out.write("foo\n".getBytes());
         out.flush();
         try {
@@ -373,21 +459,21 @@ public class JavaTest {
      * argv[1] = string to print to System.err (optional)
      */
         public static void main(String[] argv) {
-            int exitCode=0;
-            if(argv.length>0) {
+            int exitCode = 0;
+            if (argv.length > 0) {
                 try {
-                    exitCode=Integer.parseInt(argv[0]);
-                } catch(NumberFormatException nfe) {
-                    exitCode=-1;
+                    exitCode = Integer.parseInt(argv[0]);
+                } catch (NumberFormatException nfe) {
+                    exitCode = -1;
                 }
             }
-            if(argv.length>1) {
+            if (argv.length > 1) {
                 System.out.println(argv[1]);
             }
-            if(argv.length>2) {
+            if (argv.length > 2) {
                 System.err.println(argv[2]);
             }
-            if(exitCode!=0) {
+            if (exitCode != 0) {
                 System.exit(exitCode);
             }
         }
@@ -411,14 +497,13 @@ public class JavaTest {
      * test class for spawn
      */
     public static class SpawnEntryPoint {
-        public static void main(String [] argv) throws InterruptedException {
+        public static void main(String[] argv) throws InterruptedException {
             int sleepTime = 10;
             String logFile = "spawn.log";
             if (argv.length >= 1) {
                 sleepTime = Integer.parseInt(argv[0]);
             }
-            if (argv.length >= 2)
-            {
+            if (argv.length >= 2) {
                 logFile = argv[1];
             }
             OutputStreamWriter out = null;
@@ -429,9 +514,13 @@ public class JavaTest {
                 FileOutputStream fos = new FileOutputStream(dest);
                 out = new OutputStreamWriter(fos);
                 out.write("bye bye\n");
-            } catch (Exception ex) {}
-            finally {
-                try {out.close();} catch (IOException ioe) {}}
+            } catch (Exception ex) {
+            } finally {
+                try {
+                    out.close();
+                } catch (IOException ioe) {
+                }
+            }
 
         }
     }

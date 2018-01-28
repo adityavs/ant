@@ -38,22 +38,6 @@ public class Os implements Condition {
         System.getProperty("path.separator");
 
     /**
-     * OS family to look for
-     */
-    private String family;
-    /**
-     * Name of OS
-     */
-    private String name;
-    /**
-     * version of OS
-     */
-    private String version;
-    /**
-     * OS architecture
-     */
-    private String arch;
-    /**
      * OS family that can be tested for. {@value}
      */
     public static final String FAMILY_WINDOWS = "windows";
@@ -102,10 +86,27 @@ public class Os implements Condition {
 
     /**
      * OpenJDK is reported to call MacOS X "Darwin"
-     * @see https://issues.apache.org/bugzilla/show_bug.cgi?id=44889
-     * @see https://issues.apache.org/jira/browse/HADOOP-3318
+     * @see <a href="https://issues.apache.org/bugzilla/show_bug.cgi?id=44889">Bugzilla</a>
+     * @see <a href="https://issues.apache.org/jira/browse/HADOOP-3318">Jira</a>
      */
     private static final String DARWIN = "darwin";
+
+    /**
+     * OS family to look for
+     */
+    private String family;
+    /**
+     * Name of OS
+     */
+    private String name;
+    /**
+     * version of OS
+     */
+    private String version;
+    /**
+     * OS architecture
+     */
+    private String arch;
 
     /**
      * Default constructor
@@ -126,8 +127,8 @@ public class Os implements Condition {
     /**
      * Sets the desired OS family type
      *
-     * @param f      The OS family type desired<br>
-     *               Possible values:<br>
+     * @param f      The OS family type desired
+     *               <p>Possible values:</p>
      *               <ul>
      *               <li>dos</li>
      *               <li>mac</li>
@@ -179,6 +180,7 @@ public class Os implements Condition {
      * @throws BuildException if there is an error.
      * @see Os#setFamily(String)
      */
+    @Override
     public boolean eval() throws BuildException {
         return isOs(family, name, arch, version);
     }

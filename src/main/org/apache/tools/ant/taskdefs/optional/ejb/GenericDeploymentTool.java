@@ -18,14 +18,13 @@
 package org.apache.tools.ant.taskdefs.optional.ejb;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Hashtable;
-import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
@@ -38,6 +37,7 @@ import org.apache.tools.ant.DirectoryScanner;
 import org.apache.tools.ant.Location;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
+import org.apache.tools.ant.taskdefs.optional.ejb.EjbJar.DTDLocation;
 import org.apache.tools.ant.types.FileSet;
 import org.apache.tools.ant.types.Path;
 import org.apache.tools.ant.util.depend.DependencyAnalyzer;
@@ -118,7 +118,7 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
      /**
      * Set of files have been loaded into the EJB jar
      */
-    private Set addedfiles;
+    private Set<String> addedfiles;
 
     /**
      * Handler used to parse the EJB XML descriptor
@@ -129,11 +129,6 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
      * Dependency analyzer used to collect class dependencies
      */
     private DependencyAnalyzer dependencyAnalyzer;
-
-    /** No arg constructor */
-    public GenericDeploymentTool() {
-    }
-
 
     /**
      * Set the destination directory; required.
@@ -152,12 +147,12 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
         return destDir;
     }
 
-
     /**
      * Set the task which owns this tool
      *
      * @param task the Task to which this deployment tool is associated.
      */
+    @Override
     public void setTask(Task task) {
         this.task = task;
     }
@@ -234,7 +229,6 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
                 combinedPath.append(config.classpath);
             }
         }
-
         return combinedPath;
     }
 
@@ -277,9 +271,10 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
         }
 
         try {
-            Class analyzerClass = Class.forName(analyzerClassName);
-            dependencyAnalyzer
-                = (DependencyAnalyzer) analyzerClass.newInstance();
+            Class<? extends DependencyAnalyzer> analyzerClass =
+                Class.forName(analyzerClassName)
+                    .asSubclass(DependencyAnalyzer.class);
+            dependencyAnalyzer = analyzerClass.newInstance();
             dependencyAnalyzer.addClassPath(new Path(task.getProject(),
                 config.srcDir.getPath()));
             dependencyAnalyzer.addClassPath(config.classpath);
@@ -296,12 +291,12 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
         }
     }
 
-
     /**
      * Configure this tool for use in the ejbjar task.
      *
      * @param config the configuration from the surrounding ejbjar task.
      */
+    @Override
     public void configure(EjbJar.Config config) {
         this.config = config;
 
@@ -326,12 +321,11 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
                                 File inputFile,
                                 String logicalFilename)
         throws BuildException {
-        FileInputStream iStream = null;
-        try {
-            if (!addedfiles.contains(logicalFilename)) {
-                iStream = new FileInputStream(inputFile);
+        if (!addedfiles.contains(logicalFilename)) {
+            try (InputStream iStream = Files.newInputStream(inputFile.toPath())) {
                 // Create the zip entry and add it to the jar file
-                ZipEntry zipEntry = new ZipEntry(logicalFilename.replace('\\', '/'));
+                ZipEntry zipEntry =
+                    new ZipEntry(logicalFilename.replace('\\', '/'));
                 jStream.putNextEntry(zipEntry);
 
                 // Create the file input stream, and buffer everything over
@@ -345,20 +339,11 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
 
                 //add it to list of files in jar
                 addedfiles.add(logicalFilename);
-           }
-        } catch (IOException ioe) {
-            log("WARNING: IOException while adding entry "
-                + logicalFilename + " to jarfile from "
-                + inputFile.getPath() + " "  + ioe.getClass().getName()
-                + "-" + ioe.getMessage(), Project.MSG_WARN);
-        } finally {
-            // Close up the file input stream for the class file
-            if (iStream != null) {
-                try {
-                    iStream.close();
-                } catch (IOException closeException) {
-                    // ignore
-                }
+            } catch (IOException ioe) {
+                log("WARNING: IOException while adding entry " + logicalFilename
+                    + " to jarfile from " + inputFile.getPath() + " "
+                    + ioe.getClass().getName() + "-" + ioe.getMessage(),
+                    Project.MSG_WARN);
             }
         }
     }
@@ -374,8 +359,7 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
         registerKnownDTDs(h);
 
         // register any DTDs supplied by the user
-        for (Iterator i = getConfig().dtdLocations.iterator(); i.hasNext();) {
-            EjbJar.DTDLocation dtdLocation = (EjbJar.DTDLocation) i.next();
+        for (DTDLocation dtdLocation : getConfig().dtdLocations) {
             h.registerDTD(dtdLocation.getPublicId(), dtdLocation.getLocation());
         }
         return h;
@@ -393,6 +377,7 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
     }
 
     /** {@inheritDoc}. */
+    @Override
     public void processDescriptor(String descriptorFileName, SAXParser saxParser) {
 
         checkConfiguration(descriptorFileName, saxParser);
@@ -400,8 +385,8 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
         try {
             handler = getDescriptorHandler(config.srcDir);
 
-            // Retrive the files to be added to JAR from EJB descriptor
-            Hashtable ejbFiles = parseEjbFiles(descriptorFileName, saxParser);
+            // Retreive the files to be added to JAR from EJB descriptor
+            Hashtable<String, File> ejbFiles = parseEjbFiles(descriptorFileName, saxParser);
 
             // Add any support classes specified in the build file
             addSupportClasses(ejbFiles);
@@ -415,8 +400,6 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
             if (manifestFile != null) {
                 ejbFiles.put(MANIFEST, manifestFile);
             }
-
-
 
             // First the regular deployment descriptor
             ejbFiles.put(META_DIR + EJB_DD,
@@ -442,7 +425,6 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
 
             File jarFile = getVendorOutputJarFile(baseName);
 
-
             // Check to see if we need a build and start doing the work!
             if (needToRebuild(ejbFiles, jarFile)) {
                 // Log that we are going to build...
@@ -456,27 +438,23 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
                 // Use helper method to write the jarfile
                 String publicId = getPublicId();
                 writeJar(baseName, jarFile, ejbFiles, publicId);
-
             } else {
                 // Log that the file is up to date...
                 log(jarFile.toString() + " is up to date.",
                               Project.MSG_VERBOSE);
             }
-
         } catch (SAXException se) {
-            String msg = "SAXException while parsing '"
-                + descriptorFileName
-                + "'. This probably indicates badly-formed XML."
-                + "  Details: "
-                + se.getMessage();
-            throw new BuildException(msg, se);
+            throw new BuildException(
+                "SAXException while parsing '" + descriptorFileName
+                    + "'. This probably indicates badly-formed XML."
+                    + "  Details: " + se.getMessage(),
+                se);
         } catch (IOException ioe) {
-            String msg = "IOException while parsing'"
-                + descriptorFileName
-                + "'.  This probably indicates that the descriptor"
-                + " doesn't exist. Details: "
-                + ioe.getMessage();
-            throw new BuildException(msg, ioe);
+            throw new BuildException(
+                "IOException while parsing'" + descriptorFileName
+                    + "'.  This probably indicates that the descriptor"
+                    + " doesn't exist. Details: " + ioe.getMessage(),
+                ioe);
         }
     }
 
@@ -494,7 +472,6 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
      */
     protected void checkConfiguration(String descriptorFileName,
                                     SAXParser saxParser) throws BuildException {
-
         /*
          * For the GenericDeploymentTool, do nothing.  Vendor specific
          * subclasses should throw a BuildException if the configuration is
@@ -517,34 +494,17 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
      * @throws IOException       An IOException from the parser, possibly from a
      *                           the byte stream or character stream
      */
-    protected Hashtable parseEjbFiles(String descriptorFileName, SAXParser saxParser)
+    protected Hashtable<String, File> parseEjbFiles(String descriptorFileName, SAXParser saxParser)
                             throws IOException, SAXException {
-        FileInputStream descriptorStream = null;
-        Hashtable ejbFiles = null;
-
-        try {
-
-            /* Parse the ejb deployment descriptor.  While it may not
-             * look like much, we use a SAXParser and an inner class to
-             * get hold of all the classfile names for the descriptor.
-             */
-            descriptorStream
-                = new FileInputStream(new File(config.descriptorDir, descriptorFileName));
+        /* Parse the ejb deployment descriptor.  While it may not
+         * look like much, we use a SAXParser and an inner class to
+         * get hold of all the classfile names for the descriptor.
+         */
+        try (InputStream descriptorStream = Files.newInputStream(
+            new File(config.descriptorDir, descriptorFileName).toPath())) {
             saxParser.parse(new InputSource(descriptorStream), handler);
-
-            ejbFiles = handler.getFiles();
-
-        } finally {
-            if (descriptorStream != null) {
-                try {
-                    descriptorStream.close();
-                } catch (IOException closeException) {
-                    // ignore
-                }
-            }
+            return handler.getFiles();
         }
-
-        return ejbFiles;
     }
 
     /**
@@ -554,21 +514,17 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
      * @param ejbFiles Hashtable of EJB classes (and other) files that will be
      *                 added to the completed JAR file
      */
-    protected void addSupportClasses(Hashtable ejbFiles) {
+    protected void addSupportClasses(Hashtable<String, File> ejbFiles) {
         // add in support classes if any
         Project project = task.getProject();
-        for (Iterator i = config.supportFileSets.iterator(); i.hasNext();) {
-            FileSet supportFileSet = (FileSet) i.next();
+        for (FileSet supportFileSet : config.supportFileSets) {
             File supportBaseDir = supportFileSet.getDir(project);
             DirectoryScanner supportScanner = supportFileSet.getDirectoryScanner(project);
-            supportScanner.scan();
-            String[] supportFiles = supportScanner.getIncludedFiles();
-            for (int j = 0; j < supportFiles.length; ++j) {
-                ejbFiles.put(supportFiles[j], new File(supportBaseDir, supportFiles[j]));
+            for (String supportFile : supportScanner.getIncludedFiles()) {
+                ejbFiles.put(supportFile, new File(supportBaseDir, supportFile));
             }
         }
     }
-
 
     /**
      * Using the EJB descriptor file name passed from the <code>ejbjar</code>
@@ -585,14 +541,14 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
         String baseName = "";
 
         // Work out what the base name is
-        if (config.namingScheme.getValue().equals(EjbJar.NamingScheme.BASEJARNAME)) {
+        if (EjbJar.NamingScheme.BASEJARNAME.equals(config.namingScheme.getValue())) {
             String canonicalDescriptor = descriptorFileName.replace('\\', '/');
             int index = canonicalDescriptor.lastIndexOf('/');
             if (index != -1) {
                 baseName = descriptorFileName.substring(0, index + 1);
             }
             baseName += config.baseJarName;
-        } else if (config.namingScheme.getValue().equals(EjbJar.NamingScheme.DESCRIPTOR)) {
+        } else if (EjbJar.NamingScheme.DESCRIPTOR.equals(config.namingScheme.getValue())) {
             int lastSeparatorIndex = descriptorFileName.lastIndexOf(File.separator);
             int endBaseName = -1;
             if (lastSeparatorIndex != -1) {
@@ -605,10 +561,11 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
             if (endBaseName != -1) {
                 baseName = descriptorFileName.substring(0, endBaseName);
             } else {
-                throw new BuildException("Unable to determine jar name "
-                    + "from descriptor \"" + descriptorFileName + "\"");
+                throw new BuildException(
+                    "Unable to determine jar name from descriptor \"%s\"",
+                    descriptorFileName);
             }
-        } else if (config.namingScheme.getValue().equals(EjbJar.NamingScheme.DIRECTORY)) {
+        } else if (EjbJar.NamingScheme.DIRECTORY.equals(config.namingScheme.getValue())) {
             File descriptorFile = new File(config.descriptorDir, descriptorFileName);
             String path = descriptorFile.getAbsolutePath();
             int lastSeparatorIndex
@@ -621,9 +578,8 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
             if (dirSeparatorIndex != -1) {
                 dirName = dirName.substring(dirSeparatorIndex + 1);
             }
-
             baseName = dirName;
-        } else if (config.namingScheme.getValue().equals(EjbJar.NamingScheme.EJB_NAME)) {
+        } else if (EjbJar.NamingScheme.EJB_NAME.equals(config.namingScheme.getValue())) {
             baseName = handler.getEjbName();
         }
         return baseName;
@@ -660,18 +616,19 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
     /**
      * Add any vendor specific files which should be included in the
      * EJB Jar.
-     * @param ejbFiles a hashtable entryname -> file.
+     * @param ejbFiles a hashtable entryname -&gt; file.
      * @param ddPrefix a prefix to use.
      */
-    protected void addVendorFiles(Hashtable ejbFiles, String ddPrefix) {
+    protected void addVendorFiles(Hashtable<String, File> ejbFiles, String ddPrefix) {
         // nothing to add for generic tool.
     }
-
 
     /**
      * Get the vendor specific name of the Jar that will be output. The modification date
      * of this jar will be checked against the dependent bean classes.
+     *
      * @param baseName the basename to use.
+     * @return File
      */
     File getVendorOutputJarFile(String baseName) {
         return new File(destDir, baseName + genericJarSuffix);
@@ -692,16 +649,13 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
      * @return         boolean indicating whether or not the <code>jarFile</code>
      *                 is up to date
      */
-    protected boolean needToRebuild(Hashtable ejbFiles, File jarFile) {
+    protected boolean needToRebuild(Hashtable<String, File> ejbFiles, File jarFile) {
         if (jarFile.exists()) {
             long lastBuild = jarFile.lastModified();
 
-            Iterator fileIter = ejbFiles.values().iterator();
-
             // Loop through the files seeing if any has been touched
             // more recently than the destination jar.
-            while (fileIter.hasNext()) {
-                File currentFile = (File) fileIter.next();
+            for (File currentFile : ejbFiles.values()) {
                 if (lastBuild < currentFile.lastModified()) {
                     log("Build needed because " + currentFile.getPath() + " is out of date",
                         Project.MSG_VERBOSE);
@@ -710,7 +664,6 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
             }
             return false;
         }
-
         return true;
     }
 
@@ -742,7 +695,6 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
         if (manifestFile.exists()) {
             return manifestFile;
         }
-
         if (config.manifest != null) {
             return config.manifest;
         }
@@ -759,17 +711,15 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
      * @param publicId the id to use.
      * @throws BuildException if there is a problem.
      */
-    protected void writeJar(String baseName, File jarfile, Hashtable files,
+    protected void writeJar(String baseName, File jarfile, Hashtable<String, File> files,
                             String publicId) throws BuildException {
-
-        JarOutputStream jarStream = null;
+        // clean the addedfiles set
+        if (addedfiles == null) {
+            addedfiles = new HashSet<>();
+        } else {
+            addedfiles.clear();
+        }
         try {
-            // clean the addedfiles set
-            if (addedfiles == null) {
-                addedfiles = new HashSet();
-            } else {
-                addedfiles.clear();
-            }
 
             /* If the jarfile already exists then whack it and recreate it.
              * Should probably think of a more elegant way to handle this
@@ -785,21 +735,21 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
             InputStream in = null;
             Manifest manifest = null;
             try {
-                File manifestFile = (File) files.get(MANIFEST);
+                File manifestFile = files.get(MANIFEST);
                 if (manifestFile != null && manifestFile.exists()) {
-                    in = new FileInputStream(manifestFile);
+                    in = Files.newInputStream(manifestFile.toPath());
                 } else {
                     String defaultManifest = "/org/apache/tools/ant/defaultManifest.mf";
                     in = this.getClass().getResourceAsStream(defaultManifest);
                     if (in == null) {
-                        throw new BuildException("Could not find "
-                            + "default manifest: " + defaultManifest);
+                        throw new BuildException(
+                            "Could not find default manifest: %s",
+                            defaultManifest);
                     }
                 }
-
                 manifest = new Manifest(in);
             } catch (IOException e) {
-                throw new BuildException ("Unable to read manifest", e, getLocation());
+                throw new BuildException("Unable to read manifest", e, getLocation());
             } finally {
                 if (in != null) {
                     in.close();
@@ -808,46 +758,44 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
 
             // Create the streams necessary to write the jarfile
 
-            jarStream = new JarOutputStream(new FileOutputStream(jarfile), manifest);
-            jarStream.setMethod(JarOutputStream.DEFLATED);
+            try (JarOutputStream jarStream = new JarOutputStream(
+                Files.newOutputStream(jarfile.toPath()), manifest)) {
+                jarStream.setMethod(JarOutputStream.DEFLATED);
 
-            // Loop through all the class files found and add them to the jar
-            for (Iterator entryIterator = files.keySet().iterator(); entryIterator.hasNext();) {
-                String entryName = (String) entryIterator.next();
-                if (entryName.equals(MANIFEST)) {
-                    continue;
-                }
+                // Loop through all the class files found and add them to the jar
+                for (Map.Entry<String, File> entryFiles : files.entrySet()) {
+                    String entryName = entryFiles.getKey();
+                    if (entryName.equals(MANIFEST)) {
+                        continue;
+                    }
+                    File entryFile = entryFiles.getValue();
+                    log("adding file '" + entryName + "'", Project.MSG_VERBOSE);
+                    addFileToJar(jarStream, entryFile, entryName);
 
-                File entryFile = (File) files.get(entryName);
+                    // See if there are any inner classes for this class and add them in if there are
+                    InnerClassFilenameFilter flt =
+                        new InnerClassFilenameFilter(entryFile.getName());
+                    File entryDir = entryFile.getParentFile();
+                    String[] innerfiles = entryDir.list(flt);
+                    if (innerfiles != null) {
+                        for (String innerfile : innerfiles) {
+                            //get and clean up innerclass name
+                            int entryIndex =
+                                entryName.lastIndexOf(entryFile.getName()) - 1;
+                            if (entryIndex < 0) {
+                                entryName = innerfile;
+                            } else {
+                                entryName = entryName.substring(0, entryIndex)
+                                    + File.separatorChar + innerfile;
+                            }
+                            // link the file
+                            entryFile = new File(config.srcDir, entryName);
 
-                log("adding file '" + entryName + "'",
-                              Project.MSG_VERBOSE);
-
-                addFileToJar(jarStream, entryFile, entryName);
-
-                // See if there are any inner classes for this class and add them in if there are
-                InnerClassFilenameFilter flt = new InnerClassFilenameFilter(entryFile.getName());
-                File entryDir = entryFile.getParentFile();
-                String[] innerfiles = entryDir.list(flt);
-                if (innerfiles != null) {
-                    for (int i = 0, n = innerfiles.length; i < n; i++) {
-
-                        //get and clean up innerclass name
-                        int entryIndex = entryName.lastIndexOf(entryFile.getName()) - 1;
-                        if (entryIndex < 0) {
-                            entryName = innerfiles[i];
-                        } else {
-                            entryName = entryName.substring(0, entryIndex)
-                                + File.separatorChar + innerfiles[i];
-                        }
-                        // link the file
-                        entryFile = new File(config.srcDir, entryName);
-
-                        log("adding innerclass file '" + entryName + "'",
+                            log("adding innerclass file '" + entryName + "'",
                                 Project.MSG_VERBOSE);
 
-                        addFileToJar(jarStream, entryFile, entryName);
-
+                            addFileToJar(jarStream, entryFile, entryName);
+                        }
                     }
                 }
             }
@@ -857,14 +805,6 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
                 + "'. Details: "
                 + ioe.getMessage();
             throw new BuildException(msg, ioe);
-        } finally {
-            if (jarStream != null) {
-                try {
-                    jarStream.close();
-                } catch (IOException closeException) {
-                    // ignore
-                }
-            }
         }
     } // end of writeJar
 
@@ -874,7 +814,7 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
      * @param checkEntries files, that are extracted from the deployment descriptor
      * @throws BuildException if there is a problem.
      */
-    protected void checkAndAddDependants(Hashtable checkEntries)
+    protected void checkAndAddDependants(Hashtable<String, File> checkEntries)
         throws BuildException {
 
         if (dependencyAnalyzer == null) {
@@ -883,9 +823,7 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
 
         dependencyAnalyzer.reset();
 
-        Iterator i = checkEntries.keySet().iterator();
-        while (i.hasNext()) {
-            String entryName = (String) i.next();
+        for (String entryName : checkEntries.keySet()) {
             if (entryName.endsWith(".class")) {
                 String className = entryName.substring(0,
                     entryName.length() - ".class".length());
@@ -896,10 +834,10 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
             }
         }
 
-        Enumeration e = dependencyAnalyzer.getClassDependencies();
+        Enumeration<String> e = dependencyAnalyzer.getClassDependencies();
 
         while (e.hasMoreElements()) {
-            String classname = (String) e.nextElement();
+            String classname = e.nextElement();
             String location
                 = classname.replace('.', File.separatorChar) + ".class";
             File classFile = new File(config.srcDir, location);
@@ -911,7 +849,6 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
         }
     }
 
-
     /**
      * Returns a Classloader object which parses the passed in generic EjbJar classpath.
      * The loader is used to dynamically load classes from javax.ejb.* and the classes
@@ -922,7 +859,6 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
         if (classpathLoader != null) {
             return classpathLoader;
         }
-
         Path combinedClasspath = getCombinedClasspath();
 
         // only generate a new ClassLoader if we have a classpath
@@ -933,7 +869,6 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
             classpathLoader
                 = getTask().getProject().createClassLoader(combinedClasspath);
         }
-
         return classpathLoader;
     }
 
@@ -943,11 +878,12 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
      * @throws BuildException If the Deployment Tool's configuration isn't
      *                        valid
      */
+    @Override
     public void validateConfigured() throws BuildException {
         if ((destDir == null) || (!destDir.isDirectory())) {
-            String msg = "A valid destination directory must be specified "
-                            + "using the \"destdir\" attribute.";
-            throw new BuildException(msg, getLocation());
+            throw new BuildException(
+                "A valid destination directory must be specified using the \"destdir\" attribute.",
+                getLocation());
         }
     }
 }

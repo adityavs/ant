@@ -18,11 +18,15 @@
 package org.apache.tools.ant.taskdefs.optional.depend;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Enumeration;
-import java.util.Stack;
-import java.util.Vector;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * An iterator which iterates through the contents of a java directory. The
@@ -36,7 +40,7 @@ public class DirectoryIterator implements ClassFileIterator {
      * This is a stack of current iterators supporting the depth first
      * traversal of the directory tree.
      */
-    private Stack enumStack;
+    private Deque<Iterator<File>> enumStack;
 
     /**
      * The current directory iterator. As directories encounter lower level
@@ -45,7 +49,7 @@ public class DirectoryIterator implements ClassFileIterator {
      * directory. This implements a depth first traversal of the directory
      * namespace.
      */
-    private Enumeration currentEnum;
+    private Iterator<File> currentIterator;
 
     /**
      * Creates a directory iterator. The directory iterator is created to
@@ -63,12 +67,8 @@ public class DirectoryIterator implements ClassFileIterator {
     public DirectoryIterator(File rootDirectory, boolean changeInto)
          throws IOException {
         super();
-
-        enumStack = new Stack();
-
-        Vector filesInRoot = getDirectoryEntries(rootDirectory);
-
-        currentEnum = filesInRoot.elements();
+        enumStack = new ArrayDeque<>();
+        currentIterator = getDirectoryEntries(rootDirectory).iterator();
     }
 
     /**
@@ -79,21 +79,12 @@ public class DirectoryIterator implements ClassFileIterator {
      * @return a vector containing File objects for each entry in the
      *      directory.
      */
-    private Vector getDirectoryEntries(File directory) {
-        Vector files = new Vector();
-
-        // File[] filesInDir = directory.listFiles();
-        String[] filesInDir = directory.list();
-
-        if (filesInDir != null) {
-            int length = filesInDir.length;
-
-            for (int i = 0; i < length; ++i) {
-                files.addElement(new File(directory, filesInDir[i]));
-            }
+    private List<File> getDirectoryEntries(File directory) {
+        File[] filesInDir = directory.listFiles();
+        if (filesInDir == null) {
+            return Collections.emptyList();
         }
-
-        return files;
+        return Arrays.asList(filesInDir);
     }
 
     /**
@@ -110,47 +101,45 @@ public class DirectoryIterator implements ClassFileIterator {
      *
      * @return the next ClassFile in the iteration.
      */
+    @Override
     public ClassFile getNextClassFile() {
         ClassFile nextElement = null;
 
         try {
             while (nextElement == null) {
-                if (currentEnum.hasMoreElements()) {
-                    File element = (File) currentEnum.nextElement();
+                if (currentIterator.hasNext()) {
+                    File element = currentIterator.next();
 
                     if (element.isDirectory()) {
 
                         // push the current iterator onto the stack and then
                         // iterate through this directory.
-                        enumStack.push(currentEnum);
+                        enumStack.push(currentIterator);
 
-                        Vector files = getDirectoryEntries(element);
+                        List<File> files = getDirectoryEntries(element);
 
-                        currentEnum = files.elements();
+                        currentIterator = files.iterator();
                     } else {
-
                         // we have a file. create a stream for it
-                        FileInputStream inFileStream
-                            = new FileInputStream(element);
+                        try (InputStream inFileStream
+                             = Files.newInputStream(element.toPath())) {
+                            if (element.getName().endsWith(".class")) {
 
-                        if (element.getName().endsWith(".class")) {
+                                // create a data input stream from the jar
+                                // input stream
+                                ClassFile javaClass = new ClassFile();
 
-                            // create a data input stream from the jar
-                            // input stream
-                            ClassFile javaClass = new ClassFile();
+                                javaClass.read(inFileStream);
 
-                            javaClass.read(inFileStream);
-
-                            nextElement = javaClass;
+                                nextElement = javaClass;
+                            }
                         }
                     }
+                } else // this iterator is exhausted. Can we pop one off the stack
+                if (enumStack.isEmpty()) {
+                    break;
                 } else {
-                    // this iterator is exhausted. Can we pop one off the stack
-                    if (enumStack.empty()) {
-                        break;
-                    } else {
-                        currentEnum = (Enumeration) enumStack.pop();
-                    }
+                    currentIterator = enumStack.pop();
                 }
             }
         } catch (IOException e) {
@@ -161,4 +150,3 @@ public class DirectoryIterator implements ClassFileIterator {
     }
 
 }
-

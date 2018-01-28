@@ -19,7 +19,6 @@ package org.apache.tools.ant.util;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FilenameFilter;
 import java.io.IOException;
 
 import org.apache.tools.ant.BuildException;
@@ -31,7 +30,11 @@ import org.apache.tools.ant.taskdefs.Execute;
  * a symbolic link based on the absent support for them in Java.
  *
  * @since Ant 1.8.0
+ * @deprecated Starting Ant 1.10.2, this class is now deprecated in favour
+ *              of the Java {@link java.nio.file.Files} APIs introduced in
+ *              Java 7, for dealing with symbolic links
  */
+@Deprecated
 public class SymbolicLinkUtils {
     private static final FileUtils FILE_UTILS = FileUtils.getFileUtils();
 
@@ -121,7 +124,7 @@ public class SymbolicLinkUtils {
      *
      * <p>Note that #isSymbolicLink returns false if this method
      * returns true since Java won't produce a canonical name
-     * different from the abolute one if the link is broken.</p>
+     * different from the absolute one if the link is broken.</p>
      *
      * @param name the name of the file to test.
      *
@@ -142,7 +145,7 @@ public class SymbolicLinkUtils {
      *
      * <p>Note that #isSymbolicLink returns false if this method
      * returns true since Java won't produce a canonical name
-     * different from the abolute one if the link is broken.</p>
+     * different from the absolute one if the link is broken.</p>
      *
      * @param file the file to test.
      *
@@ -163,7 +166,7 @@ public class SymbolicLinkUtils {
      *
      * <p>Note that #isSymbolicLink returns false if this method
      * returns true since Java won't produce a canonical name
-     * different from the abolute one if the link is broken.</p>
+     * different from the absolute one if the link is broken.</p>
      *
      * @param parent the parent directory of the file to test
      * @param name the name of the file to test.
@@ -176,11 +179,7 @@ public class SymbolicLinkUtils {
         final File f = new File(parent, name);
         if (!f.exists()) {
             final String localName = f.getName();
-            final String[] c = parent.list(new FilenameFilter() {
-                    public boolean accept(final File d, final String n) {
-                        return localName.equals(n);
-                    }
-                });
+            final String[] c = parent.list((d, n) -> localName.equals(n));
             return c != null && c.length > 0;
         }
         return false;
@@ -254,6 +253,7 @@ public class SymbolicLinkUtils {
             }
 
             boolean renamedTarget = false;
+            boolean success = false;
             try {
                 try {
                     FILE_UTILS.rename(target, temp);
@@ -270,20 +270,26 @@ public class SymbolicLinkUtils {
                                           + " (was it a real file? is this "
                                           + "not a UNIX system?)");
                 }
+                success = true;
             } finally {
                 if (renamedTarget) {
                     // return the resource to its original name:
                     try {
                         FILE_UTILS.rename(temp, target);
                     } catch (final IOException e) {
-                        throw new IOException("Couldn't return resource "
-                                              + temp
-                                              + " to its original name: "
-                                              + target.getAbsolutePath()
-                                              + ". Reason: " + e.getMessage()
-                                              + "\n THE RESOURCE'S NAME ON DISK"
-                                              + " HAS BEEN CHANGED BY THIS"
-                                              + " ERROR!\n");
+                        String msg = "Couldn't return resource "
+                            + temp
+                            + " to its original name: "
+                            + target.getAbsolutePath()
+                            + ". Reason: " + e.getMessage()
+                            + "\n THE RESOURCE'S NAME ON DISK"
+                            + " HAS BEEN CHANGED BY THIS"
+                            + " ERROR!\n";
+                        if (success) {
+                            throw new IOException(msg); //NOSONAR
+                        } else {
+                            System.err.println(msg);
+                        }
                     }
                 }
             }

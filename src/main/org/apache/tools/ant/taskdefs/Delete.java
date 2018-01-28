@@ -19,6 +19,9 @@
 package org.apache.tools.ant.taskdefs;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -60,7 +63,6 @@ import org.apache.tools.ant.types.selectors.SelectSelector;
 import org.apache.tools.ant.types.selectors.SizeSelector;
 import org.apache.tools.ant.types.selectors.modifiedselector.ModifiedSelector;
 import org.apache.tools.ant.util.FileUtils;
-import org.apache.tools.ant.util.SymbolicLinkUtils;
 
 /**
  * Deletes a file or directory, or set of files defined by a fileset.
@@ -79,33 +81,41 @@ import org.apache.tools.ant.util.SymbolicLinkUtils;
 public class Delete extends MatchingTask {
     private static final ResourceComparator REVERSE_FILESYSTEM = new Reverse(new FileSystem());
     private static final ResourceSelector EXISTS = new Exists();
+    private static FileUtils FILE_UTILS = FileUtils.getFileUtils();
 
     private static class ReverseDirs implements ResourceCollection {
-        static final Comparator<Comparable<?>> REVERSE = new Comparator<Comparable<?>>() {
-            public int compare(Comparable<?> foo, Comparable<?> bar) {
-                return ((Comparable) foo).compareTo(bar) * -1;
-            }
-        };
+
         private Project project;
         private File basedir;
         private String[] dirs;
+
         ReverseDirs(Project project, File basedir, String[] dirs) {
             this.project = project;
             this.basedir = basedir;
             this.dirs = dirs;
-            Arrays.sort(this.dirs, REVERSE);
+            Arrays.sort(this.dirs, Comparator.reverseOrder());
         }
+
+        @Override
         public Iterator<Resource> iterator() {
             return new FileResourceIterator(project, basedir, dirs);
         }
-        public boolean isFilesystemOnly() { return true; }
-        public int size() { return dirs.length; }
+
+        @Override
+        public boolean isFilesystemOnly() {
+            return true;
+        }
+
+        @Override
+        public int size() {
+            return dirs.length;
+        }
     }
 
     // CheckStyle:VisibilityModifier OFF - bc
     protected File file = null;
     protected File dir = null;
-    protected Vector<FileSet> filesets = new Vector<FileSet>();
+    protected Vector<FileSet> filesets = new Vector<>();
     protected boolean usedMatchingTask = false;
     // by default, remove matching empty dirs
     protected boolean includeEmpty = false;
@@ -117,9 +127,6 @@ public class Delete extends MatchingTask {
     private boolean deleteOnExit = false;
     private boolean removeNotFollowedSymlinks = false;
     private Resources rcs = null;
-    private static FileUtils FILE_UTILS = FileUtils.getFileUtils();
-    private static SymbolicLinkUtils SYMLINK_UTILS =
-        SymbolicLinkUtils.getSymbolicLinkUtils();
     private boolean performGc = Os.isFamily("windows");
 
     /**
@@ -175,9 +182,9 @@ public class Delete extends MatchingTask {
      *
      * @param failonerror true or false
      */
-     public void setFailOnError(boolean failonerror) {
-         this.failonerror = failonerror;
-     }
+    public void setFailOnError(boolean failonerror) {
+        this.failonerror = failonerror;
+    }
 
     /**
      * If true, on failure to delete, note the error and set
@@ -185,10 +192,9 @@ public class Delete extends MatchingTask {
      *
      * @param deleteOnExit true or false
      */
-     public void setDeleteOnExit(boolean deleteOnExit) {
-         this.deleteOnExit = deleteOnExit;
-     }
-
+    public void setDeleteOnExit(boolean deleteOnExit) {
+        this.deleteOnExit = deleteOnExit;
+    }
 
     /**
      * If true, delete empty directories.
@@ -206,16 +212,17 @@ public class Delete extends MatchingTask {
      * default) but also on other operating systems, for example when
      * deleting directories from an NFS share.</p>
      *
+     * @param b boolean
      * @since Ant 1.8.3
      */
     public void setPerformGcOnFailedDelete(boolean b) {
         performGc = b;
     }
 
-   /**
-    * Adds a set of files to be deleted.
-    * @param set the set of files to be deleted
-    */
+    /**
+     * Adds a set of files to be deleted.
+     * @param set the set of files to be deleted
+     */
     public void addFileset(FileSet set) {
         filesets.addElement(set);
     }
@@ -239,6 +246,7 @@ public class Delete extends MatchingTask {
      * add a name entry on the include list
      * @return a NameEntry object to be configured
      */
+    @Override
     public PatternSet.NameEntry createInclude() {
         usedMatchingTask = true;
         return super.createInclude();
@@ -246,8 +254,9 @@ public class Delete extends MatchingTask {
 
     /**
      * add a name entry on the include files list
-     * @return an NameEntry object to be configured
+     * @return a NameEntry object to be configured
      */
+    @Override
     public PatternSet.NameEntry createIncludesFile() {
         usedMatchingTask = true;
         return super.createIncludesFile();
@@ -255,8 +264,9 @@ public class Delete extends MatchingTask {
 
     /**
      * add a name entry on the exclude list
-     * @return an NameEntry object to be configured
+     * @return a NameEntry object to be configured
      */
+    @Override
     public PatternSet.NameEntry createExclude() {
         usedMatchingTask = true;
         return super.createExclude();
@@ -264,8 +274,9 @@ public class Delete extends MatchingTask {
 
     /**
      * add a name entry on the include files list
-     * @return an NameEntry object to be configured
+     * @return a NameEntry object to be configured
      */
+    @Override
     public PatternSet.NameEntry createExcludesFile() {
         usedMatchingTask = true;
         return super.createExcludesFile();
@@ -275,6 +286,7 @@ public class Delete extends MatchingTask {
      * add a set of patterns
      * @return PatternSet object to be configured
      */
+    @Override
     public PatternSet createPatternSet() {
         usedMatchingTask = true;
         return super.createPatternSet();
@@ -286,6 +298,7 @@ public class Delete extends MatchingTask {
      *
      * @param includes the string containing the include patterns
      */
+    @Override
     public void setIncludes(String includes) {
         usedMatchingTask = true;
         super.setIncludes(includes);
@@ -297,6 +310,7 @@ public class Delete extends MatchingTask {
      *
      * @param excludes the string containing the exclude patterns
      */
+    @Override
     public void setExcludes(String excludes) {
         usedMatchingTask = true;
         super.setExcludes(excludes);
@@ -309,6 +323,7 @@ public class Delete extends MatchingTask {
      *                           should be used, "false"|"off"|"no" when they
      *                           shouldn't be used.
      */
+    @Override
     public void setDefaultexcludes(boolean useDefaultExcludes) {
         usedMatchingTask = true;
         super.setDefaultexcludes(useDefaultExcludes);
@@ -320,6 +335,7 @@ public class Delete extends MatchingTask {
      * @param includesfile A string containing the filename to fetch
      * the include patterns from.
      */
+    @Override
     public void setIncludesfile(File includesfile) {
         usedMatchingTask = true;
         super.setIncludesfile(includesfile);
@@ -331,6 +347,7 @@ public class Delete extends MatchingTask {
      * @param excludesfile A string containing the filename to fetch
      * the include patterns from.
      */
+    @Override
     public void setExcludesfile(File excludesfile) {
         usedMatchingTask = true;
         super.setExcludesfile(excludesfile);
@@ -342,6 +359,7 @@ public class Delete extends MatchingTask {
      * @param isCaseSensitive "true"|"on"|"yes" if file system is case
      *                           sensitive, "false"|"off"|"no" when not.
      */
+    @Override
     public void setCaseSensitive(boolean isCaseSensitive) {
         usedMatchingTask = true;
         super.setCaseSensitive(isCaseSensitive);
@@ -352,6 +370,7 @@ public class Delete extends MatchingTask {
      *
      * @param followSymlinks whether or not symbolic links should be followed
      */
+    @Override
     public void setFollowSymlinks(boolean followSymlinks) {
         usedMatchingTask = true;
         super.setFollowSymlinks(followSymlinks);
@@ -361,6 +380,7 @@ public class Delete extends MatchingTask {
      * Sets whether the symbolic links that have not been followed
      * shall be removed (the links, not the locations they point at).
      *
+     * @param b boolean
      * @since Ant 1.8.0
      */
     public void setRemoveNotFollowedSymlinks(boolean b) {
@@ -369,8 +389,10 @@ public class Delete extends MatchingTask {
 
     /**
      * add a "Select" selector entry on the selector list
+     *
      * @param selector the selector to be added
      */
+    @Override
     public void addSelector(SelectSelector selector) {
         usedMatchingTask = true;
         super.addSelector(selector);
@@ -378,8 +400,10 @@ public class Delete extends MatchingTask {
 
     /**
      * add an "And" selector entry on the selector list
+     *
      * @param selector the selector to be added
      */
+    @Override
     public void addAnd(AndSelector selector) {
         usedMatchingTask = true;
         super.addAnd(selector);
@@ -387,8 +411,10 @@ public class Delete extends MatchingTask {
 
     /**
      * add an "Or" selector entry on the selector list
+     *
      * @param selector the selector to be added
      */
+    @Override
     public void addOr(OrSelector selector) {
         usedMatchingTask = true;
         super.addOr(selector);
@@ -396,8 +422,10 @@ public class Delete extends MatchingTask {
 
     /**
      * add a "Not" selector entry on the selector list
+     *
      * @param selector the selector to be added
      */
+    @Override
     public void addNot(NotSelector selector) {
         usedMatchingTask = true;
         super.addNot(selector);
@@ -405,8 +433,10 @@ public class Delete extends MatchingTask {
 
     /**
      * add a "None" selector entry on the selector list
+     *
      * @param selector the selector to be added
      */
+    @Override
     public void addNone(NoneSelector selector) {
         usedMatchingTask = true;
         super.addNone(selector);
@@ -414,8 +444,10 @@ public class Delete extends MatchingTask {
 
     /**
      * add a majority selector entry on the selector list
+     *
      * @param selector the selector to be added
      */
+    @Override
     public void addMajority(MajoritySelector selector) {
         usedMatchingTask = true;
         super.addMajority(selector);
@@ -423,8 +455,10 @@ public class Delete extends MatchingTask {
 
     /**
      * add a selector date entry on the selector list
+     *
      * @param selector the selector to be added
      */
+    @Override
     public void addDate(DateSelector selector) {
         usedMatchingTask = true;
         super.addDate(selector);
@@ -432,8 +466,10 @@ public class Delete extends MatchingTask {
 
     /**
      * add a selector size entry on the selector list
+     *
      * @param selector the selector to be added
      */
+    @Override
     public void addSize(SizeSelector selector) {
         usedMatchingTask = true;
         super.addSize(selector);
@@ -441,8 +477,10 @@ public class Delete extends MatchingTask {
 
     /**
      * add a selector filename entry on the selector list
+     *
      * @param selector the selector to be added
      */
+    @Override
     public void addFilename(FilenameSelector selector) {
         usedMatchingTask = true;
         super.addFilename(selector);
@@ -450,8 +488,10 @@ public class Delete extends MatchingTask {
 
     /**
      * add an extended selector entry on the selector list
+     *
      * @param selector the selector to be added
      */
+    @Override
     public void addCustom(ExtendSelector selector) {
         usedMatchingTask = true;
         super.addCustom(selector);
@@ -459,8 +499,10 @@ public class Delete extends MatchingTask {
 
     /**
      * add a contains selector entry on the selector list
+     *
      * @param selector the selector to be added
      */
+    @Override
     public void addContains(ContainsSelector selector) {
         usedMatchingTask = true;
         super.addContains(selector);
@@ -468,8 +510,10 @@ public class Delete extends MatchingTask {
 
     /**
      * add a present selector entry on the selector list
+     *
      * @param selector the selector to be added
      */
+    @Override
     public void addPresent(PresentSelector selector) {
         usedMatchingTask = true;
         super.addPresent(selector);
@@ -477,8 +521,10 @@ public class Delete extends MatchingTask {
 
     /**
      * add a depth selector entry on the selector list
+     *
      * @param selector the selector to be added
      */
+    @Override
     public void addDepth(DepthSelector selector) {
         usedMatchingTask = true;
         super.addDepth(selector);
@@ -486,8 +532,10 @@ public class Delete extends MatchingTask {
 
     /**
      * add a depends selector entry on the selector list
+     *
      * @param selector the selector to be added
      */
+    @Override
     public void addDepend(DependSelector selector) {
         usedMatchingTask = true;
         super.addDepend(selector);
@@ -495,8 +543,10 @@ public class Delete extends MatchingTask {
 
     /**
      * add a regular expression selector entry on the selector list
+     *
      * @param selector the selector to be added
      */
+    @Override
     public void addContainsRegexp(ContainsRegexpSelector selector) {
         usedMatchingTask = true;
         super.addContainsRegexp(selector);
@@ -504,9 +554,11 @@ public class Delete extends MatchingTask {
 
     /**
      * add the modified selector
+     *
      * @param selector the selector to add
      * @since ant 1.6
      */
+    @Override
     public void addModified(ModifiedSelector selector) {
         usedMatchingTask = true;
         super.addModified(selector);
@@ -514,9 +566,11 @@ public class Delete extends MatchingTask {
 
     /**
      * add an arbitrary selector
+     *
      * @param selector the selector to be added
      * @since Ant 1.6
      */
+    @Override
     public void add(FileSelector selector) {
         usedMatchingTask = true;
         super.add(selector);
@@ -524,23 +578,24 @@ public class Delete extends MatchingTask {
 
     /**
      * Delete the file(s).
+     *
      * @exception BuildException if an error occurs
      */
+    @Override
     public void execute() throws BuildException {
         if (usedMatchingTask) {
-            log("DEPRECATED - Use of the implicit FileSet is deprecated.  "
-                + "Use a nested fileset element instead.", quiet ? Project.MSG_VERBOSE : verbosity);
+            log("DEPRECATED - Use of the implicit FileSet is deprecated.  Use a nested fileset element instead.",
+                quiet ? Project.MSG_VERBOSE : verbosity);
         }
 
-        if (file == null && dir == null && filesets.size() == 0 && rcs == null) {
-            throw new BuildException("At least one of the file or dir "
-                                     + "attributes, or a nested resource collection, "
-                                     + "must be set.");
+        if (file == null && dir == null && filesets.isEmpty() && rcs == null) {
+            throw new BuildException(
+                "At least one of the file or dir attributes, or a nested resource collection, must be set.");
         }
 
         if (quiet && failonerror) {
-            throw new BuildException("quiet and failonerror cannot both be "
-                                     + "set to true", getLocation());
+            throw new BuildException(
+                "quiet and failonerror cannot both be set to true", getLocation());
         }
 
         // delete the single file
@@ -548,8 +603,8 @@ public class Delete extends MatchingTask {
             if (file.exists()) {
                 if (file.isDirectory()) {
                     log("Directory " + file.getAbsolutePath()
-                        + " cannot be removed using the file attribute.  "
-                        + "Use dir instead.", quiet ? Project.MSG_VERBOSE : verbosity);
+                        + " cannot be removed using the file attribute.  Use dir instead.",
+                        quiet ? Project.MSG_VERBOSE : verbosity);
                 } else {
                     log("Deleting: " + file.getAbsolutePath());
 
@@ -589,8 +644,7 @@ public class Delete extends MatchingTask {
                     + " which looks like a broken symlink.",
                     quiet ? Project.MSG_VERBOSE : verbosity);
                 if (!delete(dir)) {
-                    handle("Unable to delete directory "
-                           + dir.getAbsolutePath());
+                    handle("Unable to delete directory " + dir.getAbsolutePath());
                 }
             }
         }
@@ -610,21 +664,19 @@ public class Delete extends MatchingTask {
 
         final int size = filesets.size();
         for (int i = 0; i < size; i++) {
-            FileSet fs = (FileSet) filesets.get(i);
+            FileSet fs = filesets.get(i);
             if (fs.getProject() == null) {
-                log("Deleting fileset with no project specified;"
-                    + " assuming executing project", Project.MSG_VERBOSE);
-                fs = (FileSet) fs.clone();
+                log("Deleting fileset with no project specified; assuming executing project",
+                    Project.MSG_VERBOSE);
+                fs = fs.clone();
                 fs.setProject(getProject());
             }
             final File fsDir = fs.getDir();
-            if (!fs.getErrorOnMissingDir() &&
-                (fsDir == null || !fsDir.exists())) {
+            if (!fs.getErrorOnMissingDir() && (fsDir == null || !fsDir.exists())) {
                 continue;
             }
             if (fsDir == null) {
-                throw new BuildException(
-                        "File or Resource without directory or file specified");
+                throw new BuildException("File or Resource without directory or file specified");
             } else if (!fsDir.isDirectory()) {
                 handle("Directory does not exist: " + fsDir);
             } else {
@@ -634,21 +686,25 @@ public class Delete extends MatchingTask {
                 // iterating, capture the results now and store them
                 final String[] files = ds.getIncludedFiles();
                 resourcesToDelete.add(new ResourceCollection() {
-                        public boolean isFilesystemOnly() {
-                            return true;
-                        }
-                        public int size() {
-                            return files.length;
-                        }
-                        public Iterator<Resource> iterator() {
-                            return new FileResourceIterator(getProject(),
-                                                            fsDir, files);
-                        }
-                    });
+                    @Override
+                    public boolean isFilesystemOnly() {
+                        return true;
+                    }
+
+                    @Override
+                    public int size() {
+                        return files.length;
+                    }
+
+                    @Override
+                    public Iterator<Resource> iterator() {
+                        return new FileResourceIterator(getProject(),
+                                fsDir, files);
+                    }
+                });
                 if (includeEmpty) {
                     filesetDirs.add(new ReverseDirs(getProject(), fsDir,
-                                                    ds
-                                                    .getIncludedDirectories()));
+                            ds.getIncludedDirectories()));
                 }
 
                 if (removeNotFollowedSymlinks) {
@@ -656,14 +712,17 @@ public class Delete extends MatchingTask {
                     if (n.length > 0) {
                         String[] links = new String[n.length];
                         System.arraycopy(n, 0, links, 0, n.length);
-                        Arrays.sort(links, ReverseDirs.REVERSE);
+                        Arrays.sort(links, Comparator.reverseOrder());
                         for (int l = 0; l < links.length; l++) {
-                            try {
-                                SYMLINK_UTILS
-                                    .deleteSymbolicLink(new File(links[l]),
-                                                        this);
-                            } catch (java.io.IOException ex) {
-                                handle(ex);
+                            final Path filePath = Paths.get(links[l]);
+                            if (!Files.isSymbolicLink(filePath)) {
+                                // it's not a symbolic link, so move on
+                                continue;
+                            }
+                            // it's a symbolic link, so delete it
+                            final boolean deleted = filePath.toFile().delete();
+                            if (!deleted) {
+                                handle("Could not delete symbolic link at " + filePath);
                             }
                         }
                     }
@@ -686,8 +745,7 @@ public class Delete extends MatchingTask {
                 for (Resource r : resourcesToDelete) {
                     // nonexistent resources could only occur if we already
                     // deleted something from a fileset:
-                    File f = r.as(FileProvider.class)
-                              .getFile();
+                    File f = r.as(FileProvider.class).getFile();
                     if (!f.exists()) {
                         continue;
                     }
@@ -721,8 +779,7 @@ public class Delete extends MatchingTask {
 
     private void handle(Exception e) {
         if (failonerror) {
-            throw (e instanceof BuildException)
-                ? (BuildException) e : new BuildException(e);
+            throw (e instanceof BuildException) ? (BuildException) e : new BuildException(e);
         }
         log(e, quiet ? Project.MSG_VERBOSE : verbosity);
     }
@@ -805,8 +862,7 @@ public class Delete extends MatchingTask {
                     log("Deleting " + currDir.getAbsolutePath(),
                             quiet ? Project.MSG_VERBOSE : verbosity);
                     if (!delete(currDir)) {
-                        handle("Unable to delete directory "
-                                + currDir.getAbsolutePath());
+                        handle("Unable to delete directory " + currDir.getAbsolutePath());
                     } else {
                         dirCount++;
                     }
@@ -814,8 +870,7 @@ public class Delete extends MatchingTask {
             }
 
             if (dirCount > 0) {
-                log("Deleted "
-                     + dirCount
+                log("Deleted " + dirCount
                      + " director" + (dirCount == 1 ? "y" : "ies")
                      + " form " + d.getAbsolutePath(),
                      quiet ? Project.MSG_VERBOSE : verbosity);
@@ -823,14 +878,13 @@ public class Delete extends MatchingTask {
         }
     }
 
-    private boolean isDanglingSymlink(File f) {
-        try {
-            return SYMLINK_UTILS.isDanglingSymbolicLink(f);
-        } catch (java.io.IOException e) {
-            log("Error while trying to detect " + f.getAbsolutePath()
-                + " as broken symbolic link. " + e.getMessage(),
-                quiet ? Project.MSG_VERBOSE : verbosity);
+    private boolean isDanglingSymlink(final File f) {
+        if (!Files.isSymbolicLink(f.toPath())) {
+            // it's not a symlink, so clearly it's not a dangling one
             return false;
         }
+        // it's a symbolic link, now  check the existence of the (target) file (by "following links")
+        final boolean targetFileExists = Files.exists(f.toPath());
+        return !targetFileExists;
     }
 }

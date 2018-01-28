@@ -25,7 +25,7 @@ import org.apache.tools.ant.taskdefs.optional.Native2Ascii;
 import org.apache.tools.ant.types.Commandline;
 
 /**
- * encapsulates the handling common to diffent Native2Asciiadapter
+ * encapsulates the handling common to different Native2AsciiAdapter
  * implementations.
  *
  * @since Ant 1.6.3
@@ -47,6 +47,7 @@ public abstract class DefaultNative2Ascii implements Native2AsciiAdapter {
      * (delegated to {@link #addFiles addFiles}) and running the tool
      * (delegated to {@link #run run}).
      */
+    @Override
     public final boolean convert(Native2Ascii args, File srcFile,
                                  File destFile) throws BuildException {
         Commandline cmd = new Commandline();

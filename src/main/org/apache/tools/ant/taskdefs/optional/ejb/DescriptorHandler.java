@@ -19,16 +19,17 @@
 package org.apache.tools.ant.taskdefs.optional.ejb;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.nio.file.Files;
 import java.util.Hashtable;
+import java.util.Map;
 
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
 import org.xml.sax.AttributeList;
+import org.xml.sax.HandlerBase;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
@@ -40,7 +41,7 @@ import org.xml.sax.SAXException;
  * inserted into an EJB jar as to a File representing the file on disk. This
  * list can then be accessed through the getFiles() method.
  */
-public class DescriptorHandler extends org.xml.sax.HandlerBase {
+public class DescriptorHandler extends HandlerBase {
     private static final int DEFAULT_HASH_TABLE_SIZE = 10;
     private static final int STATE_LOOKING_EJBJAR = 1;
     private static final int STATE_IN_EJBJAR = 2;
@@ -95,20 +96,20 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
      * put into the jar file, mapped to File objects  Accessed by the SAX
      * parser call-back method characters().
      */
-    protected Hashtable ejbFiles = null;
+    protected Hashtable<String, File> ejbFiles = null;
 
     /**
      * Instance variable that stores the value found in the &lt;ejb-name&gt; element
      */
     protected String ejbName = null;
 
-    private Hashtable fileDTDs = new Hashtable();
+    private Map<String, File> fileDTDs = new Hashtable<>();
 
-    private Hashtable resourceDTDs = new Hashtable();
+    private Map<String, String> resourceDTDs = new Hashtable<>();
 
     private boolean inEJBRef = false;
 
-    private Hashtable urlDTDs = new Hashtable();
+    private Map<String, URL> urlDTDs = new Hashtable<>();
     // CheckStyle:VisibilityModifier OFF - bc
 
     /**
@@ -175,7 +176,7 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
 
     /**
      * Resolve the entity.
-     * @see org.xml.sax.EntityResolver#resolveEntity(String, String).
+     * @see org.xml.sax.EntityResolver#resolveEntity(String, String)
      * @param publicId The public identifier, or <code>null</code>
      *                 if none is available.
      * @param systemId The system identifier provided in the XML
@@ -183,22 +184,23 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
      * @return an inputsource for this identifier
      * @throws SAXException if there is a problem.
      */
+    @Override
     public InputSource resolveEntity(String publicId, String systemId)
         throws SAXException {
         this.publicId = publicId;
 
-        File dtdFile = (File) fileDTDs.get(publicId);
+        File dtdFile = fileDTDs.get(publicId);
         if (dtdFile != null) {
             try {
                 owningTask.log("Resolved " + publicId + " to local file "
                     + dtdFile, Project.MSG_VERBOSE);
-                return new InputSource(new FileInputStream(dtdFile));
-            } catch (FileNotFoundException ex) {
+                return new InputSource(Files.newInputStream(dtdFile.toPath()));
+            } catch (IOException ex) {
                 // ignore
             }
         }
 
-        String dtdResourceName = (String) resourceDTDs.get(publicId);
+        String dtdResourceName = resourceDTDs.get(publicId);
         if (dtdResourceName != null) {
             InputStream is = this.getClass().getResourceAsStream(dtdResourceName);
             if (is != null) {
@@ -208,7 +210,7 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
             }
         }
 
-        URL dtdUrl = (URL) urlDTDs.get(publicId);
+        URL dtdUrl = urlDTDs.get(publicId);
         if (dtdUrl != null) {
             try {
                 InputStream is = dtdUrl.openStream();
@@ -220,7 +222,7 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
             }
         }
 
-        owningTask.log("Could not resolve ( publicId: " + publicId
+        owningTask.log("Could not resolve (publicId: " + publicId
             + ", systemId: " + systemId + ") to a local entity", Project.MSG_INFO);
 
         return null;
@@ -230,8 +232,8 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
      * Getter method that returns the set of files to include in the EJB jar.
      * @return the map of files
      */
-    public Hashtable getFiles() {
-        return (ejbFiles == null) ? new Hashtable() : ejbFiles;
+    public Hashtable<String, File> getFiles() {
+        return ejbFiles == null ? new Hashtable<>() : ejbFiles;
     }
 
     /**
@@ -255,12 +257,12 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
      * instance variables to ensure safe operation.
      * @throws SAXException on error
      */
+    @Override
     public void startDocument() throws SAXException {
-        this.ejbFiles = new Hashtable(DEFAULT_HASH_TABLE_SIZE, 1);
+        this.ejbFiles = new Hashtable<>(DEFAULT_HASH_TABLE_SIZE, 1);
         this.currentElement = null;
         inEJBRef = false;
     }
-
 
     /**
      * SAX parser call-back method that is invoked when a new element is entered
@@ -270,25 +272,25 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
      * @param attrs Attributes associated to the element.
      * @throws SAXException on error
      */
+    @Override
     public void startElement(String name, AttributeList attrs)
         throws SAXException {
         this.currentElement = name;
         currentText = "";
-        if (name.equals(EJB_REF) || name.equals(EJB_LOCAL_REF)) {
+        if (EJB_REF.equals(name) || EJB_LOCAL_REF.equals(name)) {
             inEJBRef = true;
-        } else if (parseState == STATE_LOOKING_EJBJAR && name.equals(EJB_JAR)) {
+        } else if (parseState == STATE_LOOKING_EJBJAR && EJB_JAR.equals(name)) {
             parseState = STATE_IN_EJBJAR;
-        } else if (parseState == STATE_IN_EJBJAR && name.equals(ENTERPRISE_BEANS)) {
+        } else if (parseState == STATE_IN_EJBJAR && ENTERPRISE_BEANS.equals(name)) {
             parseState = STATE_IN_BEANS;
-        } else if (parseState == STATE_IN_BEANS && name.equals(SESSION_BEAN)) {
+        } else if (parseState == STATE_IN_BEANS && SESSION_BEAN.equals(name)) {
             parseState = STATE_IN_SESSION;
-        } else if (parseState == STATE_IN_BEANS && name.equals(ENTITY_BEAN)) {
+        } else if (parseState == STATE_IN_BEANS && ENTITY_BEAN.equals(name)) {
             parseState = STATE_IN_ENTITY;
-        } else if (parseState == STATE_IN_BEANS && name.equals(MESSAGE_BEAN)) {
+        } else if (parseState == STATE_IN_BEANS && MESSAGE_BEAN.equals(name)) {
             parseState = STATE_IN_MESSAGE;
         }
     }
-
 
     /**
      * SAX parser call-back method that is invoked when an element is exited.
@@ -300,6 +302,7 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
      *        in this implementation.
      * @throws SAXException on error
      */
+    @Override
     public void endElement(String name) throws SAXException {
         processElement();
         currentText = "";
@@ -335,12 +338,11 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
      *        char array where the current data terminates.
      * @throws SAXException on error
      */
+    @Override
     public void characters(char[] ch, int start, int length)
         throws SAXException {
-
         currentText += new String(ch, start, length);
     }
-
 
     /**
      * Called when an endelement is seen.
@@ -356,15 +358,14 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
             return;
         }
 
-        if (currentElement.equals(HOME_INTERFACE)
-            || currentElement.equals(REMOTE_INTERFACE)
-            || currentElement.equals(LOCAL_INTERFACE)
-            || currentElement.equals(LOCAL_HOME_INTERFACE)
-            || currentElement.equals(BEAN_CLASS)
-            || currentElement.equals(PK_CLASS)) {
+        if (HOME_INTERFACE.equals(currentElement)
+            || REMOTE_INTERFACE.equals(currentElement)
+            || LOCAL_INTERFACE.equals(currentElement)
+            || LOCAL_HOME_INTERFACE.equals(currentElement)
+            || BEAN_CLASS.equals(currentElement)
+            || PK_CLASS.equals(currentElement)) {
 
             // Get the filename into a String object
-            File classFile = null;
             String className = currentText.trim();
 
             // If it's a primitive wrapper then we shouldn't try and put
@@ -375,8 +376,7 @@ public class DescriptorHandler extends org.xml.sax.HandlerBase {
                 // name, create the File object and add it to the Hashtable.
                 className = className.replace('.', File.separatorChar);
                 className += ".class";
-                classFile = new File(srcDir, className);
-                ejbFiles.put(className, classFile);
+                ejbFiles.put(className, new File(srcDir, className));
             }
         }
 

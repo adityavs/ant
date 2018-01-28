@@ -20,9 +20,9 @@ package org.apache.tools.ant.taskdefs.cvslib;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
-import java.util.Enumeration;
 import java.util.TimeZone;
 
+import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.util.DOMElementWriter;
 import org.apache.tools.ant.util.DOMUtils;
 import org.w3c.dom.Document;
@@ -34,18 +34,20 @@ import org.w3c.dom.Element;
  */
 public class ChangeLogWriter {
     /** output format for dates written to xml file */
-    private static final SimpleDateFormat OUTPUT_DATE
+    private final SimpleDateFormat outputDate
         = new SimpleDateFormat("yyyy-MM-dd");
+
     /** output format for times written to xml file */
-    private static final SimpleDateFormat OUTPUT_TIME
+    private SimpleDateFormat outputTime
         = new SimpleDateFormat("HH:mm");
+
     /** stateless helper for writing the XML document */
     private static final DOMElementWriter DOM_WRITER = new DOMElementWriter();
 
-    static {
+    public ChangeLogWriter() {
         TimeZone utc = TimeZone.getTimeZone("UTC");
-        OUTPUT_DATE.setTimeZone(utc);
-        OUTPUT_TIME.setTimeZone(utc);
+        outputDate.setTimeZone(utc);
+        outputTime.setTimeZone(utc);
     }
 
     /**
@@ -62,19 +64,16 @@ public class ChangeLogWriter {
             Element root = doc.createElement("changelog");
             DOM_WRITER.openElement(root, output, 0, "\t");
             output.println();
-            for (int i = 0; i < entries.length; i++) {
-                final CVSEntry entry = entries[i];
-
+            for (final CVSEntry entry : entries) {
                 printEntry(doc, output, entry);
             }
             DOM_WRITER.closeElement(root, output, 0, "\t", true);
             output.flush();
             output.close();
         } catch (IOException e) {
-            throw new org.apache.tools.ant.BuildException(e);
+            throw new BuildException(e);
         }
     }
-
 
     /**
      * Print out an individual entry in changelog.
@@ -87,16 +86,12 @@ public class ChangeLogWriter {
                             final CVSEntry entry) throws IOException {
         Element ent = doc.createElement("entry");
         DOMUtils.appendTextElement(ent, "date",
-                                   OUTPUT_DATE.format(entry.getDate()));
+                                   outputDate.format(entry.getDate()));
         DOMUtils.appendTextElement(ent, "time",
-                                   OUTPUT_TIME.format(entry.getDate()));
+                                   outputTime.format(entry.getDate()));
         DOMUtils.appendCDATAElement(ent, "author", entry.getAuthor());
 
-        final Enumeration enumeration = entry.getFiles().elements();
-
-        while (enumeration.hasMoreElements()) {
-            final RCSFile file = (RCSFile) enumeration.nextElement();
-
+        for (RCSFile file : entry.getFiles()) {
             Element f = DOMUtils.createChildElement(ent, "file");
             DOMUtils.appendCDATAElement(f, "name", file.getName());
             DOMUtils.appendTextElement(f, "revision", file.getRevision());
@@ -111,4 +106,3 @@ public class ChangeLogWriter {
         DOM_WRITER.write(ent, output, 1, "\t");
     }
 }
-

@@ -34,13 +34,7 @@ import org.apache.tools.ant.types.DataType;
 public abstract class BaseSelector extends DataType implements FileSelector {
 
     private String errmsg = null;
-
-
-    /**
-     * Do nothing constructor.
-     */
-    public BaseSelector() {
-    }
+    private Throwable cause;
 
     /**
      * Allows all selectors to indicate a setup error. Note that only
@@ -55,6 +49,20 @@ public abstract class BaseSelector extends DataType implements FileSelector {
     }
 
     /**
+     * Allows all selectors to indicate a setup error. Note that only
+     * the first error message is recorded.
+     *
+     * @param msg The error message any BuildException should throw.
+     * @param cause Throwable
+     */
+    public void setError(String msg, Throwable cause) {
+        if (errmsg == null) {
+            errmsg = msg;
+            this.cause = cause;
+        }
+    }
+
+    /**
      * Returns any error messages that have been set.
      *
      * @return the error condition
@@ -62,7 +70,6 @@ public abstract class BaseSelector extends DataType implements FileSelector {
     public String getError() {
         return errmsg;
     }
-
 
     /**
      * <p>Subclasses can override this method to provide checking of their
@@ -73,10 +80,9 @@ public abstract class BaseSelector extends DataType implements FileSelector {
      */
     public void verifySettings() {
         if (isReference()) {
-            ((BaseSelector) getCheckedRef()).verifySettings();
+            getCheckedRef().verifySettings();
         }
     }
-
 
     /**
      * Subclasses can use this to throw the requisite exception
@@ -87,7 +93,7 @@ public abstract class BaseSelector extends DataType implements FileSelector {
             verifySettings();
         }
         if (getError() != null) {
-            throw new BuildException(errmsg);
+            throw new BuildException(errmsg, cause);
         }
         if (!isReference()) {
             dieOnCircularReference();
@@ -108,6 +114,10 @@ public abstract class BaseSelector extends DataType implements FileSelector {
     public abstract boolean isSelected(File basedir, String filename,
                                        File file);
 
+    @Override
+    protected BaseSelector getCheckedRef() {
+        return (BaseSelector) super.getCheckedRef();
+    }
 }
 
 

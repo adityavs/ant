@@ -21,7 +21,6 @@ package org.apache.tools.ant.taskdefs;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -29,12 +28,16 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.SortedMap;
 import java.util.StringTokenizer;
 import java.util.TreeMap;
 import java.util.Vector;
@@ -74,7 +77,7 @@ public class Jar extends Zip {
     /**
      * List of all known SPI Services
      */
-    private List<Service> serviceList = new ArrayList<Service>();
+    private List<Service> serviceList = new ArrayList<>();
 
     /** merged manifests added through addConfiguredManifest */
     private Manifest configuredManifest;
@@ -138,7 +141,7 @@ public class Jar extends Zip {
      *
      * @since Ant 1.6
      */
-    private Vector<String> rootEntries;
+    private List<String> rootEntries;
 
     /**
      * Path containing jars that shall be indexed in addition to this archive.
@@ -150,7 +153,7 @@ public class Jar extends Zip {
     // CheckStyle:LineLength OFF - Link is too long.
     /**
      * Strict mode for checking rules of the JAR-Specification.
-     * @see http://java.sun.com/j2se/1.3/docs/guide/versioning/spec/VersioningSpecification.html#PackageVersioning
+     * @see <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/versioning/spec/versioning2.html#wp89936"></a>
      */
     private StrictMode strict = new StrictMode("ignore");
 
@@ -182,7 +185,7 @@ public class Jar extends Zip {
         emptyBehavior = "create";
         setEncoding("UTF8");
         setZip64Mode(Zip64ModeAttribute.NEVER);
-        rootEntries = new Vector<String>();
+        rootEntries = new Vector<>();
     }
 
     /**
@@ -190,6 +193,7 @@ public class Jar extends Zip {
      * @param we not used
      * @ant.attribute ignore="true"
      */
+    @Override
     public void setWhenempty(WhenEmpty we) {
         log("JARs are never empty, they contain at least a manifest file",
             Project.MSG_WARN);
@@ -225,6 +229,7 @@ public class Jar extends Zip {
      * @deprecated since 1.5.x.
      *             Use setDestFile(File) instead.
      */
+    @Deprecated
     public void setJarfile(File jarFile) {
         setDestFile(jarFile);
     }
@@ -301,29 +306,13 @@ public class Jar extends Zip {
     }
 
     private Manifest getManifest(File manifestFile) {
-
-        Manifest newManifest = null;
-        FileInputStream fis = null;
-        InputStreamReader isr = null;
-        try {
-            fis = new FileInputStream(manifestFile);
-            if (manifestEncoding == null) {
-                isr = new InputStreamReader(fis);
-            } else {
-                isr = new InputStreamReader(fis, manifestEncoding);
-            }
-            newManifest = getManifest(isr);
-        } catch (UnsupportedEncodingException e) {
-            throw new BuildException("Unsupported encoding while reading manifest: "
-                                     + e.getMessage(), e);
+        try (InputStreamReader isr = new InputStreamReader(
+            Files.newInputStream(manifestFile.toPath()), getManifestCharset())) {
+            return getManifest(isr);
         } catch (IOException e) {
             throw new BuildException("Unable to read manifest file: "
-                                     + manifestFile
-                                     + " (" + e.getMessage() + ")", e);
-        } finally {
-            FileUtils.close(isr);
+                + manifestFile + " (" + e.getMessage() + ")", e);
         }
-        return newManifest;
     }
 
     /**
@@ -332,38 +321,27 @@ public class Jar extends Zip {
      * @since Ant 1.5.2
      */
     private Manifest getManifestFromJar(File jarFile) throws IOException {
-        ZipFile zf = null;
-        try {
-            zf = new ZipFile(jarFile);
+        try (ZipFile zf = new ZipFile(jarFile)) {
 
             // must not use getEntry as "well behaving" applications
             // must accept the manifest in any capitalization
             Enumeration<? extends ZipEntry> e = zf.entries();
             while (e.hasMoreElements()) {
                 ZipEntry ze = e.nextElement();
-                if (ze.getName().equalsIgnoreCase(MANIFEST_NAME)) {
-                    InputStreamReader isr =
-                        new InputStreamReader(zf.getInputStream(ze), "UTF-8");
-                    return getManifest(isr);
+                if (MANIFEST_NAME.equalsIgnoreCase(ze.getName())) {
+                    try (InputStreamReader isr =
+                        new InputStreamReader(zf.getInputStream(ze), "UTF-8")) {
+                        return getManifest(isr);
+                    }
                 }
             }
             return null;
-        } finally {
-            if (zf != null) {
-                try {
-                    zf.close();
-                } catch (IOException e) {
-                    // TODO - log an error?  throw an exception?
-                }
-            }
         }
     }
 
     private Manifest getManifest(Reader r) {
-
-        Manifest newManifest = null;
         try {
-            newManifest = new Manifest(r);
+            return new Manifest(r);
         } catch (ManifestException e) {
             log("Manifest is invalid: " + e.getMessage(), Project.MSG_ERR);
             throw new BuildException("Invalid Manifest: " + manifestFile,
@@ -372,29 +350,18 @@ public class Jar extends Zip {
             throw new BuildException("Unable to read manifest file"
                                      + " (" + e.getMessage() + ")", e);
         }
-        return newManifest;
     }
 
     private boolean jarHasIndex(File jarFile) throws IOException {
-        ZipFile zf = null;
-        try {
-            zf = new ZipFile(jarFile);
+        try (ZipFile zf = new ZipFile(jarFile)) {
             Enumeration<? extends ZipEntry> e = zf.entries();
             while (e.hasMoreElements()) {
                 ZipEntry ze = e.nextElement();
-                if (ze.getName().equalsIgnoreCase(INDEX_NAME)) {
+                if (INDEX_NAME.equalsIgnoreCase(ze.getName())) {
                     return true;
                 }
             }
             return false;
-        } finally {
-            if (zf != null) {
-                try {
-                    zf.close();
-                } catch (IOException e) {
-                    // TODO - log an error?  throw an exception?
-                }
-            }
         }
     }
 
@@ -413,10 +380,10 @@ public class Jar extends Zip {
      */
     public void setFilesetmanifest(FilesetManifestConfig config) {
         filesetManifestConfig = config;
-        mergeManifestsMain = "merge".equals(config.getValue());
+        mergeManifestsMain = config != null && "merge".equals(config.getValue());
 
         if (filesetManifestConfig != null
-            && !filesetManifestConfig.getValue().equals("skip")) {
+            && !"skip".equals(filesetManifestConfig.getValue())) {
 
             doubleFilePass = true;
         }
@@ -461,19 +428,12 @@ public class Jar extends Zip {
      */
     private void writeServices(ZipOutputStream zOut) throws IOException {
         for (Service service : serviceList) {
-           InputStream is = null;
-           try {
-               is = service.getAsStream();
-               //stolen from writeManifest
+            try (InputStream is = service.getAsStream()) {
+                //stolen from writeManifest
                super.zipFile(is, zOut,
                              "META-INF/services/" + service.getType(),
                              System.currentTimeMillis(), null,
                              ZipFileSet.DEFAULT_FILE_MODE);
-           } finally {
-               // technically this is unnecessary since
-               // Service.getAsStream returns a ByteArrayInputStream
-               // and not closing it wouldn't do any harm.
-               FileUtils.close(is);
            }
         }
     }
@@ -481,6 +441,7 @@ public class Jar extends Zip {
     /**
      * Whether to merge Class-Path attributes.
      *
+     * @param b boolean
      * @since Ant 1.8.0
      */
     public void setMergeClassPathAttributes(boolean b) {
@@ -491,6 +452,7 @@ public class Jar extends Zip {
      * Whether to flatten multi-valued attributes (i.e. Class-Path)
      * into a single one.
      *
+     * @param b boolean
      * @since Ant 1.8.0
      */
     public void setFlattenAttributes(boolean b) {
@@ -503,6 +465,7 @@ public class Jar extends Zip {
      * @throws IOException on I/O errors
      * @throws BuildException on other errors
      */
+    @Override
     protected void initZipOutputStream(ZipOutputStream zOut)
         throws IOException, BuildException {
 
@@ -516,12 +479,10 @@ public class Jar extends Zip {
     private Manifest createManifest()
         throws BuildException {
         try {
-            if (manifest == null) {
-                if (manifestFile != null) {
-                    // if we haven't got the manifest yet, attempt to
-                    // get it now and have manifest be the final merge
-                    manifest = getManifest(manifestFile);
-                }
+            if (manifest == null && manifestFile != null) {
+                // if we haven't got the manifest yet, attempt to
+                // get it now and have manifest be the final merge
+                manifest = getManifest(manifestFile);
             }
 
             // fileset manifest must come even before the default
@@ -610,6 +571,7 @@ public class Jar extends Zip {
      * @throws IOException on I/O errors
      * @throws BuildException on other errors
      */
+    @Override
     protected void finalizeZipOutputStream(ZipOutputStream zOut)
         throws IOException, BuildException {
 
@@ -679,14 +641,10 @@ public class Jar extends Zip {
             throw new IOException("Encountered an error writing jar index");
         }
         writer.close();
-        ByteArrayInputStream bais =
-            new ByteArrayInputStream(baos.toByteArray());
-        try {
+        try (ByteArrayInputStream bais =
+            new ByteArrayInputStream(baos.toByteArray())) {
             super.zipFile(bais, zOut, INDEX_NAME, System.currentTimeMillis(),
                           null, ZipFileSet.DEFAULT_FILE_MODE);
-        } finally {
-            // not really required
-            FileUtils.close(bais);
         }
     }
 
@@ -702,6 +660,7 @@ public class Jar extends Zip {
      * @param mode the Unix permissions to set.
      * @throws IOException on error
      */
+    @Override
     protected void zipFile(InputStream is, ZipOutputStream zOut, String vPath,
                            long lastModified, File fromArchive, int mode)
         throws IOException {
@@ -715,8 +674,8 @@ public class Jar extends Zip {
                            + " be replaced by a newly generated one.",
                            Project.MSG_WARN);
         } else {
-            if (index && vPath.indexOf("/") == -1) {
-                rootEntries.addElement(vPath);
+            if (index && vPath.indexOf('/') == -1) {
+                rootEntries.add(vPath);
             }
             super.zipFile(is, zOut, vPath, lastModified, fromArchive, mode);
         }
@@ -727,40 +686,29 @@ public class Jar extends Zip {
             // If this is the same name specified in 'manifest', this
             // is the manifest to use
             log("Found manifest " + file, Project.MSG_VERBOSE);
-            try {
-                if (is != null) {
-                    InputStreamReader isr;
-                    if (manifestEncoding == null) {
-                        isr = new InputStreamReader(is);
-                    } else {
-                        isr = new InputStreamReader(is, manifestEncoding);
-                    }
+            if (is == null) {
+                manifest = getManifest(file);
+            } else {
+                try (InputStreamReader isr =
+                    new InputStreamReader(is, getManifestCharset())) {
                     manifest = getManifest(isr);
-                } else {
-                    manifest = getManifest(file);
                 }
-            } catch (UnsupportedEncodingException e) {
-                throw new BuildException("Unsupported encoding while reading "
-                    + "manifest: " + e.getMessage(), e);
             }
         } else if (filesetManifestConfig != null
-                    && !filesetManifestConfig.getValue().equals("skip")) {
+                    && !"skip".equals(filesetManifestConfig.getValue())) {
             // we add this to our group of fileset manifests
             logWhenWriting("Found manifest to merge in file " + file,
                            Project.MSG_VERBOSE);
 
             try {
-                Manifest newManifest = null;
-                if (is != null) {
-                    InputStreamReader isr;
-                    if (manifestEncoding == null) {
-                        isr = new InputStreamReader(is);
-                    } else {
-                        isr = new InputStreamReader(is, manifestEncoding);
-                    }
-                    newManifest = getManifest(isr);
-                } else {
+                Manifest newManifest;
+                if (is == null) {
                     newManifest = getManifest(file);
+                } else {
+                    try (InputStreamReader isr =
+                        new InputStreamReader(is, getManifestCharset())) {
+                        newManifest = getManifest(isr);
+                    }
                 }
 
                 if (filesetManifest == null) {
@@ -816,6 +764,7 @@ public class Jar extends Zip {
      *
      * @exception BuildException if it likes
      */
+    @Override
     protected ArchiveState getResourcesToAdd(ResourceCollection[] rcs,
                                              File zipFile,
                                              boolean needsUpdate)
@@ -886,34 +835,34 @@ public class Jar extends Zip {
      * @return true for historic reasons
      * @throws BuildException on error
      */
+    @Override
     protected boolean createEmptyZip(File zipFile) throws BuildException {
         if (!createEmpty) {
             return true;
         }
 
-        if (emptyBehavior.equals("skip")) {
+        if ("skip".equals(emptyBehavior)) {
             if (!skipWriting) {
                 log("Warning: skipping " + archiveType + " archive "
                     + zipFile + " because no files were included.",
                     Project.MSG_WARN);
             }
             return true;
-        } else if (emptyBehavior.equals("fail")) {
+        }
+        if ("fail".equals(emptyBehavior)) {
             throw new BuildException("Cannot create " + archiveType
                                      + " archive " + zipFile
                                      + ": no files were included.",
                                      getLocation());
         }
 
-        ZipOutputStream zOut = null;
-        try {
-            if (!skipWriting) {
-                log("Building MANIFEST-only jar: "
+        if (!skipWriting) {
+            log("Building MANIFEST-only jar: "
                     + getDestFile().getAbsolutePath());
-            }
-            zOut = new ZipOutputStream(getDestFile());
-
+        }
+        try (ZipOutputStream zOut = new ZipOutputStream(getDestFile())) {
             zOut.setEncoding(getEncoding());
+            zOut.setUseZip64(getZip64Mode().getMode());
             if (isCompress()) {
                 zOut.setMethod(ZipOutputStream.DEFLATED);
             } else {
@@ -926,8 +875,6 @@ public class Jar extends Zip {
                                      + " (" + ioe.getMessage() + ")", ioe,
                                      getLocation());
         } finally {
-            // Close the output stream.
-            FileUtils.close(zOut);
             createEmpty = false;
         }
         return true;
@@ -939,6 +886,7 @@ public class Jar extends Zip {
      *
      * @see Zip#cleanUp
      */
+    @Override
     protected void cleanUp() {
         super.cleanUp();
         checkJarSpec();
@@ -950,7 +898,7 @@ public class Jar extends Zip {
             filesetManifest = null;
             originalManifest = null;
         }
-        rootEntries.removeAllElements();
+        rootEntries.clear();
     }
 
     // CheckStyle:LineLength OFF - Link is too long.
@@ -961,7 +909,7 @@ public class Jar extends Zip {
     // CheckStyle:LineLength ON
     private void checkJarSpec() {
         String br = System.getProperty("line.separator");
-        StringBuffer message = new StringBuffer();
+        StringBuilder message = new StringBuilder();
         Section mainSection = (configuredManifest == null)
                             ? null
                             : configuredManifest.getMainSection();
@@ -986,11 +934,10 @@ public class Jar extends Zip {
             message.append(br);
             message.append("Location: ").append(getLocation());
             message.append(br);
-            if (strict.getValue().equalsIgnoreCase("fail")) {
+            if ("fail".equalsIgnoreCase(strict.getValue())) {
                 throw new BuildException(message.toString(), getLocation());
-            } else {
-                logWhenWriting(message.toString(), strict.getLogLevel());
             }
+            logWhenWriting(message.toString(), strict.getLogLevel());
         }
     }
 
@@ -1001,6 +948,7 @@ public class Jar extends Zip {
      *
      * @since 1.44, Ant 1.5
      */
+    @Override
     public void reset() {
         super.reset();
         emptyBehavior = "create";
@@ -1019,6 +967,7 @@ public class Jar extends Zip {
          * Get the list of valid strings.
          * @return the list of values - "skip", "merge" and "mergewithoutmain"
          */
+        @Override
         public String[] getValues() {
             return new String[] {"skip", "merge", "mergewithoutmain"};
         }
@@ -1031,12 +980,10 @@ public class Jar extends Zip {
      * @param dirs a list of directories
      * @param files a list of files
      * @param writer the writer to write to
-     * @throws IOException on error
      * @since Ant 1.6.2
      */
     protected final void writeIndexLikeList(List<String> dirs, List<String> files,
-                                            PrintWriter writer)
-        throws IOException {
+                                            PrintWriter writer) {
         // JarIndex is sorting the directories by ascending order.
         // it has no value but cosmetic since it will be read into a
         // hashtable by the classloader, but we'll do so anyway.
@@ -1068,9 +1015,7 @@ public class Jar extends Zip {
             writer.println(dir);
         }
 
-        for (String file : files) {
-            writer.println(file);
-        }
+        files.forEach(writer::println);
     }
 
     /**
@@ -1096,39 +1041,27 @@ public class Jar extends Zip {
     protected static String findJarName(String fileName,
                                               String[] classpath) {
         if (classpath == null) {
-            return (new File(fileName)).getName();
+            return new File(fileName).getName();
         }
         fileName = fileName.replace(File.separatorChar, '/');
-        TreeMap<String, String> matches = new TreeMap<String, String>(new Comparator<Object>() {
-                // longest match comes first
-                public int compare(Object o1, Object o2) {
-                    if (o1 instanceof String && o2 instanceof String) {
-                        return ((String) o2).length()
-                            - ((String) o1).length();
-                    }
-                    return 0;
-                }
-            });
+        SortedMap<String, String> matches = new TreeMap<>(Comparator
+            .<String> comparingInt(s -> s == null ? 0 : s.length()).reversed());
 
-        for (int i = 0; i < classpath.length; i++) {
-            if (fileName.endsWith(classpath[i])) {
-                matches.put(classpath[i], classpath[i]);
-            } else {
-                int slash = classpath[i].indexOf("/");
-                String candidate = classpath[i];
-                while (slash > -1) {
-                    candidate = candidate.substring(slash + 1);
-                    if (fileName.endsWith(candidate)) {
-                        matches.put(candidate, classpath[i]);
-                        break;
-                    }
-                    slash = candidate.indexOf("/");
+        for (String element : classpath) {
+            String candidate = element;
+            while (true) {
+                if (fileName.endsWith(candidate)) {
+                    matches.put(candidate, element);
+                    break;
                 }
+                int slash = candidate.indexOf('/');
+                if (slash < 0) {
+                    break;
+                }
+                candidate = candidate.substring(slash + 1);
             }
         }
-
-        return matches.size() == 0
-            ? null : (String) matches.get(matches.firstKey());
+        return matches.isEmpty() ? null : matches.get(matches.firstKey());
     }
 
     /**
@@ -1143,45 +1076,38 @@ public class Jar extends Zip {
     protected static void grabFilesAndDirs(String file, List<String> dirs,
                                                  List<String> files)
         throws IOException {
-        org.apache.tools.zip.ZipFile zf = null;
-        try {
-            zf = new org.apache.tools.zip.ZipFile(file, "utf-8");
+        try (org.apache.tools.zip.ZipFile zf = new org.apache.tools.zip.ZipFile(file, "utf-8")) {
             Enumeration<org.apache.tools.zip.ZipEntry> entries = zf.getEntries();
-            HashSet<String> dirSet = new HashSet<String>();
+            Set<String> dirSet = new HashSet<>();
             while (entries.hasMoreElements()) {
                 org.apache.tools.zip.ZipEntry ze =
                     entries.nextElement();
                 String name = ze.getName();
                 if (ze.isDirectory()) {
                     dirSet.add(name);
-                } else if (name.indexOf("/") == -1) {
+                } else if (name.indexOf('/') == -1) {
                     files.add(name);
                 } else {
                     // a file, not in the root
                     // since the jar may be one without directory
                     // entries, add the parent dir of this file as
                     // well.
-                    dirSet.add(name.substring(0, name.lastIndexOf("/") + 1));
+                    dirSet.add(name.substring(0, name.lastIndexOf('/') + 1));
                 }
             }
             dirs.addAll(dirSet);
-        } finally {
-            if (zf != null) {
-                zf.close();
-            }
         }
     }
 
     private Resource[][] grabManifests(ResourceCollection[] rcs) {
         Resource[][] manifests = new Resource[rcs.length][];
         for (int i = 0; i < rcs.length; i++) {
-            Resource[][] resources = null;
+            Resource[][] resources;
             if (rcs[i] instanceof FileSet) {
                 resources = grabResources(new FileSet[] {(FileSet) rcs[i]});
             } else {
-                resources = grabNonFileSetResources(new ResourceCollection[] {
-                        rcs[i]
-                    });
+                resources = grabNonFileSetResources(
+                    new ResourceCollection[] {rcs[i]});
             }
             for (int j = 0; j < resources[0].length; j++) {
                 String name = resources[0][j].getName().replace('\\', '/');
@@ -1197,7 +1123,7 @@ public class Jar extends Zip {
                         name = prefix + name;
                     }
                 }
-                if (name.equalsIgnoreCase(MANIFEST_NAME)) {
+                if (MANIFEST_NAME.equalsIgnoreCase(name)) {
                     manifests[i] = new Resource[] {resources[0][j]};
                     break;
                 }
@@ -1209,11 +1135,26 @@ public class Jar extends Zip {
         return manifests;
     }
 
+    private Charset getManifestCharset() {
+        if (manifestEncoding == null) {
+            return Charset.defaultCharset();
+        }
+        try {
+            return Charset.forName(manifestEncoding);
+        } catch (IllegalArgumentException e) {
+            throw new BuildException(
+                "Unsupported encoding while reading manifest: "
+                    + e.getMessage(),
+                e);
+        }
+    }
+
     /** The strict enumerated type. */
     public static class StrictMode extends EnumeratedAttribute {
         /** Public no arg constructor. */
         public StrictMode() {
         }
+
         /**
          * Constructor with an arg.
          * @param value the enumerated value as a string.
@@ -1221,18 +1162,21 @@ public class Jar extends Zip {
         public StrictMode(String value) {
             setValue(value);
         }
+
         /**
          * Get List of valid strings.
          * @return the list of values.
          */
+        @Override
         public String[] getValues() {
-            return new String[]{"fail", "warn", "ignore"};
+            return new String[] {"fail", "warn", "ignore"};
         }
+
         /**
          * @return The log level according to the strict mode.
          */
         public int getLogLevel() {
-            return (getValue().equals("ignore")) ? Project.MSG_VERBOSE : Project.MSG_WARN;
+            return "ignore".equals(getValue()) ? Project.MSG_VERBOSE : Project.MSG_WARN;
         }
     }
 }

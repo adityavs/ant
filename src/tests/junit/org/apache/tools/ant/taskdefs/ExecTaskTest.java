@@ -39,10 +39,10 @@ import org.junit.Test;
  * Unit test for the &lt;exec&gt; task.
  */
 public class ExecTaskTest {
-	
-	@Rule
-	public BuildFileRule buildRule = new BuildFileRule();
-	
+
+    @Rule
+    public BuildFileRule buildRule = new BuildFileRule();
+
     private static final String BUILD_PATH = "src/etc/testcases/taskdefs/exec/";
     private static final String BUILD_FILE = BUILD_PATH + "exec.xml";
     private static final int TIME_TO_WAIT = 1;
@@ -57,7 +57,7 @@ public class ExecTaskTest {
 
     private File logFile;
     private MonitoredBuild myBuild = null;
-    volatile private boolean buildFinished = false;
+    private volatile boolean buildFinished = false;
 
 
     @Before

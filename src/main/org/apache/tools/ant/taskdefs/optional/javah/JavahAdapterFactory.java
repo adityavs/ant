@@ -42,10 +42,11 @@ public class JavahAdapterFactory {
     public static String getDefault() {
         if (JavaEnvUtils.isKaffe()) {
             return Kaffeh.IMPLEMENTATION_NAME;
-        } else if (JavaEnvUtils.isGij()) {
+        }
+        if (JavaEnvUtils.isGij()) {
             return Gcjh.IMPLEMENTATION_NAME;
         }
-        return SunJavah.IMPLEMENTATION_NAME;
+        return ForkingJavah.IMPLEMENTATION_NAME;
     }
 
     /**
@@ -84,21 +85,29 @@ public class JavahAdapterFactory {
         if ((JavaEnvUtils.isKaffe() && choice == null)
             || Kaffeh.IMPLEMENTATION_NAME.equals(choice)) {
             return new Kaffeh();
-        } else if ((JavaEnvUtils.isGij() && choice == null)
+        }
+        if ((JavaEnvUtils.isGij() && choice == null)
             || Gcjh.IMPLEMENTATION_NAME.equals(choice)) {
             return new Gcjh();
-        } else if (SunJavah.IMPLEMENTATION_NAME.equals(choice)) {
+        }
+        if (JavaEnvUtils.isAtLeastJavaVersion("10") &&
+            (choice == null || ForkingJavah.IMPLEMENTATION_NAME.equals(choice))) {
+            throw new BuildException("javah does not exist under Java 10 and higher,"
+                + " use the javac task with nativeHeaderDir instead");
+        }
+        if (ForkingJavah.IMPLEMENTATION_NAME.equals(choice)) {
+            return new ForkingJavah();
+        }
+        if (SunJavah.IMPLEMENTATION_NAME.equals(choice)) {
             return new SunJavah();
-        } else if (choice != null) {
+        }
+        if (choice != null) {
             return resolveClassName(choice,
                                     // Memory leak in line below
                                     log.getProject()
                                     .createClassLoader(classpath));
         }
-
-        // This default has been good enough until Ant 1.6.3, so stick
-        // with it
-        return new SunJavah();
+        return new ForkingJavah();
     }
 
     /**
@@ -113,7 +122,7 @@ public class JavahAdapterFactory {
     private static JavahAdapter resolveClassName(String className,
                                                  ClassLoader loader)
             throws BuildException {
-        return (JavahAdapter) ClasspathUtils.newInstance(className,
+        return ClasspathUtils.newInstance(className,
                 loader != null ? loader :
                 JavahAdapterFactory.class.getClassLoader(), JavahAdapter.class);
     }

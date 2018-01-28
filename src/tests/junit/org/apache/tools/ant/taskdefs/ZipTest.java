@@ -43,10 +43,10 @@ import static org.junit.Assume.assumeTrue;
 
 
 public class ZipTest {
-    
+
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
-            
+
     //instance variable to allow cleanup
     ZipFile zfPrefixAddsDir = null;
 
@@ -60,48 +60,48 @@ public class ZipTest {
     @Test
     public void test1() {
         try {
-			buildRule.executeTarget("test1");
-			fail("BuildException expected: required argument not specified");
-		} catch (BuildException ex) {
-			//TODO assert value
-		}
+            buildRule.executeTarget("test1");
+            fail("BuildException expected: required argument not specified");
+        } catch (BuildException ex) {
+            //TODO assert value
+        }
     }
 
     @Test
     public void test2() {
         try {
-			buildRule.executeTarget("test2");
-			fail("BuildException expected: required argument not specified");
-		} catch (BuildException ex) {
-			//TODO assert value
-		}
+            buildRule.executeTarget("test2");
+            fail("BuildException expected: required argument not specified");
+        } catch (BuildException ex) {
+            //TODO assert value
+        }
     }
 
     @Test
     public void test3() {
         try {
-			buildRule.executeTarget("test3");
-			fail("BuildException expected: zip cannot include itself");
-		} catch (BuildException ex) {
-			//TODO assert value
-		}
+            buildRule.executeTarget("test3");
+            fail("BuildException expected: zip cannot include itself");
+        } catch (BuildException ex) {
+            //TODO assert value
+        }
     }
 
     @Test
     @Ignore("Previously commented out")
     public void test4() {
         try {
-			buildRule.executeTarget("test4");
-			fail("BuildException expected: zip cannot include itself");
-		} catch (BuildException ex) {
-			//TODO assert value
-		}
+            buildRule.executeTarget("test4");
+            fail("BuildException expected: zip cannot include itself");
+        } catch (BuildException ex) {
+            //TODO assert value
+        }
     }
 
     @After
     public void tearDown() {
         try {
-            if ( zfPrefixAddsDir != null) {
+            if (zfPrefixAddsDir != null) {
                 zfPrefixAddsDir.close();
             }
 
@@ -136,7 +136,8 @@ public class ZipTest {
     public void testZipgroupfileset() throws IOException {
        buildRule.executeTarget("testZipgroupfileset");
 
-        ZipFile zipFile = new ZipFile(new File(buildRule.getProject().getProperty("output"), "zipgroupfileset.zip"));
+        ZipFile zipFile = new ZipFile(new File(buildRule.getProject().getProperty("output"),
+                "zipgroupfileset.zip"));
 
         assertTrue(zipFile.getEntry("ant.xml") != null);
         assertTrue(zipFile.getEntry("optional/jspc.xml") != null);
@@ -157,7 +158,7 @@ public class ZipTest {
     @Test
     public void testUpdateIsNecessary() {
         buildRule.executeTarget("testUpdateIsNecessary");
-		assertContains("Updating", buildRule.getLog());
+        assertContains("Updating", buildRule.getLog());
     }
 
     // Bugzilla Report 18403
@@ -189,21 +190,25 @@ public class ZipTest {
     public void testEmptySkip() {
        buildRule.executeTarget("testEmptySkip");
     }
+
     // Bugzilla Report 30365
     @Test
     public void testZipEmptyDir() {
        buildRule.executeTarget("zipEmptyDir");
     }
+
     // Bugzilla Report 40258
     @Test
     public void testZipEmptyDirFilesOnly() {
        buildRule.executeTarget("zipEmptyDirFilesOnly");
     }
+
     @Test
     public void testZipEmptyCreate() {
         buildRule.executeTarget("zipEmptyCreate");
-		assertContains("Note: creating empty", buildRule.getLog());
+        assertContains("Note: creating empty", buildRule.getLog());
     }
+
     // Bugzilla Report 25513
     @Test
     public void testCompressionLevel() {
@@ -297,4 +302,12 @@ public class ZipTest {
         }
     }
 
+    @Test
+    public void testRegexpMapper() throws IOException {
+        buildRule.executeTarget("testRegexpMapper1");
+        File testFile = new File(buildRule.getOutputDir(), "regexp.zip");
+        long l = testFile.lastModified();
+        buildRule.executeTarget("testRegexpMapper2");
+        assertEquals(l, testFile.lastModified());
+    }
 }

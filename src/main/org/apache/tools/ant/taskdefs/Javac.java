@@ -19,12 +19,15 @@
 package org.apache.tools.ant.taskdefs;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.TreeMap;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.DirectoryScanner;
@@ -62,6 +65,7 @@ import org.apache.tools.ant.util.facade.FacadeTaskHelper;
  * <li>includejavaruntime
  * <li>source
  * <li>compiler
+ * <li>release
  * </ul>
  * Of these arguments, the <b>sourcedir</b> and <b>destdir</b> are required.
  * <p>
@@ -80,6 +84,8 @@ public class Javac extends MatchingTask {
     private static final String FAIL_MSG
         = "Compile failed; see the compiler error output for details.";
 
+    private static final String JAVAC10_PLUS = "javac10+";
+    private static final String JAVAC9 = "javac9";
     private static final String JAVAC19 = "javac1.9";
     private static final String JAVAC18 = "javac1.8";
     private static final String JAVAC17 = "javac1.7";
@@ -93,12 +99,21 @@ public class Javac extends MatchingTask {
     private static final String CLASSIC = "classic";
     private static final String EXTJAVAC = "extJavac";
 
+    private static final char GROUP_START_MARK = '{';   //modulesourcepath group start character
+    private static final char GROUP_END_MARK = '}';   //modulesourcepath group end character
+    private static final char GROUP_SEP_MARK = ',';   //modulesourcepath group element separator character
+    private static final String MODULE_MARKER = "*";    //modulesourcepath module name marker
+
     private static final FileUtils FILE_UTILS = FileUtils.getFileUtils();
 
     private Path src;
     private File destDir;
+    private File nativeHeaderDir;
     private Path compileClasspath;
+    private Path modulepath;
+    private Path upgrademodulepath;
     private Path compileSourcepath;
+    private Path moduleSourcepath;
     private String encoding;
     private boolean debug = false;
     private boolean optimize = false;
@@ -106,6 +121,7 @@ public class Javac extends MatchingTask {
     private boolean depend = false;
     private boolean verbose = false;
     private String targetAttribute;
+    private String release;
     private Path bootclasspath;
     private Path extdirs;
     private Boolean includeAntRuntime;
@@ -121,7 +137,7 @@ public class Javac extends MatchingTask {
     protected boolean failOnError = true;
     protected boolean listFiles = false;
     protected File[] compileList = new File[0];
-    private Map<String, Long> packageInfos = new HashMap<String, Long>();
+    private Map<String, Long> packageInfos = new HashMap<>();
     // CheckStyle:VisibilityModifier ON
 
     private String source;
@@ -145,19 +161,26 @@ public class Javac extends MatchingTask {
     private String assumedJavaVersion() {
         if (JavaEnvUtils.isJavaVersion(JavaEnvUtils.JAVA_1_4)) {
             return JAVAC14;
-        } else if (JavaEnvUtils.isJavaVersion(JavaEnvUtils.JAVA_1_5)) {
-            return JAVAC15;
-        } else if (JavaEnvUtils.isJavaVersion(JavaEnvUtils.JAVA_1_6)) {
-            return JAVAC16;
-        } else if (JavaEnvUtils.isJavaVersion(JavaEnvUtils.JAVA_1_7)) {
-            return JAVAC17;
-        } else if (JavaEnvUtils.isJavaVersion(JavaEnvUtils.JAVA_1_8)) {
-            return JAVAC18;
-        } else if (JavaEnvUtils.isJavaVersion(JavaEnvUtils.JAVA_1_9)) {
-            return JAVAC19;
-        } else {
-            return CLASSIC;
         }
+        if (JavaEnvUtils.isJavaVersion(JavaEnvUtils.JAVA_1_5)) {
+            return JAVAC15;
+        }
+        if (JavaEnvUtils.isJavaVersion(JavaEnvUtils.JAVA_1_6)) {
+            return JAVAC16;
+        }
+        if (JavaEnvUtils.isJavaVersion(JavaEnvUtils.JAVA_1_7)) {
+            return JAVAC17;
+        }
+        if (JavaEnvUtils.isJavaVersion(JavaEnvUtils.JAVA_1_8)) {
+            return JAVAC18;
+        }
+        if (JavaEnvUtils.isAtLeastJavaVersion("10")) {
+            return JAVAC10_PLUS;
+        }
+        if (JavaEnvUtils.isJavaVersion(JavaEnvUtils.JAVA_9)) {
+            return JAVAC9;
+        }
+        return CLASSIC;
     }
 
     /**
@@ -202,7 +225,7 @@ public class Javac extends MatchingTask {
      * must make sure that your version of jikes supports the -source
      * switch.</p>
      *
-     * <p>Legal values are 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, and 5, 6, 7, 8 and 9
+     * <p>Legal values are 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, and any integral number bigger than 4
      * - by default, no -source argument will be used at all.</p>
      *
      * @param v  Value to assign to source.
@@ -272,6 +295,26 @@ public class Javac extends MatchingTask {
     }
 
     /**
+     * Set the destination directory into which the generated native
+     * header files should be placed.
+     * @param nhDir where to place generated native header files
+     * @since Ant 1.9.8
+     */
+    public void setNativeHeaderDir(final File nhDir) {
+        this.nativeHeaderDir = nhDir;
+    }
+
+    /**
+     * Gets the destination directory into which the generated native
+     * header files should be placed.
+     * @return where to place generated native header files
+     * @since Ant 1.9.8
+     */
+    public File getNativeHeaderDir() {
+        return nativeHeaderDir;
+    }
+
+    /**
      * Set the sourcepath to be used for this compilation.
      * @param sourcepath the source path
      */
@@ -308,6 +351,49 @@ public class Javac extends MatchingTask {
      */
     public void setSourcepathRef(final Reference r) {
         createSourcepath().setRefid(r);
+    }
+
+    /**
+     * Set the modulesourcepath to be used for this compilation.
+     * @param msp  the modulesourcepath
+     * @since 1.9.7
+     */
+    public void setModulesourcepath(final Path msp) {
+        if (moduleSourcepath == null) {
+            moduleSourcepath = msp;
+        } else {
+            moduleSourcepath.append(msp);
+        }
+    }
+
+    /**
+     * Gets the modulesourcepath to be used for this compilation.
+     * @return the modulesourcepath
+     * @since 1.9.7
+     */
+    public Path getModulesourcepath() {
+        return moduleSourcepath;
+    }
+
+    /**
+     * Adds a path to modulesourcepath.
+     * @return a modulesourcepath to be configured
+     * @since 1.9.7
+     */
+    public Path createModulesourcepath() {
+        if (moduleSourcepath == null) {
+            moduleSourcepath = new Path(getProject());
+        }
+        return moduleSourcepath.createPath();
+    }
+
+    /**
+     * Adds a reference to a modulesourcepath defined elsewhere.
+     * @param r a reference to a modulesourcepath
+     * @since 1.9.7
+     */
+    public void setModulesourcepathRef(final Reference r) {
+        createModulesourcepath().setRefid(r);
     }
 
     /**
@@ -348,6 +434,92 @@ public class Javac extends MatchingTask {
      */
     public void setClasspathRef(final Reference r) {
         createClasspath().setRefid(r);
+    }
+
+    /**
+     * Set the modulepath to be used for this compilation.
+     * @param mp an Ant Path object containing the modulepath.
+     * @since 1.9.7
+     */
+    public void setModulepath(final Path mp) {
+        if (modulepath == null) {
+            modulepath = mp;
+        } else {
+            modulepath.append(mp);
+        }
+    }
+
+    /**
+     * Gets the modulepath to be used for this compilation.
+     * @return the modulepath
+     * @since 1.9.7
+     */
+    public Path getModulepath() {
+        return modulepath;
+    }
+
+    /**
+     * Adds a path to the modulepath.
+     * @return a modulepath to be configured
+     * @since 1.9.7
+     */
+    public Path createModulepath() {
+        if (modulepath == null) {
+            modulepath = new Path(getProject());
+        }
+        return modulepath.createPath();
+    }
+
+    /**
+     * Adds a reference to a modulepath defined elsewhere.
+     * @param r a reference to a modulepath
+     * @since 1.9.7
+     */
+    public void setModulepathRef(final Reference r) {
+        createModulepath().setRefid(r);
+    }
+
+    /**
+     * Set the upgrademodulepath to be used for this compilation.
+     * @param ump an Ant Path object containing the upgrademodulepath.
+     * @since 1.9.7
+     */
+    public void setUpgrademodulepath(final Path ump) {
+        if (upgrademodulepath == null) {
+            upgrademodulepath = ump;
+        } else {
+            upgrademodulepath.append(ump);
+        }
+    }
+
+    /**
+     * Gets the upgrademodulepath to be used for this compilation.
+     * @return the upgrademodulepath
+     * @since 1.9.7
+     */
+    public Path getUpgrademodulepath() {
+        return upgrademodulepath;
+    }
+
+    /**
+     * Adds a path to the upgrademodulepath.
+     * @return an upgrademodulepath to be configured
+     * @since 1.9.7
+     */
+    public Path createUpgrademodulepath() {
+        if (upgrademodulepath == null) {
+            upgrademodulepath = new Path(getProject());
+        }
+        return upgrademodulepath.createPath();
+    }
+
+    /**
+     * Adds a reference to the upgrademodulepath defined elsewhere.
+     * @param r a reference to an upgrademodulepath
+     * @since 1.9.7
+     */
+    public void setUpgrademodulepathRef(final Reference r) {
+        createUpgrademodulepath().setRefid(r);
     }
 
     /**
@@ -606,7 +778,7 @@ public class Javac extends MatchingTask {
     /**
      * Sets the target VM that the classes will be compiled for. Valid
      * values depend on the compiler, for jdk 1.4 the valid values are
-     * "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", "1.9", "5", "6", "7", "8", "9".
+     * "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", "1.9" and any integral number bigger than 4
      * @param target the target VM
      */
     public void setTarget(final String target) {
@@ -621,6 +793,32 @@ public class Javac extends MatchingTask {
         return targetAttribute != null
             ? targetAttribute
             : getProject().getProperty(MagicNames.BUILD_JAVAC_TARGET);
+    }
+
+    /**
+     * Sets the version to use for the {@code --release} switch that
+     * combines {@code source}, {@code target} and setting the
+     * bootclasspath.
+     *
+     * Values depend on the compiler, for jdk 9 the valid values are
+     * "6", "7", "8", "9".
+     * @param release the value of the release attribute
+     * @since Ant 1.9.8
+     */
+    public void setRelease(final String release) {
+        this.release = release;
+    }
+
+    /**
+     * Gets the version to use for the {@code --release} switch that
+     * combines {@code source}, {@code target} and setting the
+     * bootclasspath.
+     *
+     * @return the value of the release attribute
+     * @since Ant 1.9.8
+     */
+    public String getRelease() {
+        return release;
     }
 
     /**
@@ -770,7 +968,9 @@ public class Javac extends MatchingTask {
     }
 
     private String getAltCompilerName(final String anImplementation) {
-        if (JAVAC19.equalsIgnoreCase(anImplementation)
+        if (JAVAC10_PLUS.equalsIgnoreCase(anImplementation)
+                || JAVAC9.equalsIgnoreCase(anImplementation)
+                || JAVAC19.equalsIgnoreCase(anImplementation)
                 || JAVAC18.equalsIgnoreCase(anImplementation)
                 || JAVAC17.equalsIgnoreCase(anImplementation)
                 || JAVAC16.equalsIgnoreCase(anImplementation)
@@ -785,7 +985,8 @@ public class Javac extends MatchingTask {
         }
         if (MODERN.equalsIgnoreCase(anImplementation)) {
             final String nextSelected = assumedJavaVersion();
-            if (JAVAC19.equalsIgnoreCase(nextSelected)
+            if (JAVAC10_PLUS.equalsIgnoreCase(anImplementation)
+                    || JAVAC9.equalsIgnoreCase(nextSelected)
                     || JAVAC18.equalsIgnoreCase(nextSelected)
                     || JAVAC17.equalsIgnoreCase(nextSelected)
                     || JAVAC16.equalsIgnoreCase(nextSelected)
@@ -878,6 +1079,7 @@ public class Javac extends MatchingTask {
      * The classpath to use when loading the compiler implementation
      * if it is not a built-in one.
      *
+     * @return Path
      * @since Ant 1.8.0
      */
     public Path createCompilerClasspath() {
@@ -886,12 +1088,14 @@ public class Javac extends MatchingTask {
 
     /**
      * Set the compiler adapter explicitly.
+     *
+     * @param adapter CompilerAdapter
      * @since Ant 1.8.0
      */
     public void add(final CompilerAdapter adapter) {
         if (nestedAdapter != null) {
-            throw new BuildException("Can't have more than one compiler"
-                                     + " adapter");
+            throw new BuildException(
+                "Can't have more than one compiler adapter");
         }
         nestedAdapter = adapter;
     }
@@ -901,6 +1105,7 @@ public class Javac extends MatchingTask {
      * matching package-info.java files that have been compiled but
      * didn't create class files themselves.
      *
+     * @param b boolean
      * @since Ant 1.8.3
      */
     public void setCreateMissingPackageInfoClass(final boolean b) {
@@ -917,20 +1122,12 @@ public class Javac extends MatchingTask {
         resetFileLists();
 
         // scan source directories and dest directory to build up
-        // compile lists
-        final String[] list = src.list();
-        for (int i = 0; i < list.length; i++) {
-            final File srcDir = getProject().resolveFile(list[i]);
-            if (!srcDir.exists()) {
-                throw new BuildException("srcdir \""
-                                         + srcDir.getPath()
-                                         + "\" does not exist!", getLocation());
-            }
-
-            final DirectoryScanner ds = this.getDirectoryScanner(srcDir);
-            final String[] files = ds.getIncludedFiles();
-
-            scanDir(srcDir, destDir != null ? destDir : srcDir, files);
+        // compile list
+        if (hasPath(src)) {
+            collectFileListFromSourcePath();
+        } else {
+            assert hasPath(moduleSourcepath) : "Either srcDir or moduleSourcepath must be given";
+            collectFileListFromModulePath();
         }
 
         compile();
@@ -946,7 +1143,7 @@ public class Javac extends MatchingTask {
      */
     protected void resetFileLists() {
         compileList = new File[0];
-        packageInfos = new HashMap<String, Long>();
+        packageInfos = new HashMap<>();
     }
 
     /**
@@ -961,8 +1158,8 @@ public class Javac extends MatchingTask {
         final GlobPatternMapper m = new GlobPatternMapper();
         final String[] extensions = findSupportedFileExtensions();
 
-        for (int i = 0; i < extensions.length; i++) {
-            m.setFrom(extensions[i]);
+        for (String extension : extensions) {
+            m.setFrom(extension);
             m.setTo("*.class");
             final SourceFileScanner sfs = new SourceFileScanner(this);
             final File[] newFiles = sfs.restrictAsFiles(files, srcDir, destDir, m);
@@ -976,6 +1173,47 @@ public class Javac extends MatchingTask {
                 System.arraycopy(newFiles, 0, newCompileList,
                                  compileList.length, newFiles.length);
                 compileList = newCompileList;
+            }
+        }
+    }
+
+    private void collectFileListFromSourcePath() {
+        final String[] list = src.list();
+        for (int i = 0; i < list.length; i++) {
+            final File srcDir = getProject().resolveFile(list[i]);
+            if (!srcDir.exists()) {
+                throw new BuildException("srcdir \""
+                                         + srcDir.getPath()
+                                         + "\" does not exist!", getLocation());
+            }
+
+            final DirectoryScanner ds = this.getDirectoryScanner(srcDir);
+            final String[] files = ds.getIncludedFiles();
+
+            scanDir(srcDir, destDir != null ? destDir : srcDir, files);
+        }
+    }
+
+    private void collectFileListFromModulePath() {
+        final FileUtils fu = FileUtils.getFileUtils();
+        for (String pathElement : moduleSourcepath.list()) {
+            boolean valid = false;
+            for (Map.Entry<String, Collection<File>> modules : resolveModuleSourcePathElement(
+                getProject().getBaseDir(), pathElement).entrySet()) {
+                final String moduleName = modules.getKey();
+                for (File srcDir : modules.getValue()) {
+                    if (srcDir.exists()) {
+                        valid = true;
+                        final DirectoryScanner ds = getDirectoryScanner(srcDir);
+                        final String[] files = ds.getIncludedFiles();
+                        scanDir(srcDir, fu.resolveFile(destDir, moduleName), files);
+                    }
+                }
+            }
+            if (!valid) {
+                throw new BuildException("modulesourcepath \""
+                                         + pathElement
+                                         + "\" does not exist!", getLocation());
             }
         }
     }
@@ -1020,12 +1258,13 @@ public class Javac extends MatchingTask {
      * @param compilerImpl the name of the compiler implementation
      * @return true if compilerImpl is "modern", "classic",
      * "javac1.1", "javac1.2", "javac1.3", "javac1.4", "javac1.5",
-     * "javac1.6", "javac1.7", "javac1.8" or "javac1.9".
+     * "javac1.6", "javac1.7", "javac1.8", "javac1.9", "javac9" or "javac10+".
      */
     protected boolean isJdkCompiler(final String compilerImpl) {
         return MODERN.equals(compilerImpl)
             || CLASSIC.equals(compilerImpl)
-            || JAVAC19.equals(compilerImpl)
+            || JAVAC10_PLUS.equals(compilerImpl)
+            || JAVAC9.equals(compilerImpl)
             || JAVAC18.equals(compilerImpl)
             || JAVAC17.equals(compilerImpl)
             || JAVAC16.equals(compilerImpl)
@@ -1072,8 +1311,8 @@ public class Javac extends MatchingTask {
             if (isJdkCompiler(compilerImpl)) {
                 compilerImpl = EXTJAVAC;
             } else {
-                log("Since compiler setting isn't classic or modern, "
-                    + "ignoring fork setting.", Project.MSG_WARN);
+                log("Since compiler setting isn't classic or modern, ignoring fork setting.",
+                    Project.MSG_WARN);
             }
         }
         return compilerImpl;
@@ -1106,25 +1345,34 @@ public class Javac extends MatchingTask {
      * @exception BuildException if an error occurs
      */
     protected void checkParameters() throws BuildException {
-        if (src == null) {
-            throw new BuildException("srcdir attribute must be set!",
+        if (hasPath(src)) {
+            if (hasPath(moduleSourcepath)) {
+                throw new BuildException("modulesourcepath cannot be combined with srcdir attribute!",
+                    getLocation());
+            }
+        } else if (hasPath(moduleSourcepath)) {
+            if (hasPath(src) || hasPath(compileSourcepath)) {
+                throw new BuildException("modulesourcepath cannot be combined with srcdir or sourcepath !",
+                    getLocation());
+            }
+            if (destDir == null) {
+                throw new BuildException("modulesourcepath requires destdir attribute to be set!",
                                      getLocation());
-        }
-        if (src.size() == 0) {
-            throw new BuildException("srcdir attribute must be set!",
-                                     getLocation());
+            }
+        } else {
+            throw new BuildException("either srcdir or modulesourcepath attribute must be set!",
+                    getLocation());
         }
 
         if (destDir != null && !destDir.isDirectory()) {
             throw new BuildException("destination directory \""
                                      + destDir
-                                     + "\" does not exist "
-                                     + "or is not a directory", getLocation());
+                                     + "\" does not exist or is not a directory", getLocation());
         }
         if (includeAntRuntime == null && getProject().getProperty("build.sysclasspath") == null) {
-            log(getLocation() + "warning: 'includeantruntime' was not set, " +
-                    "defaulting to build.sysclasspath=last; set to false for repeatable builds",
-                    Project.MSG_WARN);
+            log(getLocation()
+                + "warning: 'includeantruntime' was not set, defaulting to build.sysclasspath=last; set to false for repeatable builds",
+                Project.MSG_WARN);
         }
     }
 
@@ -1142,9 +1390,8 @@ public class Javac extends MatchingTask {
                 + (destDir != null ? " to " + destDir : ""));
 
             if (listFiles) {
-                for (int i = 0; i < compileList.length; i++) {
-                  final String filename = compileList[i].getAbsolutePath();
-                  log(filename);
+                for (File element : compileList) {
+                  log(element.getAbsolutePath());
                 }
             }
 
@@ -1179,9 +1426,8 @@ public class Javac extends MatchingTask {
                 }
                 if (failOnError) {
                     throw new BuildException(FAIL_MSG, getLocation());
-                } else {
-                    log(FAIL_MSG, Project.MSG_ERR);
                 }
+                log(FAIL_MSG, Project.MSG_ERR);
             }
         }
     }
@@ -1203,9 +1449,8 @@ public class Javac extends MatchingTask {
     }
 
     private void lookForPackageInfos(final File srcDir, final File[] newFiles) {
-        for (int i = 0; i < newFiles.length; i++) {
-            final File f = newFiles[i];
-            if (!f.getName().equals("package-info.java")) {
+        for (File f : newFiles) {
+            if (!"package-info.java".equals(f.getName())) {
                 continue;
             }
             final String path = FILE_UTILS.removeLeadingPath(srcDir, f).
@@ -1216,7 +1461,7 @@ public class Javac extends MatchingTask {
                 continue;
             }
             final String pkg = path.substring(0, path.length() - suffix.length());
-            packageInfos.put(pkg, new Long(f.lastModified()));
+            packageInfos.put(pkg, Long.valueOf(f.lastModified()));
         }
     }
 
@@ -1226,7 +1471,7 @@ public class Javac extends MatchingTask {
      * @see <a href="https://issues.apache.org/bugzilla/show_bug.cgi?id=43114">Bug #43114</a>
      */
     private void generateMissingPackageInfoClasses(final File dest) throws IOException {
-        for (final Entry<String, Long> entry : packageInfos.entrySet()) {
+        for (final Map.Entry<String, Long> entry : packageInfos.entrySet()) {
             final String pkg = entry.getKey();
             final Long sourceLastMod = entry.getValue();
             final File pkgBinDir = new File(dest, pkg.replace('/', File.separatorChar));
@@ -1236,8 +1481,7 @@ public class Javac extends MatchingTask {
                 continue;
             }
             log("Creating empty " + pkgInfoClass);
-            final OutputStream os = new FileOutputStream(pkgInfoClass);
-            try {
+            try (OutputStream os = Files.newOutputStream(pkgInfoClass.toPath())) {
                 os.write(PACKAGE_INFO_CLASS_HEADER);
                 final byte[] name = pkg.getBytes("UTF-8");
                 final int length = name.length + /* "/package-info" */ 13;
@@ -1245,9 +1489,220 @@ public class Javac extends MatchingTask {
                 os.write((byte) length % 256);
                 os.write(name);
                 os.write(PACKAGE_INFO_CLASS_FOOTER);
-            } finally {
-                os.close();
             }
+        }
+    }
+
+    /**
+     * Checks if a path exists and is non empty.
+     * @param path to be checked
+     * @return true if the path is non <code>null</code> and non empty.
+     * @since 1.9.7
+     */
+    private static boolean hasPath(final Path path) {
+        return path != null && !path.isEmpty();
+    }
+
+    /**
+     * Resolves the modulesourcepath element possibly containing groups
+     * and module marks to module names and source roots.
+     * @param projectDir the project directory
+     * @param element the modulesourcepath elemement
+     * @return a mapping from module name to module source roots
+     * @since 1.9.7
+     */
+    private static Map<String,Collection<File>> resolveModuleSourcePathElement(
+            final File projectDir,
+            final String element) {
+        final Map<String,Collection<File>> result = new TreeMap<String, Collection<File>>();
+        for (CharSequence resolvedElement : expandGroups(element)) {
+            findModules(projectDir, resolvedElement.toString(), result);
+        }
+        return result;
+    }
+
+    /**
+     * Expands the groups in the modulesourcepath entry to alternatives.
+     * <p>
+     * The <code>'*'</code> is a token representing the name of any of the modules in the compilation module set.
+     * The <code>'{' ... ',' ... '}'</code> express alternates for expansion.
+     * An example of the modulesourcepath entry is <code>src/&#42;/{linux,share}/classes</code>
+     * </p>
+     * @param element the entry to expand groups in
+     * @return the possible alternatives
+     * @since 1.9.7
+     */
+    private static Collection<? extends CharSequence> expandGroups(
+            final CharSequence element) {
+        List<StringBuilder> result = new ArrayList<>();
+        result.add(new StringBuilder());
+        StringBuilder resolved = new StringBuilder();
+        for (int i = 0; i < element.length(); i++) {
+            final char c = element.charAt(i);
+            switch (c) {
+                case GROUP_START_MARK:
+                    final int end = getGroupEndIndex(element, i);
+                    if (end < 0) {
+                        throw new BuildException(String.format(
+                                "Unclosed group %s, starting at: %d",
+                                element,
+                                i));
+                    }
+                    final Collection<? extends CharSequence> parts = resolveGroup(element.subSequence(i+1, end));
+                    switch (parts.size()) {
+                        case 0:
+                            break;
+                        case 1:
+                            resolved.append(parts.iterator().next());
+                            break;
+                        default:
+                            final List<StringBuilder> oldRes = result;
+                            result = new ArrayList<>(oldRes.size() * parts.size());
+                            for (CharSequence part : parts) {
+                                for (CharSequence prefix : oldRes) {
+                                    result.add(new StringBuilder(prefix).append(resolved).append(part));
+                                }
+                            }
+                            resolved = new StringBuilder();
+                    }
+                    i = end;
+                    break;
+                default:
+                    resolved.append(c);
+            }
+        }
+        for (StringBuilder prefix : result) {
+            prefix.append(resolved);
+        }
+        return result;
+    }
+
+    /**
+     * Resolves the group to alternatives.
+     * @param group the group to resolve
+     * @return the possible alternatives
+     * @since 1.9.7
+     */
+    private static Collection<? extends CharSequence> resolveGroup(final CharSequence group) {
+        final Collection<CharSequence> result = new ArrayList<>();
+        int start = 0;
+        int depth = 0;
+        for (int i = 0; i < group.length(); i++) {
+            final char c = group.charAt(i);
+            switch (c) {
+                case GROUP_START_MARK:
+                    depth++;
+                    break;
+                case GROUP_END_MARK:
+                    depth--;
+                    break;
+                case GROUP_SEP_MARK:
+                    if (depth == 0) {
+                        result.addAll(expandGroups(group.subSequence(start, i)));
+                        start = i + 1;
+                    }
+                    break;
+            }
+        }
+        result.addAll(expandGroups(group.subSequence(start, group.length())));
+        return result;
+    }
+
+    /**
+     * Finds the index of an enclosing brace of the group.
+     * @param element the element to find the enclosing brace in
+     * @param start the index of the opening brace.
+     * @return return the index of an enclosing brace of the group or -1 if not found
+     * @since 1.9.7
+     */
+    private static int getGroupEndIndex(
+            final CharSequence element,
+            final int start) {
+        int depth = 0;
+        for (int i = start; i < element.length(); i++) {
+            final char c = element.charAt(i);
+            switch (c) {
+                case GROUP_START_MARK:
+                    depth++;
+                    break;
+                case GROUP_END_MARK:
+                    depth--;
+                    if (depth == 0) {
+                        return i;
+                    }
+                    break;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Finds modules in the expanded modulesourcepath entry.
+     * @param root the project root
+     * @param pattern the expanded modulesourcepath entry
+     * @param collector the map to put modules into
+     * @since 1.9.7
+     */
+    private static void findModules(
+            final File root,
+            String pattern,
+            final Map<String,Collection<File>> collector) {
+        pattern = pattern
+                .replace('/', File.separatorChar)
+                .replace('\\', File.separatorChar);
+        final int startIndex = pattern.indexOf(MODULE_MARKER);
+        if (startIndex == -1) {
+            findModules(root, pattern, null, collector);
+            return;
+        }
+        if (startIndex == 0) {
+            throw new BuildException("The modulesourcepath entry must be a folder.");
+        }
+        final int endIndex = startIndex + MODULE_MARKER.length();
+        if (pattern.charAt(startIndex - 1) != File.separatorChar) {
+                throw new BuildException("The module mark must be preceded by separator");
+        }
+        if (endIndex < pattern.length() && pattern.charAt(endIndex) != File.separatorChar) {
+            throw new BuildException("The module mark must be followed by separator");
+        }
+        if (pattern.indexOf(MODULE_MARKER, endIndex) != -1) {
+            throw new BuildException("The modulesourcepath entry must contain at most one module mark");
+        }
+        final String pathToModule = pattern.substring(0, startIndex);
+        final String pathInModule = endIndex == pattern.length()
+                ? null : pattern.substring(endIndex + 1);  //+1 the separator
+        findModules(root, pathToModule, pathInModule, collector);
+    }
+
+    /**
+     * Finds modules in the expanded modulesourcepath entry.
+     * @param root the project root
+     * @param pathToModule the path to modules folder
+     * @param pathInModule the path in module to source folder
+     * @param collector the map to put modules into
+     * @since 1.9.7
+     */
+    private static void findModules(
+        final File root,
+        final String pathToModule,
+        final String pathInModule,
+        final Map<String,Collection<File>> collector) {
+        final FileUtils fu = FileUtils.getFileUtils();
+        final File f = fu.resolveFile(root, pathToModule);
+        if (!f.isDirectory()) {
+            return;
+        }
+        for (File module : f.listFiles(File::isDirectory)) {
+            final String moduleName = module.getName();
+            final File moduleSourceRoot = pathInModule == null ?
+                    module :
+                    new File(module, pathInModule);
+            Collection<File> moduleRoots = collector.get(moduleName);
+            if (moduleRoots == null) {
+                moduleRoots = new ArrayList<>();
+                collector.put(moduleName, moduleRoots);
+            }
+            moduleRoots.add(moduleSourceRoot);
         }
     }
 

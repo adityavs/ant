@@ -125,7 +125,7 @@ public class ExecTask extends Task {
      */
     public void setTimeout(Integer value) {
         setTimeout(
-            (Long) ((value == null) ? null : new Long(value.intValue())));
+            (value == null) ? null : Long.valueOf(value.intValue()));
     }
 
     /**
@@ -155,6 +155,7 @@ public class ExecTask extends Task {
 
     /**
      * List of operating systems on which the command may be executed.
+     * @return String
      * @since Ant 1.8.0
      */
     public final String getOs() {
@@ -167,8 +168,7 @@ public class ExecTask extends Task {
      * @ant.attribute ignore="true"
      */
     public void setCommand(Commandline cmdl) {
-        log("The command attribute is deprecated.\n"
-            + "Please use the executable attribute and nested arg elements.",
+        log("The command attribute is deprecated.\nPlease use the executable attribute and nested arg elements.",
             Project.MSG_WARN);
         this.cmdl = cmdl;
     }
@@ -191,8 +191,8 @@ public class ExecTask extends Task {
      */
     public void setInput(File input) {
         if (inputString != null) {
-            throw new BuildException("The \"input\" and \"inputstring\" "
-                + "attributes cannot both be specified");
+            throw new BuildException(
+                "The \"input\" and \"inputstring\" attributes cannot both be specified");
         }
         this.input = input;
         incompatibleWithSpawn = true;
@@ -205,8 +205,8 @@ public class ExecTask extends Task {
      */
     public void setInputString(String inputString) {
         if (input != null) {
-            throw new BuildException("The \"input\" and \"inputstring\" "
-                + "attributes cannot both be specified");
+            throw new BuildException(
+                "The \"input\" and \"inputstring\" attributes cannot both be specified");
         }
         this.inputString = inputString;
         incompatibleWithSpawn = true;
@@ -405,6 +405,7 @@ public class ExecTask extends Task {
 
     /**
      * Restrict this execution to a single OS Family
+     * @return the family to restrict to.
      * @since Ant 1.8.0
      */
     public final String getOsFamily() {
@@ -484,6 +485,7 @@ public class ExecTask extends Task {
      * <li>this list is not exhaustive or limitative</li>
      * </ul>
      */
+    @Override
     public void execute() throws BuildException {
         // Quick fail if this is not a valid OS for the command
         if (!isValidOs()) {
@@ -633,9 +635,8 @@ public class ExecTask extends Task {
                 String msg = "Timeout: killed the sub-process";
                 if (failOnError) {
                     throw new BuildException(msg);
-                } else {
-                    log(msg, Project.MSG_WARN);
                 }
+                log(msg, Project.MSG_WARN);
             }
             maybeSetResultPropertyValue(returnCode);
             redirector.complete();
@@ -643,9 +644,8 @@ public class ExecTask extends Task {
                 if (failOnError) {
                     throw new BuildException(getTaskType() + " returned: "
                         + returnCode, getLocation());
-                } else {
-                    log("Result: " + returnCode, Project.MSG_ERR);
                 }
+                log("Result: " + returnCode, Project.MSG_ERR);
             }
         } else {
             exe.spawn();
@@ -672,9 +672,8 @@ public class ExecTask extends Task {
             if (failIfExecFails) {
                 throw new BuildException("Execute failed: " + e.toString(), e,
                                          getLocation());
-            } else {
-                log("Execute failed: " + e.toString(), Project.MSG_ERR);
             }
+            log("Execute failed: " + e.toString(), Project.MSG_ERR);
         } finally {
             // close the output file if required
             logFlush();

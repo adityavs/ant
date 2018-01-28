@@ -137,23 +137,22 @@ public class Date implements ResourceSelector {
             throw new BuildException(MILLIS_OR_DATETIME);
         }
         if (millis == null) {
-            DateFormat df = ((pattern == null)
-                ? DateFormat.getDateTimeInstance(
-                    DateFormat.SHORT, DateFormat.SHORT, Locale.US)
-                : new SimpleDateFormat(pattern));
+            String p = pattern == null ? "MM/dd/yyyy hh:mm a" : pattern;
+            DateFormat df = pattern == null
+                ? new SimpleDateFormat(p, Locale.US)
+                : new SimpleDateFormat(p);
             try {
                 long m = df.parse(dateTime).getTime();
                 if (m < 0) {
-                    throw new BuildException("Date of " + dateTime
-                        + " results in negative milliseconds value"
-                        + " relative to epoch (January 1, 1970, 00:00:00 GMT).");
+                    throw new BuildException(
+                        "Date of %s results in negative milliseconds value relative to epoch (January 1, 1970, 00:00:00 GMT).",
+                        dateTime);
                 }
                 setMillis(m);
             } catch (ParseException pe) {
-                throw new BuildException("Date of " + dateTime
-                        + " Cannot be parsed correctly. It should be in"
-                        + (pattern == null
-                        ? " MM/DD/YYYY HH:MM AM_PM" : pattern) + " format.");
+                throw new BuildException(
+                    "Date of %s Cannot be parsed correctly. It should be in '%s' format.",
+                    dateTime, p);
             }
         }
         return when.evaluate(r.getLastModified(), millis.longValue(), granularity);

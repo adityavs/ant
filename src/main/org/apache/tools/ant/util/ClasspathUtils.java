@@ -107,8 +107,9 @@ public class ClasspathUtils {
         String pathId = ref.getRefId();
         Object path = p.getReference(pathId);
         if (!(path instanceof Path)) {
-            throw new BuildException("The specified classpathref " + pathId
-                    + " does not reference a Path.");
+            throw new BuildException(
+                "The specified classpathref %s does not reference a Path.",
+                pathId);
         }
         String loaderId = MagicNames.REFID_CLASSPATH_LOADER_PREFIX + pathId;
         return getClassLoaderForPath(p, (Path) path, loaderId, reverseLoader);
@@ -174,8 +175,9 @@ public class ClasspathUtils {
         if (loaderId != null && reuseLoader) {
             Object reusedLoader = p.getReference(loaderId);
             if (reusedLoader != null && !(reusedLoader instanceof ClassLoader)) {
-                throw new BuildException("The specified loader id " + loaderId
-                        + " does not reference a class loader");
+                throw new BuildException(
+                    "The specified loader id %s does not reference a class loader",
+                    loaderId);
             }
             cl = (ClassLoader) reusedLoader;
         }
@@ -214,9 +216,8 @@ public class ClasspathUtils {
     /**
      * Creates a fresh object instance of the specified classname.
      *
-     * <p> This uses the userDefinedLoader to load the specified class,
-     * and then makes an instance using the default no-argument constructor.
-     * </p>
+     * <p>This uses the userDefinedLoader to load the specified class,
+     * and then makes an instance using the default no-argument constructor.</p>
      *
      * @param className the full qualified class name to load.
      * @param userDefinedLoader the classloader to use.
@@ -230,10 +231,10 @@ public class ClasspathUtils {
     /**
      * Creates a fresh object instance of the specified classname.
      *
-     * <p> This uses the userDefinedLoader to load the specified class,
-     * and then makes an instance using the default no-argument constructor.
-     * </p>
+     * <p>This uses the userDefinedLoader to load the specified class,
+     * and then makes an instance using the default no-argument constructor.</p>
      *
+     * @param <T> desired type
      * @param className the full qualified class name to load.
      * @param userDefinedLoader the classloader to use.
      * @param expectedType the Class that the result should be assignment
@@ -243,14 +244,16 @@ public class ClasspathUtils {
      * @throws BuildException when loading or instantiation failed.
      * @since Ant 1.7
      */
-    public static Object newInstance(String className, ClassLoader userDefinedLoader,
-            Class expectedType) {
+    public static <T> T newInstance(String className, ClassLoader userDefinedLoader,
+            Class<T> expectedType) {
         try {
-            Class clazz = Class.forName(className, true, userDefinedLoader);
-            Object o = clazz.newInstance();
+            @SuppressWarnings("unchecked")
+            Class<T> clazz = (Class<T>) Class.forName(className, true, userDefinedLoader);
+            T o = clazz.newInstance();
             if (!expectedType.isInstance(o)) {
-                throw new BuildException("Class of unexpected Type: " + className + " expected :"
-                        + expectedType);
+                throw new BuildException(
+                    "Class of unexpected Type: %s expected : %s", className,
+                    expectedType);
             }
             return o;
         } catch (ClassNotFoundException e) {
@@ -270,7 +273,7 @@ public class ClasspathUtils {
     /**
      * Obtains a delegate that helps out with classic classpath configuration.
      *
-     * @param component your projectComponent that needs the assistence
+     * @param component your projectComponent that needs the assistance
      * @return the helper, delegate.
      * @see ClasspathUtils.Delegate
      */
@@ -286,6 +289,9 @@ public class ClasspathUtils {
         return p.getProperty(REUSE_LOADER_REF) != null;
     }
 
+    private ClasspathUtils() {
+    }
+
     /**
      * Delegate that helps out any specific ProjectComponent that needs
      * dynamic classloading.
@@ -294,13 +300,13 @@ public class ClasspathUtils {
      * Classes and instantiate them often expose the following ant syntax
      * sugar: </p>
      *
-     * <ul><li> nested &lt;classpath&gt; </li>
-     * <li> attribute @classpathref </li>
-     * <li> attribute @classname </li></ul>
+     * <ul><li>nested &lt;classpath&gt;</li>
+     * <li>attribute @classpathref</li>
+     * <li>attribute @classname</li></ul>
      *
-     * <p> This class functions as a delegate handling the configuration
+     * <p>This class functions as a delegate handling the configuration
      * issues for this recurring pattern.  Its usage pattern, as the name
-     * suggests, is delegation rather than inheritance. </p>
+     * suggests, is delegation rather than inheritance.</p>
      *
      * @since Ant 1.6
      */
@@ -457,7 +463,5 @@ public class ClasspathUtils {
             return reverseLoader;
         }
 
-        //TODO no methods yet for getClassname
-        //TODO no method for newInstance using a reverse-classloader
     }
 }

@@ -23,12 +23,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.Vector;
+import java.util.stream.Collectors;
 
+import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.Rmic;
 import org.apache.tools.ant.types.Commandline;
 import org.apache.tools.ant.types.Path;
 import org.apache.tools.ant.util.FileNameMapper;
+import org.apache.tools.ant.util.JavaEnvUtils;
 import org.apache.tools.ant.util.StringUtils;
 
 /**
@@ -40,8 +43,6 @@ import org.apache.tools.ant.util.StringUtils;
  */
 public abstract class DefaultRmicAdapter implements RmicAdapter {
 
-    private Rmic attributes;
-    private FileNameMapper mapper;
     private static final Random RAND = new Random();
     /** suffix denoting a stub file: {@value} */
     public static final String RMI_STUB_SUFFIX = "_Stub";
@@ -69,16 +70,14 @@ public abstract class DefaultRmicAdapter implements RmicAdapter {
      */
     public static final String STUB_OPTION_COMPAT = "compat";
 
-    /**
-     * Default constructor
-     */
-    public DefaultRmicAdapter() {
-    }
+    private Rmic attributes;
+    private FileNameMapper mapper;
 
     /**
      * Sets Rmic attributes
      * @param attributes the rmic attributes
      */
+    @Override
     public void setRmic(final Rmic attributes) {
         this.attributes = attributes;
         mapper = new RmicFileNameMapper();
@@ -133,6 +132,7 @@ public abstract class DefaultRmicAdapter implements RmicAdapter {
      * </ul>
      * @return a <code>FileNameMapper</code>
      */
+    @Override
     public FileNameMapper getMapper() {
         return mapper;
     }
@@ -141,6 +141,7 @@ public abstract class DefaultRmicAdapter implements RmicAdapter {
      * Gets the CLASSPATH this rmic process will use.
      * @return the classpath
      */
+    @Override
     public Path getClasspath() {
         return getCompileClasspath();
     }
@@ -248,6 +249,8 @@ public abstract class DefaultRmicAdapter implements RmicAdapter {
         compilerArgs = preprocessCompilerArgs(compilerArgs);
         cmd.addArguments(compilerArgs);
 
+        verifyArguments(cmd);
+
         logAndAddFilesToCompile(cmd);
         return cmd;
      }
@@ -307,17 +310,16 @@ public abstract class DefaultRmicAdapter implements RmicAdapter {
      */
     protected String[] filterJvmCompilerArgs(String[] compilerArgs) {
         int len = compilerArgs.length;
-        List args = new ArrayList(len);
+        List<String> args = new ArrayList<>(len);
         for (int i = 0; i < len; i++) {
             String arg = compilerArgs[i];
-            if (!arg.startsWith("-J")) {
-                args.add(arg);
-            } else {
+            if (arg.startsWith("-J")) {
                 attributes.log("Dropping " + arg + " from compiler arguments");
+            } else {
+                args.add(arg);
             }
         }
-        int count = args.size();
-        return (String[]) args.toArray(new String[count]);
+        return args.toArray(new String[args.size()]);
     }
 
 
@@ -327,26 +329,30 @@ public abstract class DefaultRmicAdapter implements RmicAdapter {
      * @param cmd the commandline args
      */
     protected void logAndAddFilesToCompile(Commandline cmd) {
-        Vector compileList = attributes.getCompileList();
+        Vector<String> compileList = attributes.getCompileList();
 
         attributes.log("Compilation " + cmd.describeArguments(),
                        Project.MSG_VERBOSE);
 
-        StringBuffer niceSourceList = new StringBuffer("File");
-        int cListSize = compileList.size();
-        if (cListSize != 1) {
-            niceSourceList.append("s");
-        }
-        niceSourceList.append(" to be compiled:");
+        StringBuilder niceSourceList =
+            new StringBuilder(compileList.size() == 1 ? "File" : "Files")
+                .append(" to be compiled:");
 
-        for (int i = 0; i < cListSize; i++) {
-            String arg = (String) compileList.elementAt(i);
-            cmd.createArgument().setValue(arg);
-            niceSourceList.append("    ");
-            niceSourceList.append(arg);
-        }
+        niceSourceList.append(
+            compileList.stream().peek(arg -> cmd.createArgument().setValue(arg))
+                .collect(Collectors.joining("    ")));
 
         attributes.log(niceSourceList.toString(), Project.MSG_VERBOSE);
+    }
+
+    private void verifyArguments(Commandline cmd) {
+        if (JavaEnvUtils.isAtLeastJavaVersion(JavaEnvUtils.JAVA_9)) {
+            for (String arg : cmd.getArguments()) {
+                if ("-Xnew".equals(arg)) {
+                    throw new BuildException("JDK9 has removed support for -Xnew");
+                }
+            }
+        }
     }
 
     /**
@@ -366,20 +372,20 @@ public abstract class DefaultRmicAdapter implements RmicAdapter {
      */
     private class RmicFileNameMapper implements FileNameMapper {
 
-        RmicFileNameMapper() {
-        }
-
         /**
          * Empty implementation.
          */
+        @Override
         public void setFrom(String s) {
         }
         /**
          * Empty implementation.
          */
+        @Override
         public void setTo(String s) {
         }
 
+        @Override
         public String[] mapFileName(String name) {
             if (name == null
                 || !name.endsWith(".class")
@@ -424,7 +430,7 @@ public abstract class DefaultRmicAdapter implements RmicAdapter {
             } else if (!attributes.getIdl()) {
                 int lastSlash = base.lastIndexOf(File.separatorChar);
 
-                String dirname = "";
+                String dirname;
                 /*
                  * I know, this is not necessary, but I prefer it explicit (SB)
                  */
@@ -432,6 +438,7 @@ public abstract class DefaultRmicAdapter implements RmicAdapter {
                 if (lastSlash == -1) {
                     // no package
                     index = 0;
+                    dirname = "";
                 } else {
                     index = lastSlash + 1;
                     dirname = base.substring(0, index);
@@ -440,7 +447,7 @@ public abstract class DefaultRmicAdapter implements RmicAdapter {
                 String filename = base.substring(index);
 
                 try {
-                    Class c = attributes.getLoader().loadClass(classname);
+                    Class<?> c = attributes.getLoader().loadClass(classname);
 
                     if (c.isInterface()) {
                         // only stub, no tie
@@ -453,14 +460,15 @@ public abstract class DefaultRmicAdapter implements RmicAdapter {
                          * stub is derived from implementation,
                          * tie from interface name.
                          */
-                        Class interf = attributes.getRemoteInterface(c);
+                        Class<?> interf = attributes.getRemoteInterface(c);
                         String iName = interf.getName();
-                        String iDir = "";
-                        int iIndex = -1;
-                        int lastDot = iName.lastIndexOf(".");
+                        String iDir;
+                        int iIndex;
+                        int lastDot = iName.lastIndexOf('.');
                         if (lastDot == -1) {
                             // no package
                             iIndex = 0;
+                            iDir = "";
                         } else {
                             iIndex = lastDot + 1;
                             iDir = iName.substring(0, iIndex);

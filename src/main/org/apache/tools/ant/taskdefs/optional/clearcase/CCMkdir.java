@@ -29,6 +29,7 @@ import org.apache.tools.ant.types.Commandline;
  * <p>
  * The following attributes are interpreted:
  * <table border="1">
+ *   <caption>Task attributes</caption>
  *   <tr>
  *     <th>Attribute</th>
  *     <th>Values</th>
@@ -63,6 +64,23 @@ import org.apache.tools.ant.types.Commandline;
  *
  */
 public class CCMkdir extends ClearCase {
+    /**
+     * -c flag -- comment to attach to the directory
+     */
+    public static final String FLAG_COMMENT = "-c";
+    /**
+     * -cfile flag -- file containing a comment to attach to the directory
+     */
+    public static final String FLAG_COMMENTFILE = "-cfile";
+    /**
+     * -nc flag -- no comment is specified
+     */
+    public static final String FLAG_NOCOMMENT = "-nc";
+    /**
+     * -nco flag -- do not checkout element after creation
+     */
+    public static final String FLAG_NOCHECKOUT = "-nco";
+
     private String  mComment = null;
     private String  mCfile   = null;
     private boolean mNoco    = false;
@@ -74,10 +92,10 @@ public class CCMkdir extends ClearCase {
      * to execute the command line.
      * @throws BuildException if the command fails and failonerr is set to true
      */
+    @Override
     public void execute() throws BuildException {
         Commandline commandLine = new Commandline();
         Project aProj = getProject();
-        int result = 0;
 
         // Default the viewpath to basedir if it is not specified
         if (getViewPath() == null) {
@@ -96,10 +114,10 @@ public class CCMkdir extends ClearCase {
             getProject().log("Ignoring any errors that occur for: "
                     + getViewPathBasename(), Project.MSG_VERBOSE);
         }
-        result = run(commandLine);
+        int result = run(commandLine);
         if (Execute.isFailure(result) && getFailOnErr()) {
-            String msg = "Failed executing: " + commandLine.toString();
-            throw new BuildException(msg, getLocation());
+            throw new BuildException("Failed executing: " + commandLine,
+                getLocation());
         }
     }
 
@@ -110,13 +128,11 @@ public class CCMkdir extends ClearCase {
         if (getComment() != null) {
             // -c
             getCommentCommand(cmd);
+        } else if (getCommentFile() != null) {
+            // -cfile
+            getCommentFileCommand(cmd);
         } else {
-            if (getCommentFile() != null) {
-                // -cfile
-                getCommentFileCommand(cmd);
-            } else {
-                cmd.createArgument().setValue(FLAG_NOCOMMENT);
-            }
+            cmd.createArgument().setValue(FLAG_NOCOMMENT);
         }
         if (getNoCheckout()) {
             // -nco
@@ -180,7 +196,6 @@ public class CCMkdir extends ClearCase {
         return mNoco;
     }
 
-
     /**
      * Get the 'comment' command
      *
@@ -217,21 +232,4 @@ public class CCMkdir extends ClearCase {
         }
     }
 
-    /**
-     * -c flag -- comment to attach to the directory
-     */
-    public static final String FLAG_COMMENT = "-c";
-    /**
-     * -cfile flag -- file containing a comment to attach to the directory
-     */
-    public static final String FLAG_COMMENTFILE = "-cfile";
-    /**
-     * -nc flag -- no comment is specified
-     */
-    public static final String FLAG_NOCOMMENT = "-nc";
-    /**
-     * -nco flag -- do not checkout element after creation
-     */
-    public static final String FLAG_NOCHECKOUT = "-nco";
 }
-

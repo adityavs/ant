@@ -18,15 +18,15 @@
 package org.apache.tools.ant.taskdefs.cvslib;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.nio.file.Files;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
-import java.util.Enumeration;
+import java.util.List;
 import java.util.Properties;
 import java.util.Vector;
 
@@ -35,43 +35,30 @@ import org.apache.tools.ant.DirectoryScanner;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.AbstractCvsTask;
 import org.apache.tools.ant.types.FileSet;
-import org.apache.tools.ant.util.FileUtils;
 
 /**
  * Examines the output of cvs log and group related changes together.
  *
  * It produces an XML output representing the list of changes.
  * <pre>
- * <font color=#0000ff>&lt;!-- Root element --&gt;</font>
- * <font color=#6a5acd>&lt;!ELEMENT</font> changelog <font color=#ff00ff>
- * (entry</font><font color=#ff00ff>+</font><font color=#ff00ff>)
- * </font><font color=#6a5acd>&gt;</font>
- * <font color=#0000ff>&lt;!-- CVS Entry --&gt;</font>
- * <font color=#6a5acd>&lt;!ELEMENT</font> entry <font color=#ff00ff>
- * (date,author,file</font><font color=#ff00ff>+</font><font color=#ff00ff>,msg)
- * </font><font color=#6a5acd>&gt;</font>
- * <font color=#0000ff>&lt;!-- Date of cvs entry --&gt;</font>
- * <font color=#6a5acd>&lt;!ELEMENT</font> date <font color=#ff00ff>(#PCDATA)
- * </font><font color=#6a5acd>&gt;</font>
- * <font color=#0000ff>&lt;!-- Author of change --&gt;</font>
- * <font color=#6a5acd>&lt;!ELEMENT</font> author <font color=#ff00ff>(#PCDATA)
- * </font><font color=#6a5acd>&gt;</font>
- * <font color=#0000ff>&lt;!-- List of files affected --&gt;</font>
- * <font color=#6a5acd>&lt;!ELEMENT</font> msg <font color=#ff00ff>(#PCDATA)
- * </font><font color=#6a5acd>&gt;</font>
- * <font color=#0000ff>&lt;!-- File changed --&gt;</font>
- * <font color=#6a5acd>&lt;!ELEMENT</font> file <font color=#ff00ff>
- * (name,revision,prevrevision</font><font color=#ff00ff>?</font>
- * <font color=#ff00ff>)</font><font color=#6a5acd>&gt;</font>
- * <font color=#0000ff>&lt;!-- Name of the file --&gt;</font>
- * <font color=#6a5acd>&lt;!ELEMENT</font> name <font color=#ff00ff>(#PCDATA)
- * </font><font color=#6a5acd>&gt;</font>
- * <font color=#0000ff>&lt;!-- Revision number --&gt;</font>
- * <font color=#6a5acd>&lt;!ELEMENT</font> revision <font color=#ff00ff>
- * (#PCDATA)</font><font color=#6a5acd>&gt;</font>
- * <font color=#0000ff>&lt;!-- Previous revision number --&gt;</font>
- * <font color=#6a5acd>&lt;!ELEMENT</font> prevrevision <font color=#ff00ff>
- * (#PCDATA)</font><font color=#6a5acd>&gt;</font>
+ * &lt;!-- Root element --&gt;
+ * &lt;!ELEMENT changelog (entry+)&gt;
+ * &lt;!-- CVS Entry --&gt;
+ * &lt;!ELEMENT entry (date,author,file+,msg)&gt;
+ * &lt;!-- Date of cvs entry --&gt;
+ * &lt;!ELEMENT date (#PCDATA)&gt;
+ * &lt;!-- Author of change --&gt;
+ * &lt;!ELEMENT author (#PCDATA)&gt;
+ * &lt;!-- List of files affected --&gt;
+ * &lt;!ELEMENT msg (#PCDATA)&gt;
+ * &lt;!-- File changed --&gt;
+ * &lt;!ELEMENT file (name,revision,prevrevision?)&gt;
+ * &lt;!-- Name of the file --&gt;
+ * &lt;!ELEMENT name (#PCDATA)&gt;
+ * &lt;!-- Revision number --&gt;
+ * &lt;!ELEMENT revision (#PCDATA)&gt;
+ * &lt;!-- Previous revision number --&gt;
+ * &lt;!ELEMENT prevrevision (#PCDATA)&gt;
  * </pre>
  *
  * @since Ant 1.5
@@ -82,7 +69,7 @@ public class ChangeLogTask extends AbstractCvsTask {
     private File usersFile;
 
     /** User list */
-    private Vector cvsUsers = new Vector();
+    private List<CvsUser> cvsUsers = new Vector<>();
 
     /** Input dir */
     private File inputDir;
@@ -110,8 +97,7 @@ public class ChangeLogTask extends AbstractCvsTask {
      * performed. If empty then all files in the working directory will
      * be checked.
      */
-    private final Vector filesets = new Vector();
-
+    private final List<FileSet> filesets = new Vector<>();
 
     /**
      * Set the base dir for cvs.
@@ -122,7 +108,6 @@ public class ChangeLogTask extends AbstractCvsTask {
         this.inputDir = inputDir;
     }
 
-
     /**
      * Set the output file for the log.
      *
@@ -131,7 +116,6 @@ public class ChangeLogTask extends AbstractCvsTask {
     public void setDestfile(final File destFile) {
         this.destFile = destFile;
     }
-
 
     /**
      * Set a lookup list of user names &amp; addresses
@@ -142,16 +126,14 @@ public class ChangeLogTask extends AbstractCvsTask {
         this.usersFile = usersFile;
     }
 
-
     /**
      * Add a user to list changelog knows about.
      *
      * @param user the user
      */
     public void addUser(final CvsUser user) {
-        cvsUsers.addElement(user);
+        cvsUsers.add(user);
     }
-
 
     /**
      * Set the date at which the changelog should start.
@@ -162,7 +144,6 @@ public class ChangeLogTask extends AbstractCvsTask {
         this.startDate = start;
     }
 
-
     /**
      * Set the date at which the changelog should stop.
      *
@@ -171,7 +152,6 @@ public class ChangeLogTask extends AbstractCvsTask {
     public void setEnd(final Date endDate) {
         this.endDate = endDate;
     }
-
 
     /**
      * Set the number of days worth of log entries to process.
@@ -191,6 +171,7 @@ public class ChangeLogTask extends AbstractCvsTask {
      * Whether to use rlog against a remote repository instead of log
      * in a working copy's directory.
      *
+     * @param remote boolean
      * @since Ant 1.8.0
      */
     public void setRemote(final boolean remote) {
@@ -205,7 +186,6 @@ public class ChangeLogTask extends AbstractCvsTask {
     public void setStartTag(final String start) {
         this.startTag = start;
     }
-
 
     /**
      * Set the tag at which the changelog should stop.
@@ -222,9 +202,8 @@ public class ChangeLogTask extends AbstractCvsTask {
      * @param fileSet a set of files about which cvs logs will be generated.
      */
     public void addFileset(final FileSet fileSet) {
-        filesets.addElement(fileSet);
+        filesets.add(fileSet);
     }
-
 
     /**
      * Execute task
@@ -232,19 +211,17 @@ public class ChangeLogTask extends AbstractCvsTask {
      * @exception BuildException if something goes wrong executing the
      *            cvs command
      */
+    @Override
     public void execute() throws BuildException {
         File savedDir = inputDir; // may be altered in validate
 
         try {
-
             validate();
             final Properties userList = new Properties();
 
             loadUserlist(userList);
 
-            final int size = cvsUsers.size();
-            for (int i = 0; i < size; i++) {
-                final CvsUser user = (CvsUser) cvsUsers.get(i);
+            for (CvsUser user : cvsUsers) {
                 user.validate();
                 userList.put(user.getUserID(), user.getDisplayname());
             }
@@ -294,18 +271,11 @@ public class ChangeLogTask extends AbstractCvsTask {
             }
 
             // Check if list of files to check has been specified
-            if (!filesets.isEmpty()) {
-                final Enumeration e = filesets.elements();
-
-                while (e.hasMoreElements()) {
-                    final FileSet fileSet = (FileSet) e.nextElement();
-                    final DirectoryScanner scanner =
-                        fileSet.getDirectoryScanner(getProject());
-                    final String[] files = scanner.getIncludedFiles();
-
-                    for (int i = 0; i < files.length; i++) {
-                        addCommandArgument(files[i]);
-                    }
+            for (FileSet fileSet : filesets) {
+                final DirectoryScanner scanner =
+                    fileSet.getDirectoryScanner(getProject());
+                for (String file : scanner.getIncludedFiles()) {
+                    addCommandArgument(file);
                 }
             }
 
@@ -351,27 +321,20 @@ public class ChangeLogTask extends AbstractCvsTask {
             inputDir = getProject().getBaseDir();
         }
         if (null == destFile) {
-            final String message = "Destfile must be set.";
-
-            throw new BuildException(message);
+            throw new BuildException("Destfile must be set.");
         }
         if (!inputDir.exists()) {
-            final String message = "Cannot find base dir "
-                 + inputDir.getAbsolutePath();
-
-            throw new BuildException(message);
+            throw new BuildException("Cannot find base dir %s",
+                inputDir.getAbsolutePath());
         }
         if (null != usersFile && !usersFile.exists()) {
-            final String message = "Cannot find user lookup list "
-                 + usersFile.getAbsolutePath();
-
-            throw new BuildException(message);
+            throw new BuildException("Cannot find user lookup list %s",
+                usersFile.getAbsolutePath());
         }
         if ((null != startTag || null != endTag)
             && (null != startDate || null != endDate)) {
-            final String message = "Specify either a tag or date range,"
-                + " not both";
-            throw new BuildException(message);
+            throw new BuildException(
+                "Specify either a tag or date range, not both");
         }
     }
 
@@ -386,7 +349,7 @@ public class ChangeLogTask extends AbstractCvsTask {
          throws BuildException {
         if (null != usersFile) {
             try {
-                userList.load(new FileInputStream(usersFile));
+                userList.load(Files.newInputStream(usersFile.toPath()));
             } catch (final IOException ioe) {
                 throw new BuildException(ioe.toString(), ioe);
             }
@@ -400,10 +363,9 @@ public class ChangeLogTask extends AbstractCvsTask {
      * @return the filtered entry set
      */
     private CVSEntry[] filterEntrySet(final CVSEntry[] entrySet) {
-        final Vector results = new Vector();
+        final List<CVSEntry> results = new ArrayList<>();
 
-        for (int i = 0; i < entrySet.length; i++) {
-            final CVSEntry cvsEntry = entrySet[i];
+        for (CVSEntry cvsEntry : entrySet) {
             final Date date = cvsEntry.getDate();
 
             //bug#30471
@@ -431,13 +393,10 @@ public class ChangeLogTask extends AbstractCvsTask {
                 //Skip dates that are too late
                 continue;
             }
-            results.addElement(cvsEntry);
+            results.add(cvsEntry);
         }
 
-        final CVSEntry[] resultArray = new CVSEntry[results.size()];
-
-        results.copyInto(resultArray);
-        return resultArray;
+        return results.toArray(new CVSEntry[results.size()]);
     }
 
     /**
@@ -445,9 +404,7 @@ public class ChangeLogTask extends AbstractCvsTask {
      */
     private void replaceAuthorIdWithName(final Properties userList,
                                          final CVSEntry[] entrySet) {
-        for (int i = 0; i < entrySet.length; i++) {
-
-            final CVSEntry entry = entrySet[ i ];
+        for (final CVSEntry entry : entrySet) {
             if (userList.containsKey(entry.getAuthor())) {
                 entry.setAuthor(userList.getProperty(entry.getAuthor()));
             }
@@ -462,17 +419,11 @@ public class ChangeLogTask extends AbstractCvsTask {
      */
     private void writeChangeLog(final CVSEntry[] entrySet)
          throws BuildException {
-        FileOutputStream output = null;
 
-        try {
-            output = new FileOutputStream(destFile);
+        try (final PrintWriter writer = new PrintWriter(
+            new OutputStreamWriter(Files.newOutputStream(destFile.toPath()), "UTF-8"))) {
 
-            final PrintWriter writer =
-                new PrintWriter(new OutputStreamWriter(output, "UTF-8"));
-
-            final ChangeLogWriter serializer = new ChangeLogWriter();
-
-            serializer.printChangeLog(writer, entrySet);
+            new ChangeLogWriter().printChangeLog(writer, entrySet);
 
             if (writer.checkError()) {
                 throw new IOException("Encountered an error writing changelog");
@@ -481,9 +432,6 @@ public class ChangeLogTask extends AbstractCvsTask {
             getProject().log(uee.toString(), Project.MSG_ERR);
         } catch (final IOException ioe) {
             throw new BuildException(ioe.toString(), ioe);
-        } finally {
-            FileUtils.close(output);
         }
     }
 }
-

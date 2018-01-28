@@ -28,8 +28,8 @@ import org.junit.rules.ExternalResource;
 /**
  * Provides access for JUnit tests to execute Ant targets and access execution details (i.e logs).
  *
- * Example usage:
- * <code>
+ * <p>Example usage:</p>
+ * <pre>
  * public class MyTest {
  *
  *     \@Rule
@@ -42,7 +42,7 @@ import org.junit.rules.ExternalResource;
  *
  *     \@Test
  *     public void testSuccess() {
- *         rule.executeTarget("passingTaget");
+ *         rule.executeTarget("passingTarget");
  *         assertEquals("Incorrect log message", "[taskName] Action Complete", rule.getLog());
  *     }
  *
@@ -57,18 +57,18 @@ import org.junit.rules.ExternalResource;
  *     }
  *
  * }
- * </code>
+ * </pre>
  */
 public class BuildFileRule extends ExternalResource {
 
-	private Project project;
+    private Project project;
 
     private StringBuffer logBuffer;
     private StringBuffer fullLogBuffer;
     private StringBuffer outputBuffer;
     private StringBuffer errorBuffer;
 
-   
+
 
     /**
      * Tidies up following a test execution. If the currently configured
@@ -102,8 +102,7 @@ public class BuildFileRule extends ExternalResource {
     /**
      * Gets any messages that have been logged during the current execution, unless
      * the logging level has been set above the log level defined in the message.
-     *
-     * Only valid if configureProject() has been called.
+     * <p>Only valid if configureProject() has been called.</p>
      * @return the content of the log.
      */
     public String getFullLog() {
@@ -140,7 +139,7 @@ public class BuildFileRule extends ExternalResource {
     /**
      * Sets up to run the named project
      *
-     * @param  filename name of project file to run
+     * @param filename name of project file to run
      */
     public void configureProject(String filename) throws BuildException {
         configureProject(filename, Project.MSG_DEBUG);
@@ -149,7 +148,8 @@ public class BuildFileRule extends ExternalResource {
     /**
      * Sets up to run the named project
      *
-     * @param  filename name of project file to run
+     * @param filename name of project file to run
+     * @param logLevel int
      */
     public void configureProject(String filename, int logLevel) throws BuildException {
         logBuffer = new StringBuffer();
@@ -159,7 +159,7 @@ public class BuildFileRule extends ExternalResource {
         File antFile = new File(System.getProperty("root"), filename);
         project.setProperty("ant.processid", ProcessUtil.getProcessId("<Process>"));
         project.setProperty("ant.threadname", Thread.currentThread().getName());
-        project.setUserProperty("ant.file" , antFile.getAbsolutePath());
+        project.setUserProperty("ant.file", antFile.getAbsolutePath());
         project.addBuildListener(new AntTestListener(logLevel));
         ProjectHelper.configureProject(project, antFile);
     }
@@ -168,7 +168,7 @@ public class BuildFileRule extends ExternalResource {
      * Executes a target in the configured Ant build file. Requires #configureProject()
      * to have been invoked before this call.
      *
-     * @param  targetName the target in the currently configured build file to run.
+     * @param targetName the target in the currently configured build file to run.
      */
     public  void executeTarget(String targetName) {
         outputBuffer = new StringBuffer();
@@ -217,12 +217,12 @@ public class BuildFileRule extends ExternalResource {
     protected static class AntOutputStream extends OutputStream {
         private StringBuffer buffer;
 
-        public AntOutputStream( StringBuffer buffer ) {
+        public AntOutputStream(StringBuffer buffer) {
             this.buffer = buffer;
         }
 
         public void write(int b) {
-            buffer.append((char)b);
+            buffer.append((char) b);
         }
     }
 
@@ -301,9 +301,9 @@ public class BuildFileRule extends ExternalResource {
                 return;
             }
 
-            if (event.getPriority() == Project.MSG_INFO ||
-                event.getPriority() == Project.MSG_WARN ||
-                event.getPriority() == Project.MSG_ERR) {
+            if (event.getPriority() == Project.MSG_INFO
+                || event.getPriority() == Project.MSG_WARN
+                || event.getPriority() == Project.MSG_ERR) {
                 logBuffer.append(event.getMessage());
             }
             fullLogBuffer.append(event.getMessage());
@@ -313,6 +313,5 @@ public class BuildFileRule extends ExternalResource {
     public File getOutputDir() {
         return new File(getProject().getProperty("output"));
     }
-    
-}
 
+}

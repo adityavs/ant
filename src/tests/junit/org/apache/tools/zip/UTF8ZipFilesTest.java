@@ -19,8 +19,8 @@
 package org.apache.tools.zip;
 
 import java.io.File;
-import java.io.InputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Enumeration;
 import java.util.zip.CRC32;
@@ -131,11 +131,9 @@ public class UTF8ZipFilesTest {
             zos = new ZipOutputStream(file);
             zos.setEncoding(encoding);
             zos.setUseLanguageEncodingFlag(withEFS);
-            zos.setCreateUnicodeExtraFields(withExplicitUnicodeExtra ? 
-                                            ZipOutputStream
-                                            .UnicodeExtraFieldPolicy.NEVER
-                                            : ZipOutputStream
-                                            .UnicodeExtraFieldPolicy.ALWAYS);
+            zos.setCreateUnicodeExtraFields(withExplicitUnicodeExtra
+                                            ? ZipOutputStream.UnicodeExtraFieldPolicy.NEVER
+                                            : ZipOutputStream.UnicodeExtraFieldPolicy.ALWAYS);
 
             ZipEntry ze = new ZipEntry(OIL_BARREL_TXT);
             if (withExplicitUnicodeExtra
@@ -189,7 +187,9 @@ public class UTF8ZipFilesTest {
             if (zos != null) {
                 try {
                     zos.close();
-                } catch (IOException e) { /* swallow */ }
+                } catch (IOException e) {
+                    /* swallow */
+                }
             }
         }
     }
@@ -210,7 +210,7 @@ public class UTF8ZipFilesTest {
                 } else if (ze.getName().endsWith("_for_Dollar.txt")) {
                     assertUnicodeName(ze, EURO_FOR_DOLLAR_TXT, encoding);
                 } else if (!ze.getName().equals(ASCII_TXT)) {
-                    throw new AssertionError("Urecognized ZIP entry with name ["
+                    throw new AssertionError("Unrecognized ZIP entry with name ["
                                              + ze.getName() + "] found.");
                 }
             }
@@ -236,7 +236,7 @@ public class UTF8ZipFilesTest {
             ByteBuffer ne = enc.encode(ze.getName());
 
             CRC32 crc = new CRC32();
-            crc.update(ne.array(),ne.arrayOffset(),ne.limit());
+            crc.update(ne.array(), ne.arrayOffset(), ne.limit());
 
             assertEquals(crc.getValue(), ucpf.getNameCRC32());
             assertEquals(expectedName, new String(ucpf.getUnicodeName(),
@@ -257,4 +257,3 @@ public class UTF8ZipFilesTest {
     }
 
 }
-

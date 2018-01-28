@@ -27,7 +27,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-
 public class LineOrientedOutputStreamTest {
 
     private static String LINE = "This is a line";
@@ -61,21 +60,21 @@ public class LineOrientedOutputStreamTest {
     }
 
     @Test
-    public void testLineWithCariagereturnArray() throws IOException {
+    public void testLineWithCarriageReturnArray() throws IOException {
         writeByteArray();
         writeAsArray('\r');
         stream.assertInvoked();
     }
 
     @Test
-    public void testLineWithCariagereturnSingleBytes() throws IOException {
+    public void testLineWithCarriageReturnSingleBytes() throws IOException {
         writeSingleBytes();
         stream.write('\r');
         stream.assertInvoked();
     }
 
     @Test
-    public void testLineWithCariagereturnLinefeedArray() throws IOException {
+    public void testLineWithCarriageReturnLineFeedArray() throws IOException {
         writeByteArray();
         writeAsArray('\r');
         writeAsArray('\n');
@@ -83,7 +82,7 @@ public class LineOrientedOutputStreamTest {
     }
 
     @Test
-    public void testLineWithCariagereturnLinefeedSingleBytes() throws IOException {
+    public void testLineWithCarriageReturnLineFeedSingleBytes() throws IOException {
         writeSingleBytes();
         stream.write('\r');
         stream.write('\n');
@@ -125,9 +124,8 @@ public class LineOrientedOutputStreamTest {
     }
 
     private void writeSingleBytes() throws IOException {
-        byte[] b = LINE.getBytes();
-        for (int i = 0; i < b.length; i++) {
-            stream.write(b[i]);
+        for (byte b : LINE.getBytes()) {
+            stream.write(b);
         }
     }
 
@@ -137,6 +135,7 @@ public class LineOrientedOutputStreamTest {
 
     private class DummyStream extends LineOrientedOutputStream {
         private boolean invoked;
+
         protected void processLine(String line) {
             assertFalse("Only one line", invoked);
             assertEquals(LINE, line);
@@ -146,8 +145,9 @@ public class LineOrientedOutputStreamTest {
         private void assertInvoked() {
             assertTrue("At least one line", invoked);
         }
+
         private void assertNotInvoked() {
             assertTrue("No output", !invoked);
         }
     }
-}// LineOrientedOutputStreamTest
+}

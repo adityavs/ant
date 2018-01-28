@@ -21,9 +21,10 @@ package org.apache.tools.ant.types.selectors.modifiedselector;
 
 // Java
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
-import java.util.Iterator;
-import java.util.Vector;
+import java.util.List;
 
 import org.apache.tools.ant.BuildEvent;
 import org.apache.tools.ant.BuildException;
@@ -51,16 +52,16 @@ import org.apache.tools.ant.util.ResourceUtils;
  * in a persistent manner.</p>
  *
  * <p>The ModifiedSelector is implemented as a <b>CoreSelector</b> and uses default
- * values for all its attributes therefore the simplest example is <pre>
+ * values for all its attributes therefore the simplest example is</p><pre>
  *   &lt;copy todir="dest"&gt;
  *       &lt;filelist dir="src"&gt;
  *           &lt;modified/&gt;
  *       &lt;/filelist&gt;
  *   &lt;/copy&gt;
- * </pre></p>
+ * </pre>
  *
  * <p>The same example rewritten as CoreSelector with setting the all values
- * (same as defaults are) would be <pre>
+ * (same as defaults are) would be</p><pre>
  *   &lt;copy todir="dest"&gt;
  *       &lt;filelist dir="src"&gt;
  *           &lt;modified update="true"
@@ -72,9 +73,9 @@ import org.apache.tools.ant.util.ResourceUtils;
  *           &lt;/modified&gt;
  *       &lt;/filelist&gt;
  *   &lt;/copy&gt;
- * </pre></p>
+ * </pre>
  *
- * <p>And the same rewritten as CustomSelector would be<pre>
+ * <p>And the same rewritten as CustomSelector would be</p><pre>
  *   &lt;copy todir="dest"&gt;
  *       &lt;filelist dir="src"&gt;
  *           &lt;custom class="org.apache.tools.ant.type.selectors.ModifiedSelector"&gt;
@@ -87,18 +88,18 @@ import org.apache.tools.ant.util.ResourceUtils;
  *           &lt;/custom&gt;
  *       &lt;/filelist&gt;
  *   &lt;/copy&gt;
- * </pre></p>
+ * </pre>
  *
  * <p>If you want to provide your own interface implementation you can do
  * that via the *classname attributes. If the classes are not on Ant's core
  * classpath, you will have to provide the path via nested &lt;classpath&gt;
- * element, so that the selector can find the classes. <pre>
+ * element, so that the selector can find the classes.</p><pre>
  *   &lt;modified cacheclassname="com.mycompany.MyCache"&gt;
  *       &lt;classpath&gt;
  *           &lt;pathelement location="lib/mycompany-antutil.jar"/&gt;
  *       &lt;/classpath&gt;
  *   &lt;/modified&gt;
- * </pre></p>
+ * </pre>
  *
  * <p>All these three examples copy the files from <i>src</i> to <i>dest</i>
  * using the ModifiedSelector. The ModifiedSelector uses the <i>PropertyfileCache
@@ -115,7 +116,7 @@ import org.apache.tools.ant.util.ResourceUtils;
  *
  * <p>A useful scenario for this selector is inside a build environment
  * for homepage generation (e.g. with <a href="http://forrest.apache.org/">
- * Apache Forrest</a>). <pre>
+ * Apache Forrest</a>).</p><pre>
  * &lt;target name="generate-and-upload-site"&gt;
  *     &lt;echo&gt; generate the site using forrest &lt;/echo&gt;
  *     &lt;antcall target="site"/&gt;
@@ -127,7 +128,7 @@ import org.apache.tools.ant.util.ResourceUtils;
  *         &lt;/fileset&gt;
  *     &lt;/ftp&gt;
  * &lt;/target&gt;
- * </pre> Here all <b>changed</b> files are uploaded to the server. The
+ * </pre><p>Here all <b>changed</b> files are uploaded to the server. The
  * ModifiedSelector saves therefore much upload time.</p>
  *
  *
@@ -178,7 +179,7 @@ public class ModifiedSelector extends BaseExtendSelector
     private boolean selectDirectories = true;
 
     /**
-     * Should Resources whithout an InputStream, and
+     * Should Resources without an InputStream, and
      * therefore without checking, be selected?
      */
     private boolean selectResourcesWithoutInputStream = true;
@@ -209,7 +210,8 @@ public class ModifiedSelector extends BaseExtendSelector
      * Parameter vector with parameters for later initialization.
      * @see #configure
      */
-    private Vector<Parameter> configParameter = new Vector<Parameter>();
+    private List<Parameter> configParameter =
+        Collections.synchronizedList(new ArrayList<>());
 
     /**
      * Parameter vector with special parameters for later initialization.
@@ -217,7 +219,8 @@ public class ModifiedSelector extends BaseExtendSelector
      * These parameters are used <b>after</b> the parameters with the pattern '*'.
      * @see #configure
      */
-    private Vector<Parameter> specialParameter = new Vector<Parameter>();
+    private List<Parameter> specialParameter =
+        Collections.synchronizedList(new ArrayList<>());
 
     /** The classloader of this class. */
     private ClassLoader myClassLoader = null;
@@ -238,6 +241,7 @@ public class ModifiedSelector extends BaseExtendSelector
 
 
     /** Overrides BaseSelector.verifySettings(). */
+    @Override
     public void verifySettings() {
         configure();
         if (cache == null) {
@@ -255,14 +259,14 @@ public class ModifiedSelector extends BaseExtendSelector
     /**
      * Configures this Selector.
      * Does this work only once per Selector object.
-     * <p>Because some problems while configuring from <custom>Selector
-     * the configuration is done in the following order:<ol>
-     * <li> collect the configuration data </li>
-     * <li> wait for the first isSelected() call </li>
-     * <li> set the default values </li>
-     * <li> set values for name pattern '*': update, cache, algorithm, comparator </li>
-     * <li> set values for name pattern '*.*: cache.cachefile, ... </li>
-     * </ol></p>
+     * <p>Because some problems while configuring from &lt;custom&gt;Selector
+     * the configuration is done in the following order:</p><ol>
+     * <li>collect the configuration data</li>
+     * <li>wait for the first isSelected() call</li>
+     * <li>set the default values</li>
+     * <li>set values for name pattern '*': update, cache, algorithm, comparator</li>
+     * <li>set values for name pattern '*.*: cache.cachefile, ...</li>
+     * </ol>
      * <p>This configuration algorithm is needed because you don't know
      * the order of arriving config-data. E.g. if you first set the
      * <i>cache.cachefilename</i> and after that the <i>cache</i> itself,
@@ -283,7 +287,7 @@ public class ModifiedSelector extends BaseExtendSelector
         //
         Project p = getProject();
         String filename = "cache.properties";
-        File cachefile = null;
+        File cachefile;
         if (p != null) {
             // normal use inside Ant
             cachefile = new File(p.getBaseDir(), filename);
@@ -303,14 +307,14 @@ public class ModifiedSelector extends BaseExtendSelector
         // -----  Set the main attributes, pattern '*'  -----
         //
         for (Parameter parameter : configParameter) {
-            if (parameter.getName().indexOf(".") > 0) {
+            if (parameter.getName().indexOf('.') > 0) {
                 // this is a *.* parameter for later use
                 specialParameter.add(parameter);
             } else {
                 useParameter(parameter);
             }
         }
-        configParameter = new Vector<Parameter>();
+        configParameter.clear();
 
         // specify the algorithm classname
         if (algoName != null) {
@@ -322,17 +326,15 @@ public class ModifiedSelector extends BaseExtendSelector
             } else if ("checksum".equals(algoName.getValue())) {
                 algorithm = new ChecksumAlgorithm();
             }
+        } else if (algorithmClass != null) {
+            // use Algorithm specified by classname
+            algorithm = loadClass(
+                algorithmClass,
+                "is not an Algorithm.",
+                Algorithm.class);
         } else {
-            if (algorithmClass != null) {
-                // use Algorithm specified by classname
-                algorithm = loadClass(
-                    algorithmClass,
-                    "is not an Algorithm.",
-                    Algorithm.class);
-            } else {
-                // nothing specified - use default
-                algorithm = defaultAlgorithm;
-            }
+            // nothing specified - use default
+            algorithm = defaultAlgorithm;
         }
 
         // specify the cache classname
@@ -341,14 +343,12 @@ public class ModifiedSelector extends BaseExtendSelector
             if ("propertyfile".equals(cacheName.getValue())) {
                 cache = new PropertiesfileCache();
             }
+        } else if (cacheClass != null) {
+            // use Cache specified by classname
+            cache = loadClass(cacheClass, "is not a Cache.", Cache.class);
         } else {
-            if (cacheClass != null) {
-                // use Cache specified by classname
-                cache = loadClass(cacheClass, "is not a Cache.", Cache.class);
-            } else {
-                // nothing specified - use default
-                cache = defaultCache;
-            }
+            // nothing specified - use default
+            cache = defaultCache;
         }
 
         // specify the comparator classname
@@ -364,26 +364,22 @@ public class ModifiedSelector extends BaseExtendSelector
                 // Have to think about lazy initialization here...  JHM
                 // comparator = new java.text.RuleBasedCollator();
             }
+        } else if (comparatorClass != null) {
+            // use Algorithm specified by classname
+            @SuppressWarnings("unchecked")
+            Comparator<? super String> localComparator = loadClass(
+                comparatorClass, "is not a Comparator.", Comparator.class);
+            comparator = localComparator;
         } else {
-            if (comparatorClass != null) {
-                // use Algorithm specified by classname
-                @SuppressWarnings("unchecked")
-                Comparator<? super String> localComparator = loadClass(comparatorClass, "is not a Comparator.", Comparator.class);
-                comparator = localComparator;
-            } else {
-                // nothing specified - use default
-                comparator = defaultComparator;
-            }
+            // nothing specified - use default
+            comparator = defaultComparator;
         }
 
         //
         // -----  Set the special attributes, pattern '*.*'  -----
         //
-        for (Iterator<Parameter> itSpecial = specialParameter.iterator(); itSpecial.hasNext();) {
-            Parameter par = itSpecial.next();
-            useParameter(par);
-        }
-        specialParameter = new Vector<Parameter>();
+        specialParameter.forEach(this::useParameter);
+        specialParameter.clear();
     }
 
 
@@ -391,6 +387,7 @@ public class ModifiedSelector extends BaseExtendSelector
      * Loads the specified class and initializes an object of that class.
      * Throws a BuildException using the given message if an error occurs during
      * loading/instantiation or if the object is not from the given type.
+     * @param <T> desired type
      * @param classname the classname
      * @param msg the message-part for the BuildException
      * @param type the type to check against
@@ -400,21 +397,22 @@ public class ModifiedSelector extends BaseExtendSelector
         try {
             // load the specified class
             ClassLoader cl = getClassLoader();
-            Class<?> clazz = null;
+            Class<?> clazz;
             if (cl != null) {
                 clazz = cl.loadClass(classname);
             } else {
                 clazz = Class.forName(classname);
             }
 
-            Object rv = clazz.newInstance();
+            @SuppressWarnings("unchecked")
+            T rv = (T) clazz.newInstance();
 
             if (!type.isInstance(rv)) {
-                throw new BuildException("Specified class (" + classname + ") " + msg);
+                throw new BuildException("Specified class (%s) %s", classname, msg);
             }
-            return (T) rv;
+            return rv;
         } catch (ClassNotFoundException e) {
-            throw new BuildException("Specified class (" + classname + ") not found.");
+            throw new BuildException("Specified class (%s) not found.", classname);
         } catch (Exception e) {
             throw new BuildException(e);
         }
@@ -431,6 +429,7 @@ public class ModifiedSelector extends BaseExtendSelector
      * @return whether the resource is selected
      * @see ResourceSelector#isSelected(Resource)
      */
+    @Override
     public boolean isSelected(Resource resource) {
         if (resource.isFilesystemOnly()) {
             // We have a 'resourced' file, so reconvert it and use
@@ -440,30 +439,29 @@ public class ModifiedSelector extends BaseExtendSelector
             String filename = fileResource.getName();
             File basedir = fileResource.getBaseDir();
             return isSelected(basedir, filename, file);
-        } else {
-            try {
-                // How to handle non-file-Resources? I copy temporarily the
-                // resource to a file and use the file-implementation.
-                FileUtils fu = FileUtils.getFileUtils();
-                File tmpFile = fu.createTempFile("modified-", ".tmp", null, true, false);
-                Resource tmpResource = new FileResource(tmpFile);
-                ResourceUtils.copyResource(resource, tmpResource);
-                boolean isSelected = isSelected(tmpFile.getParentFile(),
-                                                tmpFile.getName(),
-                                                resource.toLongString());
-                tmpFile.delete();
-                return isSelected;
-            } catch (UnsupportedOperationException uoe) {
-                log("The resource '"
-                  + resource.getName()
-                  + "' does not provide an InputStream, so it is not checked. "
-                  + "Akkording to 'selres' attribute value it is "
-                  + ((selectResourcesWithoutInputStream) ? "" : " not")
-                  + "selected.", Project.MSG_INFO);
-                return selectResourcesWithoutInputStream;
-            } catch (Exception e) {
-                throw new BuildException(e);
-            }
+        }
+        try {
+            // How to handle non-file-Resources? I copy temporarily the
+            // resource to a file and use the file-implementation.
+            FileUtils fu = FileUtils.getFileUtils();
+            File tmpFile = fu.createTempFile("modified-", ".tmp", null, true, false);
+            Resource tmpResource = new FileResource(tmpFile);
+            ResourceUtils.copyResource(resource, tmpResource);
+            boolean isSelected = isSelected(tmpFile.getParentFile(),
+                                            tmpFile.getName(),
+                                            resource.toLongString());
+            tmpFile.delete();
+            return isSelected;
+        } catch (UnsupportedOperationException uoe) {
+            log("The resource '"
+              + resource.getName()
+              + "' does not provide an InputStream, so it is not checked. "
+              + "According to 'selres' attribute value it is "
+              + ((selectResourcesWithoutInputStream) ? "" : " not")
+              + "selected.", Project.MSG_INFO);
+            return selectResourcesWithoutInputStream;
+        } catch (Exception e) {
+            throw new BuildException(e);
         }
     }
 
@@ -476,10 +474,10 @@ public class ModifiedSelector extends BaseExtendSelector
      * @param file as described in BaseExtendSelector
      * @return as described in BaseExtendSelector
      */
+    @Override
     public boolean isSelected(File basedir, String filename, File file) {
         return isSelected(basedir, filename, file.getAbsolutePath());
     }
-
 
     /**
      * The business logic of this selector for use as ResourceSelector of
@@ -503,7 +501,7 @@ public class ModifiedSelector extends BaseExtendSelector
         String cachedValue = String.valueOf(cache.get(f.getAbsolutePath()));
         String newValue = algorithm.getValue(f);
 
-        boolean rv = (comparator.compare(cachedValue, newValue) != 0);
+        boolean rv = comparator.compare(cachedValue, newValue) != 0;
 
         // Maybe update the cache
         if (update && rv) {
@@ -513,7 +511,6 @@ public class ModifiedSelector extends BaseExtendSelector
                 saveCache();
             }
         }
-
         return rv;
     }
 
@@ -690,20 +687,21 @@ public class ModifiedSelector extends BaseExtendSelector
      * Defined in org.apache.tools.ant.types.Parameterizable.
      * Overwrite implementation in superclass because only special
      * parameters are valid.
-     * @see #addParam(String,Object).
+     * @see #addParam(String,Object)
      * @param parameters the parameters to set.
      */
-    public void setParameters(Parameter[] parameters) {
+    @Override
+    public void setParameters(Parameter... parameters) {
         if (parameters != null) {
-            for (int i = 0; i < parameters.length; i++) {
-                configParameter.add(parameters[i]);
+            for (Parameter p : parameters) {
+                configParameter.add(p);
             }
         }
     }
 
 
     /**
-     * Support for nested <param name="" value=""/> tags.
+     * Support for nested <code>&lt;param name="" value=""/&gt;</code> tags.
      * Parameter named <i>cache</i>, <i>algorithm</i>,
      * <i>comparator</i> or <i>update</i> are mapped to
      * the respective set-Method.
@@ -731,23 +729,11 @@ public class ModifiedSelector extends BaseExtendSelector
             cn.setValue(value);
             setComparator(cn);
         } else if ("update".equals(key)) {
-            boolean updateValue =
-                ("true".equalsIgnoreCase(value))
-                ? true
-                : false;
-            setUpdate(updateValue);
+            setUpdate("true".equalsIgnoreCase(value));
         } else if ("delayupdate".equals(key)) {
-            boolean updateValue =
-                ("true".equalsIgnoreCase(value))
-                ? true
-                : false;
-            setDelayUpdate(updateValue);
+            setDelayUpdate("true".equalsIgnoreCase(value));
         } else if ("seldirs".equals(key)) {
-            boolean sdValue =
-                ("true".equalsIgnoreCase(value))
-                ? true
-                : false;
-            setSeldirs(sdValue);
+            setSeldirs("true".equalsIgnoreCase(value));
         } else if (key.startsWith(CACHE_PREFIX)) {
             String name = key.substring(CACHE_PREFIX.length());
             tryToSetAParameter(cache, name, value);
@@ -776,7 +762,7 @@ public class ModifiedSelector extends BaseExtendSelector
             = IntrospectionHelper.getHelper(prj, obj.getClass());
         try {
             iHelper.setAttribute(prj, obj, name, value);
-        } catch (org.apache.tools.ant.BuildException e) {
+        } catch (BuildException e) {
             // no-op
         }
     }
@@ -789,8 +775,9 @@ public class ModifiedSelector extends BaseExtendSelector
      * Override Object.toString().
      * @return information about this selector
      */
+    @Override
     public String toString() {
-        StringBuffer buf = new StringBuffer("{modifiedselector");
+        StringBuilder buf = new StringBuilder("{modifiedselector");
         buf.append(" update=").append(update);
         buf.append(" seldirs=").append(selectDirectories);
         buf.append(" cache=").append(cache);
@@ -807,7 +794,8 @@ public class ModifiedSelector extends BaseExtendSelector
     /**
      * Signals that the last target has finished.
      * @param event received BuildEvent
-    */
+     */
+    @Override
     public void buildFinished(BuildEvent event) {
         if (getDelayUpdate()) {
             saveCache();
@@ -818,7 +806,8 @@ public class ModifiedSelector extends BaseExtendSelector
     /**
      * Signals that a target has finished.
      * @param event received BuildEvent
-    */
+     */
+    @Override
     public void targetFinished(BuildEvent event) {
         if (getDelayUpdate()) {
             saveCache();
@@ -829,7 +818,8 @@ public class ModifiedSelector extends BaseExtendSelector
     /**
      * Signals that a task has finished.
      * @param event received BuildEvent
-    */
+     */
+    @Override
     public void taskFinished(BuildEvent event) {
         if (getDelayUpdate()) {
             saveCache();
@@ -840,7 +830,8 @@ public class ModifiedSelector extends BaseExtendSelector
     /**
      * Signals that a build has started.
      * @param event received BuildEvent
-    */
+     */
+    @Override
     public void buildStarted(BuildEvent event) {
         // no-op
     }
@@ -849,7 +840,8 @@ public class ModifiedSelector extends BaseExtendSelector
     /**
      * Signals that a target is starting.
      * @param event received BuildEvent
-    */
+     */
+    @Override
     public void targetStarted(BuildEvent event) {
         // no-op
     }
@@ -859,7 +851,8 @@ public class ModifiedSelector extends BaseExtendSelector
     /**
      * Signals that a task is starting.
      * @param event received BuildEvent
-    */
+     */
+    @Override
     public void taskStarted(BuildEvent event) {
         // no-op
     }
@@ -868,7 +861,8 @@ public class ModifiedSelector extends BaseExtendSelector
     /**
      * Signals a message logging event.
      * @param event received BuildEvent
-    */
+     */
+    @Override
     public void messageLogged(BuildEvent event) {
         // no-op
     }
@@ -903,8 +897,9 @@ public class ModifiedSelector extends BaseExtendSelector
          * {@inheritDoc}
          * @see EnumeratedAttribute#getValues()
          */
+        @Override
         public String[] getValues() {
-            return new String[] {"propertyfile" };
+            return new String[] {"propertyfile"};
         }
     }
 
@@ -933,8 +928,9 @@ public class ModifiedSelector extends BaseExtendSelector
          * {@inheritDoc}
          * @see EnumeratedAttribute#getValues()
          */
+        @Override
         public String[] getValues() {
-            return new String[] {"hashvalue", "digest", "checksum" };
+            return new String[] {"hashvalue", "digest", "checksum"};
         }
     }
 
@@ -963,8 +959,9 @@ public class ModifiedSelector extends BaseExtendSelector
          * {@inheritDoc}
          * @see EnumeratedAttribute#getValues()
          */
+        @Override
         public String[] getValues() {
-            return new String[] {"equal", "rule" };
+            return new String[] {"equal", "rule"};
         }
     }
 

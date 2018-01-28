@@ -18,8 +18,10 @@
 
 package org.apache.tools.ant.taskdefs.condition;
 
+import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.ProtocolException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Locale;
@@ -41,7 +43,9 @@ public class Http extends ProjectComponent implements Condition {
 
     private String spec = null;
     private String requestMethod = DEFAULT_REQUEST_METHOD;
+    private boolean followRedirects = true;
 
+    private int errorsBeginAt = ERROR_BEGINS;
 
     /**
      * Set the url attribute
@@ -50,8 +54,6 @@ public class Http extends ProjectComponent implements Condition {
     public void setUrl(String url) {
         spec = url;
     }
-
-    private int errorsBeginAt = ERROR_BEGINS;
 
     /**
      * Set the errorsBeginAt attribute
@@ -67,7 +69,7 @@ public class Http extends ProjectComponent implements Condition {
      *
      * @param method The HTTP request method to use. Valid values are
      *               the same as those accepted by the
-     *               HttpURLConnection.setRequestMetho d() method,
+     *               HttpURLConnection.setRequestMethod() method,
      *               such as "GET", "HEAD", "TRACE", etc. The default
      *               if not specified is "GET".
      *
@@ -80,9 +82,21 @@ public class Http extends ProjectComponent implements Condition {
     }
 
     /**
+     * Whether redirects sent by the server should be followed,
+     * defaults to true.
+     *
+     * @param f boolean
+     * @since Ant 1.9.7
+     */
+    public void setFollowRedirects(boolean f) {
+        followRedirects = f;
+    }
+
+    /**
      * @return true if the HTTP request succeeds
      * @exception BuildException if an error occurs
      */
+    @Override
     public boolean eval() throws BuildException {
         if (spec == null) {
             throw new BuildException("No url specified in http condition");
@@ -95,6 +109,7 @@ public class Http extends ProjectComponent implements Condition {
                 if (conn instanceof HttpURLConnection) {
                     HttpURLConnection http = (HttpURLConnection) conn;
                     http.setRequestMethod(requestMethod);
+                    http.setInstanceFollowRedirects(followRedirects);
                     int code = http.getResponseCode();
                     log("Result code for " + spec + " was " + code,
                         Project.MSG_VERBOSE);
@@ -103,10 +118,10 @@ public class Http extends ProjectComponent implements Condition {
                     }
                     return false;
                 }
-            } catch (java.net.ProtocolException pe) {
+            } catch (ProtocolException pe) {
                 throw new BuildException("Invalid HTTP protocol: "
                                          + requestMethod, pe);
-            } catch (java.io.IOException e) {
+            } catch (IOException e) {
                 return false;
             }
         } catch (MalformedURLException e) {

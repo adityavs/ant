@@ -19,11 +19,11 @@
 package org.apache.tools.ant;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -45,6 +45,7 @@ import org.apache.tools.ant.listener.SilentLogger;
 import org.apache.tools.ant.property.GetProperty;
 import org.apache.tools.ant.property.ResolvePropertyMap;
 import org.apache.tools.ant.util.ClasspathUtils;
+import org.apache.tools.ant.util.CollectionUtils;
 import org.apache.tools.ant.util.FileUtils;
 import org.apache.tools.ant.util.ProxySetup;
 
@@ -80,22 +81,22 @@ public class Main implements AntMain {
     private File buildFile; /* null */
 
     /** Stream to use for logging. */
-    private static PrintStream out = System.out;
+    private PrintStream out = System.out;
 
     /** Stream that we are using for logging error messages. */
-    private static PrintStream err = System.err;
+    private PrintStream err = System.err;
 
     /** The build targets. */
-    private final Vector<String> targets = new Vector<String>();
+    private final Vector<String> targets = new Vector<>();
 
     /** Set of properties that can be used by tasks. */
     private final Properties definedProps = new Properties();
 
     /** Names of classes to add as listeners to project. */
-    private final Vector<String> listeners = new Vector<String>(1);
+    private final Vector<String> listeners = new Vector<>(1);
 
     /** File names of property files to load on startup. */
-    private final Vector<String> propertyFiles = new Vector<String>(1);
+    private final Vector<String> propertyFiles = new Vector<>(1);
 
     /** Indicates whether this build is to support interactive input */
     private boolean allowInput = true;
@@ -142,7 +143,7 @@ public class Main implements AntMain {
      * Whether or not a logfile is being used. This is used to
      * check if the output streams must be closed.
      */
-    private static boolean isLogFileUsed = false;
+    private boolean isLogFileUsed = false;
 
     /**
      * optional thread priority
@@ -154,17 +155,9 @@ public class Main implements AntMain {
      */
     private boolean proxy = false;
 
-    private final Map<Class<?>, List<String>> extraArguments = new HashMap<Class<?>, List<String>>();
+    private final Map<Class<?>, List<String>> extraArguments = new HashMap<>();
 
-    private static final GetProperty NOPROPERTIES = new GetProperty() {
-        public Object getProperty(final String aName) {
-            // No existing property takes precedence
-            return null;
-        }
-    };
-
-
-
+    private static final GetProperty NOPROPERTIES = aName -> null;
 
     /**
      * Prints the message of the Throwable if it (the message) is not
@@ -245,7 +238,7 @@ public class Main implements AntMain {
                 printMessage(be);
             }
         } catch (final Throwable exc) {
-            exc.printStackTrace();
+            exc.printStackTrace(); //NOSONAR
             printMessage(exc);
         } finally {
             handleLogfile();
@@ -268,7 +261,7 @@ public class Main implements AntMain {
      *
      * @since Ant 1.6
      */
-    private static void handleLogfile() {
+    private void handleLogfile() {
         if (isLogFileUsed) {
             FileUtils.close(out);
             FileUtils.close(err);
@@ -354,7 +347,10 @@ public class Main implements AntMain {
                 try {
                     final File logFile = new File(args[i + 1]);
                     i++;
-                    logTo = new PrintStream(new FileOutputStream(logFile));
+                    // life-cycle of OutputStream is controlled by
+                    // logTo which becomes "out" and is closed in
+                    // handleLogfile
+                    logTo = new PrintStream(Files.newOutputStream(logFile.toPath())); //NOSONAR
                     isLogFileUsed = true;
                 } catch (final IOException ioe) {
                     final String msg = "Cannot write on the specified log file. "
@@ -565,8 +561,8 @@ public class Main implements AntMain {
          */
         final String arg = args[argPos];
         String name = arg.substring(2, arg.length());
-        String value = null;
-        final int posEq = name.indexOf("=");
+        String value;
+        final int posEq = name.indexOf('=');
         if (posEq > 0) {
             value = name.substring(posEq + 1);
             name = name.substring(0, posEq);
@@ -652,9 +648,9 @@ public class Main implements AntMain {
     private void loadPropertyFiles() {
         for (final String filename : propertyFiles) {
             final Properties props = new Properties();
-            FileInputStream fis = null;
+            InputStream fis = null;
             try {
-                fis = new FileInputStream(filename);
+                fis = Files.newInputStream(Paths.get(filename));
                 props.load(fis);
             } catch (final IOException e) {
                 System.out.println("Could not load property file "
@@ -877,13 +873,13 @@ public class Main implements AntMain {
                     // but if we don't, we lose valuable information
                     System.err.println("Caught an exception while logging the"
                                        + " end of the build.  Exception was:");
-                    t.printStackTrace();
+                    t.printStackTrace(); //NOSONAR
                     if (error != null) {
                         System.err.println("There has been an error prior to"
                                            + " that:");
-                        error.printStackTrace();
+                        error.printStackTrace(); //NOSONAR
                     }
-                    throw new BuildException(t);
+                    throw new BuildException(t); //NOSONAR
                 }
             } else if (error != null) {
                 project.log(error.toString(), Project.MSG_ERR);
@@ -917,6 +913,16 @@ public class Main implements AntMain {
                                 buildFile.getAbsolutePath());
         project.setUserProperty(MagicNames.ANT_FILE_TYPE,
                                 MagicNames.ANT_FILE_TYPE_FILE);
+
+        // this list doesn't contain the build files default target,
+        // which may be added later unless targets have been specified
+        // on the command line. Therefore the property gets set again
+        // in Project#executeTargets when we can be sure the list is
+        // complete.
+        // Setting it here allows top-level tasks to access the
+        // property.
+        project.setUserProperty(MagicNames.PROJECT_INVOKED_TARGETS,
+                                CollectionUtils.flattenToString(targets));
     }
 
     /**
@@ -964,10 +970,6 @@ public class Main implements AntMain {
         project.setInputHandler(handler);
     }
 
-    // TODO: (Jon Skeet) Any reason for writing a message and then using a bare
-    // RuntimeException rather than just using a BuildException here? Is it
-    // in case the message could end up being written to no loggers (as the
-    // loggers could have failed to be created due to this failure)?
     /**
      * Creates the default build logger for sending build events to the ant
      * log.
@@ -989,7 +991,7 @@ public class Main implements AntMain {
                 System.err.println("The specified logger class "
                     + loggerClassname
                     + " could not be used because " + e.getMessage());
-                throw new RuntimeException();
+                throw e;
             }
         } else {
             logger = new DefaultLogger();
@@ -1143,7 +1145,7 @@ public class Main implements AntMain {
      * @return the filtered targets.
      */
     private static Map<String, Target> removeDuplicateTargets(final Map<String, Target> targets) {
-        final Map<Location, Target> locationMap = new HashMap<Location, Target>();
+        final Map<Location, Target> locationMap = new HashMap<>();
         for (final Entry<String, Target> entry : targets.entrySet()) {
             final String name = entry.getKey();
             final Target target = entry.getValue();
@@ -1158,7 +1160,7 @@ public class Main implements AntMain {
                     target.getLocation(), target); // Smallest name wins
             }
         }
-        final Map<String, Target> ret = new HashMap<String, Target>();
+        final Map<String, Target> ret = new HashMap<>();
         for (final Target target : locationMap.values()) {
             ret.put(target.getName(), target);
         }
@@ -1181,15 +1183,15 @@ public class Main implements AntMain {
         final Map<String, Target> ptargets = removeDuplicateTargets(project.getTargets());
         // split the targets in top-level and sub-targets depending
         // on the presence of a description
-        final Vector<String> topNames = new Vector<String>();
-        final Vector<String> topDescriptions = new Vector<String>();
-        final Vector<Enumeration<String>> topDependencies = new Vector<Enumeration<String>>();
-        final Vector<String> subNames = new Vector<String>();
-        final Vector<Enumeration<String>> subDependencies = new Vector<Enumeration<String>>();
+        final Vector<String> topNames = new Vector<>();
+        final Vector<String> topDescriptions = new Vector<>();
+        final Vector<Enumeration<String>> topDependencies = new Vector<>();
+        final Vector<String> subNames = new Vector<>();
+        final Vector<Enumeration<String>> subDependencies = new Vector<>();
 
         for (final Target currentTarget : ptargets.values()) {
             final String targetName = currentTarget.getName();
-            if (targetName.equals("")) {
+            if ("".equals(targetName)) {
                 continue;
             }
             final String targetDescription = currentTarget.getDescription();
@@ -1217,7 +1219,7 @@ public class Main implements AntMain {
                 "Main targets:", maxLength);
         //if there were no main targets, we list all subtargets
         //as it means nothing has a description
-        if (topNames.size() == 0) {
+        if (topNames.isEmpty()) {
             printSubTargets = true;
         }
         if (printSubTargets) {
@@ -1265,9 +1267,6 @@ public class Main implements AntMain {
      *                     no descriptions are displayed.
      *                     If non-<code>null</code>, this should have
      *                     as many elements as <code>names</code>.
-     * @param topDependencies The list of dependencies for each target.
-     *                        The dependencies are listed as a non null
-     *                        enumeration of String.
      * @param heading The heading to display.
      *                Should not be <code>null</code>.
      * @param maxlen The maximum length of the names of the targets.
@@ -1282,12 +1281,12 @@ public class Main implements AntMain {
         // now, start printing the targets and their descriptions
         final String lSep = System.getProperty("line.separator");
         // got a bit annoyed that I couldn't find a pad function
-        String spaces = "    ";
+        StringBuilder spaces = new StringBuilder("    ");
         while (spaces.length() <= maxlen) {
-            spaces += spaces;
+            spaces.append(spaces);
         }
         final StringBuilder msg = new StringBuilder();
-        msg.append(heading + lSep + lSep);
+        msg.append(heading).append(lSep).append(lSep);
         final int size = names.size();
         for (int i = 0; i < size; i++) {
             msg.append(" ");

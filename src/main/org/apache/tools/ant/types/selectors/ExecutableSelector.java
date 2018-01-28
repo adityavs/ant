@@ -15,11 +15,26 @@
  *  limitations under the License.
  *
  */
+
+package org.apache.tools.ant.types.selectors;
+
+import java.io.File;
+import java.nio.file.Files;
+
 /**
+ * A selector that selects executable files.
+ *
+ * <p>Executable is defined in terms of {@link
+ * java.nio.file.Files#isExecutable}, this means the selector will
+ * accept any file that exists and is executable by the
+ * application.</p>
+ *
+ * @since Ant 1.10.0
  */
-@Distributed(
-        protocol="CORBA",
-        distribution=Distributed.DistributionTypes.FEDERATED
-        )
-public class AptExample {
+public class ExecutableSelector implements FileSelector {
+
+    public boolean isSelected(File basedir, String filename, File file) {
+        return file != null && Files.isExecutable(file.toPath());
+    }
+
 }

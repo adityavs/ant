@@ -17,11 +17,11 @@
  */
 
 /*
- * Since the initial version of this file was deveolped on the clock on
+ * Since the initial version of this file was developed on the clock on
  * an NSF grant I should say the following boilerplate:
  *
  * This material is based upon work supported by the National Science
- * Foundaton under Grant No. EIA-0196404. Any opinions, findings, and
+ * Foundation under Grant No. EIA-0196404. Any opinions, findings, and
  * conclusions or recommendations expressed in this material are those
  * of the author and do not necessarily reflect the views of the
  * National Science Foundation.
@@ -35,6 +35,7 @@ import org.apache.tools.ant.taskdefs.condition.Os;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.util.SymbolicLinkUtils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Rule;
@@ -46,6 +47,9 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * Test cases for the Symlink task. Link creation, link deletion, recording
@@ -167,6 +171,7 @@ public class SymlinkTest {
         if (dirlinkRem != null) {
             fail(dirlinkRem);
         }
+
         assertNotNull("Failed to recreate link1",
                       p.getProperty("test.recreate.link1.recreated"));
         assertNotNull("Failed to recreate link2",
@@ -192,7 +197,7 @@ public class SymlinkTest {
         buildRule.executeTarget("test-fileutils");
         SymbolicLinkUtils su = SymbolicLinkUtils.getSymbolicLinkUtils();
 
-        java.io.File f = new File(buildRule.getOutputDir(), "file1");
+        File f = new File(buildRule.getOutputDir(), "file1");
         assertTrue(f.exists());
         assertFalse(f.isDirectory());
         assertTrue(f.isFile());
@@ -260,7 +265,7 @@ public class SymlinkTest {
                                               f.getName()));
 
         // it is not possible to find out that symbolic links pointing
-        // to inexistent files or directories are symbolic links
+        // to nonexistent files or directories are symbolic links
         // it used to be possible to detect this on Mac
         // this is not true under Snow Leopard and JDK 1.5
         // Removing special handling of MacOS until someone shouts
@@ -285,6 +290,26 @@ public class SymlinkTest {
         assertTrue(su.isDanglingSymbolicLink(f.getParentFile(),
                                              f.getName()));
 
+    }
+
+    /**
+     * Tests that when {@code symlink} task is used to create a symbolic link and {@code overwrite} option
+     * is {@code false}, then any existing symbolic link at the {@code link} location (whose target is a directory)
+     * doesn't end up create a new symbolic link within the target directory.
+     *
+     *
+     * @throws Exception
+     * @see <a href="https://bz.apache.org/bugzilla/show_bug.cgi?id=58683">BZ-58683</a> for more details
+     */
+    @Test
+    public void testOverwriteExistingLink() throws Exception {
+        buildRule.executeTarget("test-overwrite-link");
+        final Project p = buildRule.getProject();
+        final String linkTargetResource = p.getProperty("test.overwrite.link.target.dir");
+        Assert.assertNotNull("Property test.overwrite.link.target.dir is not set", linkTargetResource);
+        final Path targetResourcePath = Paths.get(linkTargetResource);
+        Assert.assertTrue(targetResourcePath + " is not a directory", Files.isDirectory(targetResourcePath));
+        Assert.assertEquals(targetResourcePath + " directory was expected to be empty", 0, Files.list(targetResourcePath).count());
     }
 
     @After

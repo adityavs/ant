@@ -20,9 +20,11 @@ package org.apache.tools.ant.taskdefs;
 
 import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Files;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.tools.ant.BuildException;
@@ -34,8 +36,6 @@ import org.apache.tools.ant.util.FileUtils;
 import org.apache.tools.bzip2.CBZip2InputStream;
 import org.apache.tools.tar.TarEntry;
 import org.apache.tools.tar.TarInputStream;
-
-
 
 /**
  * Untar a file.
@@ -70,6 +70,7 @@ public class Untar extends Expand {
      *   <li>none - no compression
      *   <li>gzip - Gzip compression
      *   <li>bzip2 - Bzip2 compression
+     *   <li>xz - XZ compression, requires XZ for Java
      * </ul>
      *
      * @param method compression method
@@ -83,33 +84,32 @@ public class Untar extends Expand {
      *
      * @since Ant 1.8.0
      */
+    @Override
     public void setScanForUnicodeExtraFields(boolean b) {
-        throw new BuildException("The " + getTaskName()
-                                 + " task doesn't support the encoding"
-                                 + " attribute", getLocation());
+        throw new BuildException(
+            "The " + getTaskName()
+                + " task doesn't support the encoding attribute",
+            getLocation());
     }
 
     /**
      * @see Expand#expandFile(FileUtils, File, File)
+     * {@inheritDoc}
      */
-    /** {@inheritDoc} */
+    @Override
     protected void expandFile(FileUtils fileUtils, File srcF, File dir) {
-        FileInputStream fis = null;
         if (!srcF.exists()) {
             throw new BuildException("Unable to untar "
                     + srcF
                     + " as the file does not exist",
                     getLocation());
         }
-        try {
-            fis = new FileInputStream(srcF);
+        try (InputStream fis = Files.newInputStream(srcF.toPath())) {
             expandStream(srcF.getPath(), fis, dir);
         } catch (IOException ioe) {
             throw new BuildException("Error while expanding " + srcF.getPath()
                                      + "\n" + ioe.toString(),
                                      ioe, getLocation());
-        } finally {
-            FileUtils.close(fis);
         }
     }
 
@@ -120,6 +120,7 @@ public class Untar extends Expand {
      * @param dir       the destination directory
      * @since Ant 1.7
      */
+    @Override
     protected void expandResource(Resource srcR, File dir) {
         if (!srcR.isExists()) {
             throw new BuildException("Unable to untar "
@@ -128,15 +129,11 @@ public class Untar extends Expand {
                                      getLocation());
         }
 
-        InputStream i = null;
-        try {
-            i = srcR.getInputStream();
+        try (InputStream i = srcR.getInputStream()) {
             expandStream(srcR.getName(), i, dir);
         } catch (IOException ioe) {
             throw new BuildException("Error while expanding " + srcR.getName(),
                                      ioe, getLocation());
-        } finally {
-            FileUtils.close(i);
         }
     }
 
@@ -145,16 +142,13 @@ public class Untar extends Expand {
      */
     private void expandStream(String name, InputStream stream, File dir)
         throws IOException {
-        TarInputStream tis = null;
-        try {
-            tis =
-                new TarInputStream(compression.decompress(name,
-                                                          new BufferedInputStream(stream)),
-                                   getEncoding());
+        try (TarInputStream tis = new TarInputStream(
+            compression.decompress(name, new BufferedInputStream(stream)),
+            getEncoding())) {
             log("Expanding: " + name + " into " + dir, Project.MSG_INFO);
-            TarEntry te = null;
             boolean empty = true;
             FileNameMapper mapper = getMapper();
+            TarEntry te;
             while ((te = tis.getNextEntry()) != null) {
                 empty = false;
                 extractFile(FileUtils.getFileUtils(), null, dir, tis,
@@ -162,11 +156,9 @@ public class Untar extends Expand {
                             te.isDirectory(), mapper);
             }
             if (empty && getFailOnEmptyArchive()) {
-                throw new BuildException("archive '" + name + "' is empty");
+                throw new BuildException("archive '%s' is empty", name);
             }
             log("expand complete", Project.MSG_VERBOSE);
-        } finally {
-            FileUtils.close(tis);
         }
     }
 
@@ -190,6 +182,11 @@ public class Untar extends Expand {
          *  BZIP2 compression
          */
         private static final String BZIP2 = "bzip2";
+        /**
+         *  XZ compression
+         * @since 1.10.1
+         */
+        private static final String XZ = "xz";
 
 
         /**
@@ -205,8 +202,9 @@ public class Untar extends Expand {
          *
          * @return valid values
          */
+        @Override
         public String[] getValues() {
-            return new String[] {NONE, GZIP, BZIP2};
+            return new String[] {NONE, GZIP, BZIP2, XZ};
         }
 
         /**
@@ -226,19 +224,41 @@ public class Untar extends Expand {
             final String v = getValue();
             if (GZIP.equals(v)) {
                 return new GZIPInputStream(istream);
-            } else {
-                if (BZIP2.equals(v)) {
-                    final char[] magic = new char[] {'B', 'Z'};
-                    for (int i = 0; i < magic.length; i++) {
-                        if (istream.read() != magic[i]) {
-                            throw new BuildException(
-                                                     "Invalid bz2 file." + name);
-                        }
+            }
+            if (XZ.equals(v)) {
+                return newXZInputStream(istream);
+            }
+            if (BZIP2.equals(v)) {
+                final char[] magic = new char[] { 'B', 'Z' };
+                for (int i = 0; i < magic.length; i++) {
+                    if (istream.read() != magic[i]) {
+                        throw new BuildException("Invalid bz2 file." + name);
                     }
-                    return new CBZip2InputStream(istream);
                 }
+                return new CBZip2InputStream(istream);
             }
             return istream;
+        }
+
+        private static InputStream newXZInputStream(InputStream istream)
+            throws BuildException {
+            try {
+                Class<? extends InputStream> clazz =
+                    Class.forName("org.tukaani.xz.XZInputStream")
+                    .asSubclass(InputStream.class);
+                Constructor<? extends InputStream> c =
+                    clazz.getConstructor(InputStream.class);
+                return c.newInstance(istream);
+            } catch (ClassNotFoundException ex) {
+                throw new BuildException("xz decompression requires the XZ for Java library",
+                                         ex);
+            } catch (NoSuchMethodException
+                     | InstantiationException
+                     | IllegalAccessException
+                     | InvocationTargetException
+                     ex) {
+                throw new BuildException("failed to create XZInputStream", ex);
+            }
         }
     }
 }

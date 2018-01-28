@@ -19,10 +19,10 @@ package org.apache.tools.ant.taskdefs.optional;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.nio.file.Files;
 import java.util.Map;
 
 import org.apache.tools.ant.BuildException;
@@ -110,13 +110,13 @@ public class Rpm extends Task {
      *
      * @throws BuildException is there is a problem in the task execution.
      */
+    @Override
     public void execute() throws BuildException {
 
         Commandline toExecute = new Commandline();
 
-        toExecute.setExecutable(rpmBuildCommand == null
-                                ? guessRpmBuildCommand()
-                                : rpmBuildCommand);
+        toExecute.setExecutable(rpmBuildCommand == null ? guessRpmBuildCommand()
+                : rpmBuildCommand);
         if (topDir != null) {
             toExecute.createArgument().setValue("--define");
             toExecute.createArgument().setValue("_topdir " + topDir);
@@ -149,11 +149,13 @@ public class Rpm extends Task {
             }
         } else {
             if (output != null) {
+                OutputStream fos = null;
                 try {
-                    BufferedOutputStream bos
-                        = new BufferedOutputStream(new FileOutputStream(output));
+                    fos = Files.newOutputStream(output.toPath()); //NOSONAR
+                    BufferedOutputStream bos = new BufferedOutputStream(fos);
                     outputstream = new PrintStream(bos);
                 } catch (IOException e) {
+                    FileUtils.close(fos);
                     throw new BuildException(e, getLocation());
                 }
             } else if (!quiet) {
@@ -162,11 +164,13 @@ public class Rpm extends Task {
                 outputstream = new LogOutputStream(this, Project.MSG_DEBUG);
             }
             if (error != null) {
+                OutputStream fos = null;
                 try {
-                    BufferedOutputStream bos
-                        = new BufferedOutputStream(new FileOutputStream(error));
+                    fos = Files.newOutputStream(error.toPath());
+                    BufferedOutputStream bos = new BufferedOutputStream(fos);
                     errorstream = new PrintStream(bos);
-                }  catch (IOException e) {
+                } catch (IOException e) {
+                    FileUtils.close(fos);
                     throw new BuildException(e, getLocation());
                 }
             } else if (!quiet) {
@@ -199,7 +203,7 @@ public class Rpm extends Task {
 
     /**
      * The directory which will have the expected
-     * subdirectories, SPECS, SOURCES, BUILD, SRPMS ; optional.
+     * subdirectories, SPECS, SOURCES, BUILD, SRPMS; optional.
      * If this isn't specified,
      * the <tt>baseDir</tt> value is used
      *
@@ -223,7 +227,7 @@ public class Rpm extends Task {
      * @param sf the spec file name to use.
      */
     public void setSpecFile(String sf) {
-        if ((sf == null) || (sf.trim().length() == 0)) {
+        if (sf == null || sf.trim().isEmpty()) {
             throw new BuildException("You must specify a spec file", getLocation());
         }
         this.specFile = sf;
@@ -316,20 +320,20 @@ public class Rpm extends Task {
      * @since 1.6
      */
     protected String guessRpmBuildCommand() {
-        Map/*<String, String>*/ env = Execute.getEnvironmentVariables();
-        String path = (String) env.get(PATH1);
+        Map<String, String> env = Execute.getEnvironmentVariables();
+        String path = env.get(PATH1);
         if (path == null) {
-            path = (String) env.get(PATH2);
+            path = env.get(PATH2);
             if (path == null) {
-                path = (String) env.get(PATH3);
+                path = env.get(PATH3);
             }
         }
 
         if (path != null) {
             Path p = new Path(getProject(), path);
             String[] pElements = p.list();
-            for (int i = 0; i < pElements.length; i++) {
-                File f = new File(pElements[i],
+            for (String pElement : pElements) {
+                File f = new File(pElement,
                                   "rpmbuild"
                                   + (Os.isFamily("dos") ? ".exe" : ""));
                 if (f.canRead()) {

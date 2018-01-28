@@ -93,7 +93,7 @@ public class MSVSSGET extends MSVSS {
      *
      * @param   quiet The boolean value for quiet.
      */
-    public final void setQuiet (boolean quiet) {
+    public final void setQuiet(boolean quiet) {
         super.setInternalQuiet(quiet);
     }
 
@@ -140,7 +140,7 @@ public class MSVSSGET extends MSVSS {
     }
 
     /**
-     * Autoresponce behaviour. Valid options are Y and N.
+     * Autoresponse behaviour. Valid options are Y and N.
      *
      * @param response The auto response value.
      */

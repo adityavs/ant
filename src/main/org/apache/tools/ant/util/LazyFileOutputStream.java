@@ -18,9 +18,9 @@
 package org.apache.tools.ant.util;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import org.apache.tools.ant.util.FileUtils;
 
 /**
  * Class that delays opening the output file until the first bytes
@@ -31,7 +31,7 @@ import java.io.OutputStream;
  */
 public class LazyFileOutputStream extends OutputStream {
 
-    private FileOutputStream fos;
+    private OutputStream fos;
     private File file;
     private boolean append;
     private boolean alwaysCreate;
@@ -107,6 +107,7 @@ public class LazyFileOutputStream extends OutputStream {
      * Close the file.
      * @throws IOException if there is an error.
      */
+    @Override
     public synchronized void close() throws IOException {
         if (alwaysCreate && !closed) {
             ensureOpened();
@@ -122,6 +123,7 @@ public class LazyFileOutputStream extends OutputStream {
      * @param b the bytearray to write.
      * @throws IOException if there is a problem.
      */
+    @Override
     public void write(byte[] b) throws IOException {
         write(b, 0, b.length);
     }
@@ -133,6 +135,7 @@ public class LazyFileOutputStream extends OutputStream {
      * @param len    the number of bytes to write.
      * @throws IOException if there is a problem.
      */
+    @Override
     public synchronized void write(byte[] b, int offset, int len)
         throws IOException {
         ensureOpened();
@@ -144,6 +147,7 @@ public class LazyFileOutputStream extends OutputStream {
      * @param b the byte to write.
      * @throws IOException if there is a problem.
      */
+    @Override
     public synchronized void write(int b) throws IOException {
         ensureOpened();
         fos.write(b);
@@ -155,7 +159,7 @@ public class LazyFileOutputStream extends OutputStream {
         }
 
         if (!opened) {
-            fos = new FileOutputStream(file.getAbsolutePath(), append);
+            fos = FileUtils.newOutputStream(file.toPath(), append);
             opened = true;
         }
     }

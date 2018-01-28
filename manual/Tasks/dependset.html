@@ -59,7 +59,7 @@ well as other stylesheets imported by the main stylesheet.
 
 <h3>Parameters</h3>
 
-<table border="1" cellpadding="2" cellspacing="0">
+<table>
   <tr>
     <td valign="top"><b>Attribute</b></td>
     <td valign="top"><b>Description</b></td>
@@ -79,7 +79,7 @@ well as other stylesheets imported by the main stylesheet.
 
 <p>The <code>&lt;sources&gt;</code> element is a
 <a href="../Types/resources.html#union">Union</a> into which
-arbitrary resource collections can be nested. <b>Since Apache Ant 1.7</b>
+arbitrary resource collections can be nested. <em>Since Apache Ant 1.7</em>
 </p>
 
 <h4>srcfileset</h4>
@@ -97,7 +97,7 @@ filelists.  Multiple <code>&lt;srcfileset&gt;</code> filesets may be specified.
 <p>
 The nested <code>&lt;srcfilelist&gt;</code> element specifies a <a
 href="../Types/filelist.html">FileList</a>. All files included in
-this filelist will be compared against all files included in all of the 
+this filelist will be compared against all files included in all of the
 <code>&lt;targetfileset&gt;</code> filesets and <code>&lt;targetfilelist&gt;</code>
 filelists.  Multiple <code>&lt;srcfilelist&gt;</code> filelists may be specified.
 </p>
@@ -106,7 +106,7 @@ filelists.  Multiple <code>&lt;srcfilelist&gt;</code> filelists may be specified
 
 <p>The <code>&lt;targets&gt;</code> element is a
 <a href="../using.html#path">Path</a> and thus can
-include any filesystem-based resource. <b>Since Ant 1.7</b>
+include any filesystem-based resource. <em>Since Ant 1.7</em>
 </p>
 
 <h4>targetfileset</h4>
@@ -146,11 +146,11 @@ Multiple <code>&lt;targetfilelist&gt;</code> filelists may be specified.
        &lt;targetfileset
            dir      = &quot;${output.dir}&quot;
            includes = &quot;**/*.html&quot;/&gt;
-    &lt;/dependset&gt;  </pre>
+    &lt;/dependset&gt;</pre>
 </blockquote>
 
-<p> 
-In this example derived HTML files in the ${output.dir} directory 
+<p>
+In this example derived HTML files in the ${output.dir} directory
 will be removed if any are out-of-date with respect to:</p>
 <ol>
 <li>the DTD of their source XML files</li>
@@ -164,8 +164,6 @@ If any of the sources in the above example does not exist, all
 target files will also be removed.  To ignore missing sources instead,
 use filesets instead of filelists for the sources.
 </p>
-
-
 
 </body>
 </html>

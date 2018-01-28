@@ -33,20 +33,16 @@ public class XNewRmic extends ForkingSunRmic {
      */
     public static final String COMPILER_NAME = "xnew";
 
-    /** No-arg constructor. */
-    public XNewRmic() {
-    }
-
     /**
      * Create a normal command line, then with -Xnew at the front
      * @return a command line that hands off to thw
      */
+    @Override
     protected Commandline setupRmicCommand() {
         String[] options = new String[] {
                 "-Xnew"
         };
-        Commandline commandline = super.setupRmicCommand(options);
-        return commandline;
+        return super.setupRmicCommand(options);
     }
 
 }

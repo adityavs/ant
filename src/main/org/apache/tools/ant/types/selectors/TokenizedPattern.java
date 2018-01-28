@@ -19,6 +19,8 @@
 package org.apache.tools.ant.types.selectors;
 
 import java.io.File;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 /**
  * Provides reusable path pattern matching.  PathPattern is preferable
@@ -73,6 +75,10 @@ public class TokenizedPattern {
     /**
      * Tests whether or not this pattern matches the start of
      * a path.
+     *
+     * @param path TokenizedPath
+     * @param caseSensitive boolean
+     * @return boolean
      */
     public boolean matchStartOf(TokenizedPath path,
                                 boolean caseSensitive) {
@@ -93,6 +99,8 @@ public class TokenizedPattern {
 
     /**
      * true if the original patterns are equal.
+     *
+     * @param o Object
      */
     public boolean equals(Object o) {
         return o instanceof TokenizedPattern
@@ -105,6 +113,8 @@ public class TokenizedPattern {
 
     /**
      * The depth (or length) of a pattern.
+     *
+     * @return int
      */
     public int depth() {
         return tokenizedPattern.length;
@@ -112,19 +122,18 @@ public class TokenizedPattern {
 
     /**
      * Does the tokenized pattern contain the given string?
+     *
+     * @param pat String
+     * @return boolean
      */
     public boolean containsPattern(String pat) {
-        for (int i = 0; i < tokenizedPattern.length; i++) {
-            if (tokenizedPattern[i].equals(pat)) {
-                return true;
-            }
-        }
-        return false;
+        return Stream.of(tokenizedPattern).anyMatch(Predicate.isEqual(pat));
     }
 
     /**
      * Returns a new TokenizedPath where all tokens of this pattern to
      * the right containing wildcards have been removed
+     *
      * @return the leftmost part of the pattern without wildcards
      */
     public TokenizedPath rtrimWildcardTokens() {
@@ -150,6 +159,9 @@ public class TokenizedPattern {
 
     /**
      * true if the last token equals the given string.
+     *
+     * @param s String
+     * @return boolean
      */
     public boolean endsWith(String s) {
         return tokenizedPattern.length > 0
@@ -158,20 +170,22 @@ public class TokenizedPattern {
 
     /**
      * Returns a new pattern without the last token of this pattern.
+     *
+     * @return TokenizedPattern
      */
     public TokenizedPattern withoutLastToken() {
         if (tokenizedPattern.length == 0) {
             throw new IllegalStateException("can't strip a token from nothing");
-        } else if (tokenizedPattern.length == 1) {
-            return EMPTY_PATTERN;
-        } else {
-            String toStrip = tokenizedPattern[tokenizedPattern.length - 1];
-            int index = pattern.lastIndexOf(toStrip);
-            String[] tokens = new String[tokenizedPattern.length - 1];
-            System.arraycopy(tokenizedPattern, 0, tokens, 0,
-                             tokenizedPattern.length - 1);
-            return new TokenizedPattern(pattern.substring(0, index), tokens);
         }
+        if (tokenizedPattern.length == 1) {
+            return EMPTY_PATTERN;
+        }
+        String toStrip = tokenizedPattern[tokenizedPattern.length - 1];
+        int index = pattern.lastIndexOf(toStrip);
+        String[] tokens = new String[tokenizedPattern.length - 1];
+        System.arraycopy(tokenizedPattern, 0, tokens, 0,
+                         tokenizedPattern.length - 1);
+        return new TokenizedPattern(pattern.substring(0, index), tokens);
     }
 
 }

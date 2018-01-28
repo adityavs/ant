@@ -146,16 +146,12 @@ public class ProjectHelper {
         }
     }
 
-    /** Default constructor */
-    public ProjectHelper() {
-    }
-
     // -------------------- Common properties  --------------------
-    // The following properties are required by import ( and other tasks
-    // that read build files using ProjectHelper ).
+    // The following properties are required by import (and other tasks
+    // that read build files using ProjectHelper).
 
-    private Vector<Object> importStack = new Vector<Object>();
-    private List<String[]> extensionStack = new LinkedList<String[]>();
+    private Vector<Object> importStack = new Vector<>();
+    private List<String[]> extensionStack = new LinkedList<>();
 
     /**
      *  Import stack.
@@ -181,7 +177,7 @@ public class ProjectHelper {
         return extensionStack;
     }
 
-    private static final ThreadLocal<String> targetPrefix = new ThreadLocal<String>();
+    private static final ThreadLocal<String> targetPrefix = new ThreadLocal<>();
 
     /**
      * The prefix to prepend to imported target names.
@@ -199,6 +195,7 @@ public class ProjectHelper {
     /**
      * Sets the prefix to prepend to imported target names.
      *
+     * @param prefix String
      * @since Ant 1.8.0
      */
     public static void setCurrentTargetPrefix(String prefix) {
@@ -216,6 +213,7 @@ public class ProjectHelper {
      *
      * <p>May be set by &lt;import&gt;'s prefixSeparator attribute.</p>
      *
+     * @return String
      * @since Ant 1.8.0
      */
     public static String getCurrentPrefixSeparator() {
@@ -225,6 +223,7 @@ public class ProjectHelper {
     /**
      * Sets the separator between the prefix and the target name.
      *
+     * @param sep String
      * @since Ant 1.8.0
      */
     public static void setCurrentPrefixSeparator(String sep) {
@@ -250,6 +249,7 @@ public class ProjectHelper {
      * overwritten in the importing build file.  The depends list of
      * the imported targets is not modified at all.</p>
      *
+     * @return boolean
      * @since Ant 1.8.0
      */
     public static boolean isInIncludeMode() {
@@ -260,6 +260,7 @@ public class ProjectHelper {
      * Sets whether the current file should be read in include as
      * opposed to import mode.
      *
+     * @param includeMode boolean
      * @since Ant 1.8.0
      */
     public static void setInIncludeMode(boolean includeMode) {
@@ -292,7 +293,7 @@ public class ProjectHelper {
      * @see org.apache.tools.ant.ProjectHelperRepository#getHelpers()
      */
     public static ProjectHelper getProjectHelper() {
-        return (ProjectHelper) ProjectHelperRepository.getInstance().getHelpers().next();
+        return ProjectHelperRepository.getInstance().getHelpers().next();
     }
 
     /**
@@ -496,7 +497,7 @@ public class ProjectHelper {
      * @return      The stringified form of the ns name
      */
     public static String genComponentName(String uri, String name) {
-        if (uri == null || uri.equals("") || uri.equals(ANT_CORE_URI)) {
+        if (uri == null || "".equals(uri) || uri.equals(ANT_CORE_URI)) {
             return name;
         }
         return uri + ":" + name;
@@ -562,6 +563,13 @@ public class ProjectHelper {
             + System.getProperty("line.separator")
             + ex.getLocation().toString()
             + ex.getMessage();
+        if (ex instanceof ExitStatusException) {
+            int exitStatus = ((ExitStatusException) ex).getStatus();
+            if (newLocation == null) {
+                return new ExitStatusException(errorMessage, exitStatus);
+            }
+            return new ExitStatusException(errorMessage, exitStatus, newLocation);
+        }
         if (newLocation == null) {
             return new BuildException(errorMessage, ex);
         }
@@ -584,6 +592,8 @@ public class ProjectHelper {
      *
      * <p>This implementation returns false.</p>
      *
+     * @param r Resource
+     * @return boolean
      * @since Ant 1.8.0
      */
     public boolean canParseAntlibDescriptor(Resource r) {
@@ -594,6 +604,9 @@ public class ProjectHelper {
      * Parse the given URL as an antlib descriptor and return the
      * content as something that can be turned into an Antlib task.
      *
+     * @param containingProject Project
+     * @param source Resource
+     * @return UnknownElement
      * @since ant 1.8.0
      */
     public UnknownElement parseAntlibDescriptor(Project containingProject,

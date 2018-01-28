@@ -20,11 +20,11 @@ package org.apache.tools.ant.taskdefs;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.file.Files;
 import java.util.Enumeration;
 import java.util.NoSuchElementException;
 import java.util.Vector;
@@ -115,6 +115,7 @@ public class FixCRLF extends MatchingTask implements ChainableReader {
      * @return a Reader.
      * @since Ant 1.7?
      */
+    @Override
     public final Reader chain(final Reader rdr) {
         return filter.chain(rdr);
     }
@@ -181,15 +182,16 @@ public class FixCRLF extends MatchingTask implements ChainableReader {
      * @deprecated since 1.4.x.
      *             Use {@link #setEol setEol} instead.
      */
+    @Deprecated
     public void setCr(AddAsisRemove attr) {
         log("DEPRECATED: The cr attribute has been deprecated,",
             Project.MSG_WARN);
         log("Please use the eol attribute instead", Project.MSG_WARN);
         String option = attr.getValue();
         CrLf c = new CrLf();
-        if (option.equals("remove")) {
+        if ("remove".equals(option)) {
             c.setValue("lf");
-        } else if (option.equals("asis")) {
+        } else if ("asis".equals(option)) {
             c.setValue("asis");
         } else {
             // must be "add"
@@ -282,6 +284,7 @@ public class FixCRLF extends MatchingTask implements ChainableReader {
      * Executes the task.
      * @throws BuildException on error.
      */
+    @Override
     public void execute() throws BuildException {
         // first off, make sure that we've got a srcdir and destdir
         validate();
@@ -322,22 +325,21 @@ public class FixCRLF extends MatchingTask implements ChainableReader {
         }
         if (!srcDir.exists()) {
             throw new BuildException(
-                FIXCRLF_ERROR + "srcdir does not exist: '" + srcDir + "'");
+                FIXCRLF_ERROR + "srcdir does not exist: '%s'", srcDir);
         }
         if (!srcDir.isDirectory()) {
             throw new BuildException(
-                FIXCRLF_ERROR + "srcdir is not a directory: '" + srcDir + "'");
+                FIXCRLF_ERROR + "srcdir is not a directory: '%s'", srcDir);
         }
         if (destDir != null) {
             if (!destDir.exists()) {
                 throw new BuildException(
-                    FIXCRLF_ERROR + "destdir does not exist: '"
-                    + destDir + "'");
+                    FIXCRLF_ERROR + "destdir does not exist: '%s'", destDir);
             }
             if (!destDir.isDirectory()) {
                 throw new BuildException(
-                    FIXCRLF_ERROR + "destdir is not a directory: '"
-                    + destDir + "'");
+                    FIXCRLF_ERROR + "destdir is not a directory: '%s'",
+                    destDir);
             }
         }
     }
@@ -350,7 +352,7 @@ public class FixCRLF extends MatchingTask implements ChainableReader {
         if (fcv == null) {
             FilterChain fc = new FilterChain();
             fc.add(filter);
-            fcv = new Vector<FilterChain>(1);
+            fcv = new Vector<>(1);
             fcv.add(fc);
         }
         File tmpFile = FILE_UTILS.createTempFile("fixcrlf", "", null, true, true);
@@ -391,6 +393,7 @@ public class FixCRLF extends MatchingTask implements ChainableReader {
      * Deprecated, the functionality has been moved to filters.FixCrLfFilter.
      * @deprecated since 1.7.0.
      */
+    @Deprecated
     protected class OneLiner implements Enumeration<Object> {
         private static final int UNDEF = -1;
         private static final int NOTJAVA = 0;
@@ -421,7 +424,7 @@ public class FixCRLF extends MatchingTask implements ChainableReader {
                 reader = new BufferedReader(
                     ((encoding == null) ? new FileReader(srcFile)
                     : new InputStreamReader(
-                    new FileInputStream(srcFile), encoding)), INBUFLEN);
+                    Files.newInputStream(srcFile.toPath()), encoding)), INBUFLEN);
 
                 nextLine();
             } catch (IOException e) {
@@ -549,6 +552,7 @@ public class FixCRLF extends MatchingTask implements ChainableReader {
         /**
          * @return true if there is more elements.
          */
+        @Override
         public boolean hasMoreElements() {
             return !reachedEof;
         }
@@ -558,6 +562,7 @@ public class FixCRLF extends MatchingTask implements ChainableReader {
          * @return the next element.
          * @throws NoSuchElementException if there is no more.
          */
+        @Override
         public Object nextElement()
             throws NoSuchElementException {
             if (!hasMoreElements()) {
@@ -673,22 +678,24 @@ public class FixCRLF extends MatchingTask implements ChainableReader {
      */
     public static class AddAsisRemove extends EnumeratedAttribute {
         /** {@inheritDoc}. */
+        @Override
         public String[] getValues() {
             return new String[] {"add", "asis", "remove"};
         }
     }
 
     /**
-     * Enumerated attribute with the values "asis", "cr", "lf" and "crlf".
+     * Enumerated attribute with the values "asis", "cr", "lf", "crlf", "mac", "unix" and "dos.
      */
     public static class CrLf extends EnumeratedAttribute {
         /**
          * @see EnumeratedAttribute#getValues
+         * {@inheritDoc}.
          */
-        /** {@inheritDoc}. */
+        @Override
         public String[] getValues() {
-            return new String[] {"asis", "cr", "lf", "crlf",
-                                 "mac", "unix", "dos"};
+            return new String[] {"asis", "cr", "lf", "crlf", "mac", "unix",
+                "dos"};
         }
     }
 

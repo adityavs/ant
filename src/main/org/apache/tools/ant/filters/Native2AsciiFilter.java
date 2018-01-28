@@ -15,25 +15,34 @@
  *  limitations under the License.
  *
  */
-import java.lang.annotation.Annotation;
-import java.lang.annotation.Target;
-import java.lang.annotation.Retention;
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.RetentionPolicy;
+package org.apache.tools.ant.filters;
+
+import org.apache.tools.ant.util.Native2AsciiUtils;
 
 /**
+ * A filter that performs translations from characters to their
+ * Unicode-escape sequences and vice-versa.
+ *
+ * @since Ant 1.9.8
  */
-@Documented
-@Retention(value = RetentionPolicy.RUNTIME)
-@Target(value = ElementType.TYPE)
-public @interface Distributed  {
+public class Native2AsciiFilter extends TokenFilter.ChainableReaderFilter {
+    private boolean reverse;
 
-    public DistributionTypes distribution() default DistributionTypes.LOCAL;
+    /**
+     * Flag the conversion to run in the reverse sense,
+     * that is Ascii to Native encoding.
+     *
+     * @param reverse True if the conversion is to be reversed,
+     *                otherwise false;
+     */
+    public void setReverse(boolean reverse) {
+        this.reverse = reverse;
+    }
 
-    public String protocol() default "RMI";
-
-    public enum DistributionTypes { SINGLETON, LOCAL, FAULT_TOLERANT, FEDERATED, MOBILE};
-
-
+    @Override
+    public String filter(String line) {
+        return reverse
+            ? Native2AsciiUtils.ascii2native(line)
+            : Native2AsciiUtils.native2ascii(line);
+    }
 }

@@ -17,13 +17,16 @@
  */
 package org.apache.tools.ant.util;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Vector;
 
 import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 /**
  * Test for StringUtils
@@ -31,9 +34,9 @@ import static org.junit.Assert.assertTrue;
 public class StringUtilsTest {
 
     @Test
-    public void testSplit(){
+    public void testSplit() {
         final String data = "a,b,,";
-        Vector res = StringUtils.split(data, ',');
+        Vector<String> res = StringUtils.split(data, ',');
         assertEquals(4, res.size());
         assertEquals("a", res.elementAt(0));
         assertEquals("b", res.elementAt(1));
@@ -42,9 +45,9 @@ public class StringUtilsTest {
     }
 
     @Test
-    public void testSplitLines(){
+    public void testSplitLines() {
         final String data = "a\r\nb\nc\nd\ne";
-        Vector res = StringUtils.lineSplit(data);
+        Vector<String> res = StringUtils.lineSplit(data);
         assertEquals(5, res.size());
         assertEquals("a\r", res.elementAt(0));
         assertEquals("b", res.elementAt(1));
@@ -53,6 +56,7 @@ public class StringUtilsTest {
         assertEquals("e", res.elementAt(4));
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testReplace() {
         final String data = "abcabcabca";
@@ -62,42 +66,42 @@ public class StringUtilsTest {
 
     @Test
     public void testEndsWithBothEmpty() {
-        assertTrue( StringUtils.endsWith( new StringBuffer(), "") );
+        assertTrue(StringUtils.endsWith(new StringBuffer(), ""));
     }
 
     @Test
     public void testEndsWithEmptyString() {
-        assertTrue( StringUtils.endsWith( new StringBuffer("12234545"), "") );
+        assertTrue(StringUtils.endsWith(new StringBuffer("12234545"), ""));
     }
 
     @Test
     public void testEndsWithShorterString() {
-        assertTrue( StringUtils.endsWith( new StringBuffer("12345678"), "78"));
+        assertTrue(StringUtils.endsWith(new StringBuffer("12345678"), "78"));
     }
 
     @Test
     public void testEndsWithSameString() {
-        assertTrue( StringUtils.endsWith( new StringBuffer("123"), "123"));
+        assertTrue(StringUtils.endsWith(new StringBuffer("123"), "123"));
     }
 
     @Test
     public void testEndsWithLongerString() {
-        assertFalse( StringUtils.endsWith( new StringBuffer("12"), "1245"));
+        assertFalse(StringUtils.endsWith(new StringBuffer("12"), "1245"));
     }
 
     @Test
     public void testEndsWithNoMatch() {
-        assertFalse( StringUtils.endsWith( new StringBuffer("12345678"), "789"));
+        assertFalse(StringUtils.endsWith(new StringBuffer("12345678"), "789"));
     }
 
     @Test
     public void testEndsWithEmptyBuffer() {
-        assertFalse( StringUtils.endsWith( new StringBuffer(""), "12345667") );
+        assertFalse(StringUtils.endsWith(new StringBuffer(""), "12345667"));
     }
 
     @Test
     public void testEndsWithJDKPerf() {
-        StringBuffer buf = getFilledBuffer(1024*300, 'a');
+        StringBuffer buf = getFilledBuffer(1024 * 300, 'a');
         for (int i = 0; i < 1000; i++) {
             assertTrue(buf.toString().endsWith("aa"));
         }
@@ -105,7 +109,7 @@ public class StringUtilsTest {
 
     @Test
     public void testEndsWithPerf() {
-        StringBuffer buf = getFilledBuffer(1024*300, 'a');
+        StringBuffer buf = getFilledBuffer(1024 * 300, 'a');
         for (int i = 0; i < 1000; i++) {
             assertTrue(StringUtils.endsWith(buf, "aa"));
         }
@@ -113,23 +117,25 @@ public class StringUtilsTest {
 
     private StringBuffer getFilledBuffer(int size, char ch) {
         StringBuffer buf = new StringBuffer(size);
-        for (int i = 0; i < size; i++) { buf.append(ch); };
+        for (int i = 0; i < size; i++) {
+            buf.append(ch);
+        }
         return buf;
     }
 
     @Test
     public void testParseHumanSizes() throws Exception {
-    	final long KILOBYTE = 1024;
-    	final long MEGABYTE = KILOBYTE * 1024;
-    	final long GIGABYTE = MEGABYTE * 1024;
-    	final long TERABYTE = GIGABYTE * 1024;
-    	final long PETABYTE = TERABYTE * 1024;
-    	assertEquals(StringUtils.parseHumanSizes("1K"), KILOBYTE);
-    	assertEquals(StringUtils.parseHumanSizes("1M"), MEGABYTE);
-    	assertEquals(StringUtils.parseHumanSizes("1G"), GIGABYTE);
-    	assertEquals(StringUtils.parseHumanSizes("1T"), TERABYTE);
-    	assertEquals(StringUtils.parseHumanSizes("1P"), PETABYTE);
-    	assertEquals(StringUtils.parseHumanSizes("1"), 1L);
+        final long KILOBYTE = 1024;
+        final long MEGABYTE = KILOBYTE * 1024;
+        final long GIGABYTE = MEGABYTE * 1024;
+        final long TERABYTE = GIGABYTE * 1024;
+        final long PETABYTE = TERABYTE * 1024;
+        assertEquals(StringUtils.parseHumanSizes("1K"), KILOBYTE);
+        assertEquals(StringUtils.parseHumanSizes("1M"), MEGABYTE);
+        assertEquals(StringUtils.parseHumanSizes("1G"), GIGABYTE);
+        assertEquals(StringUtils.parseHumanSizes("1T"), TERABYTE);
+        assertEquals(StringUtils.parseHumanSizes("1P"), PETABYTE);
+        assertEquals(StringUtils.parseHumanSizes("1"), 1L);
     }
 
     @Test
@@ -139,15 +145,13 @@ public class StringUtilsTest {
         String suffix = "Suffix";
         String input = prefix + name + suffix;
         assertEquals(
-            "Does not remove the suffix right.",    
-            prefix + name, 
-            StringUtils.removeSuffix(input, suffix)
-        );
+            "Does not remove the suffix right.",
+            prefix + name,
+            StringUtils.removeSuffix(input, suffix));
         assertEquals(
-            "Should leave the string unattended.",    
-            prefix + name + suffix, 
-            StringUtils.removeSuffix(input, "bla")
-        );
+            "Should leave the string unattended.",
+            prefix + name + suffix,
+            StringUtils.removeSuffix(input, "bla"));
     }
 
     @Test
@@ -156,15 +160,56 @@ public class StringUtilsTest {
         String name = "Name";
         String suffix = "Suffix";
         String input = prefix + name + suffix;
-        assertEquals(
-            "Does not remove the prefix right.",    
-            name + suffix, 
-            StringUtils.removePrefix(input, prefix)
-        );
-        assertEquals(
-            "Should leave the string unattended.",    
-            prefix + name + suffix, 
-            StringUtils.removePrefix(input, "bla")
-        );
-    }    
+        assertEquals("Does not remove the prefix right.",
+            name + suffix,
+            StringUtils.removePrefix(input, prefix));
+        assertEquals("Should leave the string unattended.",
+            prefix + name + suffix,
+            StringUtils.removePrefix(input, "bla"));
+    }
+
+    @Test
+    public void testJoin() {
+        assertEquals("a, b, c", StringUtils.join(Arrays.asList("a", "b", "c"), ", "));
+    }
+
+    @Test
+    public void testJoinEmptyArray() {
+        assertEquals("", StringUtils.join(new String[] {}, ", "));
+    }
+
+    @Test
+    public void testJoinNullCollection() {
+        assertEquals("", StringUtils.join((Collection<String>) null, ", "));
+    }
+
+    @Test
+    public void testJoinNullArray() {
+        assertEquals("", StringUtils.join((String[]) null, ", "));
+    }
+
+    @Test
+    public void testJoinNullSeparator() {
+        assertEquals("abc", StringUtils.join(Arrays.asList("a", "b", "c"), null));
+    }
+
+    @Test
+    public void testTrimToNullWithNullInput() {
+        assertNull(StringUtils.trimToNull(null));
+    }
+
+    @Test
+    public void testTrimToNullWithEmptyInput() {
+        assertNull(StringUtils.trimToNull(""));
+    }
+
+    @Test
+    public void testTrimToNullWithBlankSpaceInput() {
+        assertNull(StringUtils.trimToNull("   "));
+    }
+
+    @Test
+    public void testTrimToNullWithInputPaddedWithSpace() {
+        assertEquals("aaBcDeF", StringUtils.trimToNull(" aaBcDeF  "));
+    }
 }

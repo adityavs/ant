@@ -20,13 +20,15 @@ package org.apache.tools.ant.taskdefs.optional.i18n;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.nio.file.Files;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Vector;
 
 import org.apache.tools.ant.BuildException;
@@ -137,12 +139,12 @@ public class Translate extends MatchingTask {
     /**
      * Vector to hold source file sets.
      */
-    private Vector filesets = new Vector();
+    private List<FileSet> filesets = new Vector<>();
 
     /**
      * Holds key value pairs loaded from resource bundle file
      */
-    private Hashtable resourceMap = new Hashtable();
+    private Map<String, String> resourceMap = new Hashtable<>();
     /**
 
      * Used to resolve file names.
@@ -268,7 +270,7 @@ public class Translate extends MatchingTask {
      * @param set the fileset to be added
      */
     public void addFileset(FileSet set) {
-        filesets.addElement(set);
+        filesets.add(set);
     }
 
     /**
@@ -280,6 +282,7 @@ public class Translate extends MatchingTask {
      *       <li>endtoken</li>
      *            </ul>
      */
+    @Override
     public void execute() throws BuildException {
         if (bundle == null) {
             throw new BuildException("The bundle attribute must be set.",
@@ -318,7 +321,7 @@ public class Translate extends MatchingTask {
         if (!toDir.exists()) {
             toDir.mkdirs();
         } else if (toDir.isFile()) {
-            throw new BuildException(toDir + " is not a directory");
+            throw new BuildException("%s is not a directory", toDir);
         }
 
         if (srcEncoding == null) {
@@ -353,7 +356,7 @@ public class Translate extends MatchingTask {
      * basebundlename + "_" + language2 + "_" + country2
      * basebundlename + "_" + language2
      *
-     * To the generated name, a ".properties" string is appeneded and
+     * To the generated name, a ".properties" string is appended and
      * once this file is located, it is treated just like a properties file
      * but with bundle encoding also considered while loading.
      */
@@ -361,23 +364,18 @@ public class Translate extends MatchingTask {
         Locale locale = new Locale(bundleLanguage,
                                    bundleCountry,
                                    bundleVariant);
+
         String language = locale.getLanguage().length() > 0
             ? "_" + locale.getLanguage() : "";
         String country = locale.getCountry().length() > 0
             ? "_" + locale.getCountry() : "";
         String variant = locale.getVariant().length() > 0
             ? "_" + locale.getVariant() : "";
-        String bundleFile = bundle + language + country + variant;
-        processBundle(bundleFile, BUNDLE_SPECIFIED_LANGUAGE_COUNTRY_VARIANT, false);
 
-        bundleFile = bundle + language + country;
-        processBundle(bundleFile, BUNDLE_SPECIFIED_LANGUAGE_COUNTRY, false);
-
-        bundleFile = bundle + language;
-        processBundle(bundleFile, BUNDLE_SPECIFIED_LANGUAGE, false);
-
-        bundleFile = bundle;
-        processBundle(bundleFile, BUNDLE_NOMATCH, false);
+        processBundle(bundle + language + country + variant, BUNDLE_SPECIFIED_LANGUAGE_COUNTRY_VARIANT, false);
+        processBundle(bundle + language + country, BUNDLE_SPECIFIED_LANGUAGE_COUNTRY, false);
+        processBundle(bundle + language, BUNDLE_SPECIFIED_LANGUAGE, false);
+        processBundle(bundle, BUNDLE_NOMATCH, false);
 
         //Load default locale bundle files
         //using default file encoding scheme.
@@ -391,14 +389,9 @@ public class Translate extends MatchingTask {
             ? "_" + locale.getVariant() : "";
         bundleEncoding = System.getProperty("file.encoding");
 
-        bundleFile = bundle + language + country + variant;
-        processBundle(bundleFile, BUNDLE_DEFAULT_LANGUAGE_COUNTRY_VARIANT, false);
-
-        bundleFile = bundle + language + country;
-        processBundle(bundleFile, BUNDLE_DEFAULT_LANGUAGE_COUNTRY, false);
-
-        bundleFile = bundle + language;
-        processBundle(bundleFile, BUNDLE_DEFAULT_LANGUAGE, true);
+        processBundle(bundle + language + country + variant, BUNDLE_DEFAULT_LANGUAGE_COUNTRY_VARIANT, false);
+        processBundle(bundle + language + country, BUNDLE_DEFAULT_LANGUAGE_COUNTRY, false);
+        processBundle(bundle + language, BUNDLE_DEFAULT_LANGUAGE, true);
     }
 
     /**
@@ -407,9 +400,9 @@ public class Translate extends MatchingTask {
     private void processBundle(final String bundleFile, final int i,
                                final boolean checkLoaded) throws BuildException {
         final File propsFile = getProject().resolveFile(bundleFile + ".properties");
-        FileInputStream ins = null;
+        InputStream ins = null;
         try {
-            ins = new FileInputStream(propsFile);
+            ins = Files.newInputStream(propsFile.toPath());
             loaded = true;
             bundleLastModified[i] = propsFile.lastModified();
             log("Using " + propsFile, Project.MSG_DEBUG);
@@ -418,7 +411,7 @@ public class Translate extends MatchingTask {
             log(propsFile + " not found.", Project.MSG_DEBUG);
             //if all resource files associated with this bundle
             //have been scanned for and still not able to
-            //find a single resrouce file, throw exception
+            //find a single resource file, throw exception
             if (!loaded && checkLoaded) {
                 throw new BuildException(ioe.getMessage(), getLocation());
             }
@@ -429,12 +422,10 @@ public class Translate extends MatchingTask {
      * Load resourceMap with key value pairs.  Values of existing keys
      * are not overwritten.  Bundle's encoding scheme is used.
      */
-    private void loadResourceMap(FileInputStream ins) throws BuildException {
-        try {
-            BufferedReader in = null;
-            InputStreamReader isr = new InputStreamReader(ins, bundleEncoding);
-            in = new BufferedReader(isr);
-            String line = null;
+    private void loadResourceMap(InputStream ins) throws BuildException {
+        try (BufferedReader in =
+            new BufferedReader(new InputStreamReader(ins, bundleEncoding))) {
+            String line;
             while ((line = in.readLine()) != null) {
                 //So long as the line isn't empty and isn't a comment...
                 if (line.trim().length() > 1 && '#' != line.charAt(0) && '!' != line.charAt(0)) {
@@ -474,9 +465,6 @@ public class Translate extends MatchingTask {
                     }
                 }
             }
-            if (in != null) {
-                in.close();
-            }
         } catch (IOException ioe) {
             throw new BuildException(ioe.getMessage(), getLocation());
         }
@@ -488,7 +476,7 @@ public class Translate extends MatchingTask {
      * and endToken.  The values for these keys are looked up from
      * the hashtable and substituted.  If the hashtable doesn't
      * contain the key, they key itself is used as the value.
-     * Detination files and directories are created as needed.
+     * Destination files and directories are created as needed.
      * The destination file is overwritten only if
      * the forceoverwritten attribute is set to true if
      * the source file or any associated bundle resource file is
@@ -496,9 +484,7 @@ public class Translate extends MatchingTask {
      */
     private void translate() throws BuildException {
         int filesProcessed = 0;
-        final int size = filesets.size();
-        for (int i = 0; i < size; i++) {
-            FileSet fs = (FileSet) filesets.elementAt(i);
+        for (FileSet fs : filesets) {
             DirectoryScanner ds = fs.getDirectoryScanner(getProject());
             String[] srcFiles = ds.getIncludedFiles();
             for (int j = 0; j < srcFiles.length; j++) {
@@ -548,18 +534,14 @@ public class Translate extends MatchingTask {
     }
 
     private void translateOneFile(File src, File dest) throws IOException {
-        BufferedWriter out = null;
-        BufferedReader in = null;
-        try {
-            FileOutputStream fos = new FileOutputStream(dest);
-            out = new BufferedWriter(new OutputStreamWriter(fos, destEncoding));
-            FileInputStream fis = new FileInputStream(src);
-            in = new BufferedReader(new InputStreamReader(fis, srcEncoding));
-            String line;
+        try (BufferedWriter out = new BufferedWriter(new OutputStreamWriter(
+            Files.newOutputStream(dest.toPath()), destEncoding));
+                BufferedReader in = new BufferedReader(new InputStreamReader(
+                    Files.newInputStream(src.toPath()), srcEncoding))) {
             LineTokenizer lineTokenizer = new LineTokenizer();
             lineTokenizer.setIncludeDelims(true);
-            line = lineTokenizer.getToken(in);
-            while ((line) != null) {
+            String line = lineTokenizer.getToken(in);
+            while (line != null) {
                 // 2003-02-21 new replace algorithm by tbee (tbee@tbee.org)
                 // because it wasn't able to replace something like "@aaa;@bbb;"
 
@@ -601,7 +583,7 @@ public class Translate extends MatchingTask {
                         } else {
                             // find the replace string
                             if (resourceMap.containsKey(token)) {
-                                replace = (String) resourceMap.get(token);
+                                replace = resourceMap.get(token);
                             } else {
                                 log("Replacement string missing for: " + token,
                                     Project.MSG_VERBOSE);
@@ -624,9 +606,6 @@ public class Translate extends MatchingTask {
                 out.write(line);
                 line = lineTokenizer.getToken(in);
             }
-        } finally {
-            FileUtils.close(in);
-            FileUtils.close(out);
         }
     }
 }

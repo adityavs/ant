@@ -18,8 +18,9 @@
 package org.apache.tools.ant.taskdefs.optional.image;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
 import java.util.Locale;
 import java.util.Vector;
 
@@ -27,7 +28,6 @@ import javax.media.jai.JAI;
 import javax.media.jai.PlanarImage;
 
 import org.apache.tools.ant.BuildException;
-import org.apache.tools.ant.DirectoryScanner;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.MatchingTask;
 import org.apache.tools.ant.types.FileSet;
@@ -38,8 +38,8 @@ import org.apache.tools.ant.types.optional.image.Rotate;
 import org.apache.tools.ant.types.optional.image.Scale;
 import org.apache.tools.ant.types.optional.image.TransformOperation;
 import org.apache.tools.ant.util.FileNameMapper;
-import org.apache.tools.ant.util.FileUtils;
 import org.apache.tools.ant.util.IdentityMapper;
+import org.apache.tools.ant.util.StringUtils;
 
 import com.sun.media.jai.codec.FileSeekableStream;
 
@@ -58,9 +58,9 @@ import com.sun.media.jai.codec.FileSeekableStream;
  */
 public class Image extends MatchingTask {
     // CheckStyle:VisibilityModifier OFF - bc
-    protected Vector instructions = new Vector();
+    protected Vector<ImageOperation> instructions = new Vector<>();
     protected boolean overwrite = false;
-    protected Vector filesets = new Vector();
+    protected Vector<FileSet> filesets = new Vector<>();
     protected File srcDir = null;
     protected File destDir = null;
 
@@ -83,7 +83,7 @@ public class Image extends MatchingTask {
      * @param set the FileSet to add.
      */
     public void addFileset(FileSet set) {
-        filesets.addElement(set);
+        filesets.add(set);
     }
 
     /**
@@ -211,6 +211,11 @@ public class Image extends MatchingTask {
     /**
      * Executes all the chained ImageOperations on the files inside
      * the directory.
+     * @param srcDir File
+     * @param srcNames String[]
+     * @param dstDir File
+     * @param mapper FileNameMapper
+     * @return int
      * @since Ant 1.8.0
      */
     public int processDir(final File srcDir, final String[] srcNames,
@@ -228,12 +233,10 @@ public class Image extends MatchingTask {
                 continue;
             }
 
-            for (int j = 0; j < dstNames.length; ++j){
-
-                final String dstName = dstNames[j];
+            for (String dstName : dstNames) {
                 final File dstFile = new File(dstDir, dstName).getAbsoluteFile();
 
-                if (dstFile.exists()){
+                if (dstFile.exists()) {
                     // avoid overwriting unless necessary
                     if(!overwrite
                        && srcFile.lastModified() <= dstFile.lastModified()) {
@@ -246,7 +249,7 @@ public class Image extends MatchingTask {
                     }
 
                     // avoid extra work while overwriting
-                    if (!srcFile.equals(dstFile)){
+                    if (!srcFile.equals(dstFile)) {
                         dstFile.delete();
                     }
                 }
@@ -269,6 +272,7 @@ public class Image extends MatchingTask {
      * @param file The file to be processed.
      * @deprecated this method isn't used anymore
      */
+    @Deprecated
     public void processFile(File file) {
         processFile(file, new File(destDir == null
                                    ? srcDir : destDir, file.getName()));
@@ -285,14 +289,10 @@ public class Image extends MatchingTask {
         try {
             log("Processing File: " + file.getAbsolutePath());
 
-            FileSeekableStream input = null;
             PlanarImage image = null;
-            try {
-                input = new FileSeekableStream(file);
+            try (FileSeekableStream input = new FileSeekableStream(file)) {
                 image = JAI.create("stream", input);
-                final int size = instructions.size();
-                for (int i = 0; i < size; i++) {
-                    Object instr = instructions.elementAt(i);
+                for (ImageOperation instr : instructions) {
                     if (instr instanceof TransformOperation) {
                         image = ((TransformOperation) instr)
                             .executeTransformOperation(image);
@@ -300,49 +300,32 @@ public class Image extends MatchingTask {
                         log("Not a TransformOperation: " + instr);
                     }
                 }
-            } finally {
-                FileUtils.close(input);
             }
 
             File dstParent = newFile.getParentFile();
             if (!dstParent.isDirectory()
                 && !(dstParent.mkdirs() || dstParent.isDirectory())) {
-                throw new BuildException("Failed to create parent directory "
-                                         + dstParent);
+                throw new BuildException("Failed to create parent directory %s",
+                    dstParent);
             }
 
-            if ((overwrite && newFile.exists()) && (!newFile.equals(file))) {
+            if (overwrite && newFile.exists() && !newFile.equals(file)) {
                 newFile.delete();
             }
 
-            FileOutputStream stream = null;
-            try {
-                stream = new FileOutputStream(newFile);
-
+            try (OutputStream stream = Files.newOutputStream(newFile.toPath())) {
                 JAI.create("encode", image, stream,
-                           str_encoding.toUpperCase(Locale.ENGLISH),
-                           null);
+                    str_encoding.toUpperCase(Locale.ENGLISH), null);
                 stream.flush();
-            } finally {
-                FileUtils.close(stream);
             }
-        } catch (IOException err) {
-            if (!file.equals(newFile)){
+        } catch (IOException | RuntimeException err) {
+            if (!file.equals(newFile)) {
                 newFile.delete();
             }
             if (!failonerror) {
                 log("Error processing file:  " + err);
             } else {
                 throw new BuildException(err);
-            }
-        } catch (java.lang.RuntimeException rerr) {
-            if (!file.equals(newFile)){
-                newFile.delete();
-            }
-            if (!failonerror) {
-                log("Error processing file:  " + rerr);
-            } else {
-                throw new BuildException(rerr);
             }
         }
     }
@@ -351,48 +334,39 @@ public class Image extends MatchingTask {
      * Executes the Task.
      * @throws BuildException on error.
      */
+    @Override
     public void execute() throws BuildException {
 
         validateAttributes();
 
         try {
-            File dest = destDir != null ? destDir : srcDir;
+            File dest = (destDir != null) ? destDir : srcDir;
 
             int writeCount = 0;
 
             // build mapper
-            final FileNameMapper mapper;
-            if (mapperElement==null){
-                mapper = new IdentityMapper();
-            } else {
-                mapper = mapperElement.getImplementation();
-            }
+            final FileNameMapper mapper = mapperElement == null
+                ? new IdentityMapper() : mapperElement.getImplementation();
 
             // deal with specified srcDir
             if (srcDir != null) {
-                final DirectoryScanner ds = super.getDirectoryScanner(srcDir);
-
-                final String[] files = ds.getIncludedFiles();
-                writeCount += processDir(srcDir, files, dest, mapper);
+                writeCount += processDir(srcDir,
+                    super.getDirectoryScanner(srcDir).getIncludedFiles(), dest,
+                    mapper);
             }
             // deal with the filesets
-            final int size = filesets.size();
-            for (int i = 0; i < size; i++) {
-                final FileSet fs = (FileSet) filesets.elementAt(i);
-                final DirectoryScanner ds =
-                    fs.getDirectoryScanner(getProject());
-                final String[] files = ds.getIncludedFiles();
-                final File fromDir = fs.getDir(getProject());
-                writeCount += processDir(fromDir, files, dest, mapper);
+            for (FileSet fs : filesets) {
+                writeCount += processDir(fs.getDir(getProject()),
+                    fs.getDirectoryScanner(getProject()).getIncludedFiles(),
+                    dest, mapper);
             }
 
-            if (writeCount>0){
-                log("Processed " + writeCount +
-                    (writeCount == 1 ? " image." : " images."));
+            if (writeCount > 0) {
+                log("Processed " + writeCount + (writeCount == 1 ? " image." : " images."));
             }
 
         } catch (Exception err) {
-            err.printStackTrace();
+            log(StringUtils.getStackTrace(err), Project.MSG_ERR);
             throw new BuildException(err.getMessage());
         }
     }
@@ -404,16 +378,16 @@ public class Image extends MatchingTask {
      * @throws BuildException on error.
      */
     protected void validateAttributes() throws BuildException {
-        if (srcDir == null && filesets.size() == 0) {
-            throw new BuildException("Specify at least one source"
-                                     + "--a srcDir or a fileset.");
+        if (srcDir == null && filesets.isEmpty()) {
+            throw new BuildException(
+                "Specify at least one source--a srcDir or a fileset.");
         }
         if (srcDir == null && destDir == null) {
             throw new BuildException("Specify the destDir, or the srcDir.");
         }
-        if (str_encoding.equalsIgnoreCase("jpg")) {
+        if ("jpg".equalsIgnoreCase(str_encoding)) {
             str_encoding = "JPEG";
-        } else if (str_encoding.equalsIgnoreCase("tif")) {
+        } else if ("tif".equalsIgnoreCase(str_encoding)) {
             str_encoding = "TIFF";
         }
     }

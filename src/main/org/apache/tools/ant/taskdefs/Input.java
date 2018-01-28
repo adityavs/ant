@@ -18,8 +18,7 @@
 
 package org.apache.tools.ant.taskdefs;
 
-import java.util.Vector;
-
+import java.util.List;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Task;
 import org.apache.tools.ant.input.DefaultInputHandler;
@@ -59,6 +58,7 @@ public class Input extends Task {
         public void setRefid(final String refid) {
             this.refid = refid;
         }
+
         /**
          * Get the refid of this Handler.
          * @return String refid.
@@ -66,6 +66,7 @@ public class Input extends Task {
         public String getRefid() {
             return refid;
         }
+
         /**
          * Set the InputHandler classname.
          * @param classname the String classname.
@@ -73,6 +74,7 @@ public class Input extends Task {
         public void setClassname(final String classname) {
             this.classname = classname;
         }
+
         /**
          * Get the classname of the InputHandler.
          * @return String classname.
@@ -80,6 +82,7 @@ public class Input extends Task {
         public String getClassname() {
             return classname;
         }
+
         /**
          * Set the handler type.
          * @param type a HandlerType.
@@ -87,6 +90,7 @@ public class Input extends Task {
         public void setType(final HandlerType type) {
             this.type = type;
         }
+
         /**
          * Get the handler type.
          * @return a HandlerType object.
@@ -94,6 +98,7 @@ public class Input extends Task {
         public HandlerType getType() {
             return type;
         }
+
         private InputHandler getInputHandler() {
             if (type != null) {
                return type.getInputHandler();
@@ -107,8 +112,8 @@ public class Input extends Task {
                }
             }
             if (classname != null) {
-               return (InputHandler) (ClasspathUtils.newInstance(classname,
-                   createLoader(), InputHandler.class));
+               return ClasspathUtils.newInstance(classname,
+                   createLoader(), InputHandler.class);
             }
             throw new BuildException(
                 "Must specify refid, classname or type");
@@ -122,17 +127,17 @@ public class Input extends Task {
     public static class HandlerType extends EnumeratedAttribute {
         private static final String[] VALUES = {"default", "propertyfile", "greedy", "secure"};
 
-        private static final InputHandler[] HANDLERS
-            = {new DefaultInputHandler(),
-               new PropertyFileInputHandler(),
-               new GreedyInputHandler(),
-               new SecureInputHandler()};
+        private static final InputHandler[] HANDLERS = {new DefaultInputHandler(),
+                new PropertyFileInputHandler(),
+                new GreedyInputHandler(),
+                new SecureInputHandler()};
 
         /** {@inheritDoc} */
         @Override
         public String[] getValues() {
             return VALUES;
         }
+
         private InputHandler getInputHandler() {
             return HANDLERS[getIndex()];
         }
@@ -153,7 +158,7 @@ public class Input extends Task {
      *
      * @param validargs A comma separated String defining valid input args.
      */
-    public void setValidargs (final String validargs) {
+    public void setValidargs(final String validargs) {
         this.validargs = validargs;
     }
 
@@ -164,7 +169,7 @@ public class Input extends Task {
      *
      * @param addproperty Name for the property to be created from input
      */
-    public void setAddproperty (final String addproperty) {
+    public void setAddproperty(final String addproperty) {
         this.addproperty = addproperty;
     }
 
@@ -172,7 +177,7 @@ public class Input extends Task {
      * Sets the Message which gets displayed to the user during the build run.
      * @param message The message to be displayed.
      */
-    public void setMessage (final String message) {
+    public void setMessage(final String message) {
         this.message = message;
         messageAttribute = true;
     }
@@ -184,7 +189,7 @@ public class Input extends Task {
      * @param defaultvalue Default value for the property if no input
      * is received
      */
-    public void setDefaultvalue (final String defaultvalue) {
+    public void setDefaultvalue(final String defaultvalue) {
         this.defaultvalue = defaultvalue;
     }
 
@@ -193,16 +198,10 @@ public class Input extends Task {
      * @param msg The message to be displayed.
      */
     public void addText(final String msg) {
-        if (messageAttribute && "".equals(msg.trim())) {
+        if (messageAttribute && msg.trim().isEmpty()) {
             return;
         }
         message += getProject().replaceProperties(msg);
-    }
-
-    /**
-     * No arg constructor.
-     */
-    public Input () {
     }
 
     /**
@@ -210,7 +209,7 @@ public class Input extends Task {
      * @throws BuildException on error
      */
     @Override
-    public void execute () throws BuildException {
+    public void execute() throws BuildException {
         if (addproperty != null
             && getProject().getProperty(addproperty) != null) {
             log("skipping " + getTaskName() + " as property " + addproperty
@@ -220,7 +219,7 @@ public class Input extends Task {
 
         InputRequest request = null;
         if (validargs != null) {
-            final Vector<String> accept = StringUtils.split(validargs, ',');
+            final List<String> accept = StringUtils.split(validargs, ',');
             request = new MultipleChoiceInputRequest(message, accept);
         } else {
             request = new InputRequest(message);
@@ -234,7 +233,7 @@ public class Input extends Task {
         h.handleInput(request);
 
         String value = request.getInput();
-        if ((value == null || value.trim().length() == 0)
+        if ((value == null || value.trim().isEmpty())
             && defaultvalue != null) {
             value = defaultvalue;
         }

@@ -20,7 +20,6 @@ package org.apache.tools.ant.types.selectors;
 
 import java.io.File;
 
-
 import org.apache.tools.ant.BuildFileRule;
 
 
@@ -34,11 +33,11 @@ public class BaseSelectorRule extends BuildFileRule {
 
     private File beddir;
     private File mirrordir;
-    private final String[] filenames = {".","asf-logo.gif.md5","asf-logo.gif.bz2",
-            "asf-logo.gif.gz","copy.filterset.filtered","zip/asf-logo.gif.zip",
-            "tar/asf-logo.gif.tar","tar/asf-logo-huge.tar.gz",
-            "tar/gz/asf-logo.gif.tar.gz","tar/bz2/asf-logo.gif.tar.bz2",
-            "tar/bz2/asf-logo-huge.tar.bz2","tar/bz2"};
+    private final String[] filenames = {".", "asf-logo.gif.md5", "asf-logo.gif.bz2",
+            "asf-logo.gif.gz", "copy.filterset.filtered", "zip/asf-logo.gif.zip",
+            "tar/asf-logo.gif.tar", "tar/asf-logo-huge.tar.gz",
+            "tar/gz/asf-logo.gif.tar.gz", "tar/bz2/asf-logo.gif.tar.bz2",
+            "tar/bz2/asf-logo-huge.tar.bz2", "tar/bz2"};
     private File[] files = new File[filenames.length];
     private File[] mirrorfiles = new File[filenames.length];
 
@@ -55,8 +54,8 @@ public class BaseSelectorRule extends BuildFileRule {
         mirrordir = new File(super.getProject().getProperty("mirror.dir"));
 
         for (int x = 0; x < files.length; x++) {
-            files[x] = new File(beddir,filenames[x]);
-            mirrorfiles[x] = new File(mirrordir,filenames[x]);
+            files[x] = new File(beddir, filenames[x]);
+            mirrorfiles[x] = new File(mirrordir, filenames[x]);
         }
     }
 
@@ -87,9 +86,11 @@ public class BaseSelectorRule extends BuildFileRule {
      * This is a helper method that takes a selector and calls its
      * isSelected() method on each file in the testbed. It returns
      * a string of "T"s amd "F"s
+     *
+     * @param selector FileSelector
      */
     public String selectionString(FileSelector selector) {
-        return selectionString(beddir,files,selector);
+        return selectionString(beddir, files, selector);
     }
 
     /**
@@ -98,23 +99,28 @@ public class BaseSelectorRule extends BuildFileRule {
      * variation is used for dependency checks and to get around the
      * limitations in the touch task when running JDK 1.1. It returns
      * a string of "T"s amd "F"s.
+     *
+     * @param selector FileSelector
      */
     public String mirrorSelectionString(FileSelector selector) {
-        return selectionString(mirrordir,mirrorfiles,selector);
+        return selectionString(mirrordir, mirrorfiles, selector);
     }
 
     /**
      * Worker method for the two convenience methods above. Applies a
      * selector on a set of files passed in and returns a string of
-     * "T"s amd "F"s from applying the selector to each file.
+     * "T"s and "F"s from applying the selector to each file.
+     *
+     * @param basedir File
+     * @param files File[]
+     * @param selector FileSelector
      */
     public String selectionString(File basedir, File[] files, FileSelector selector) {
         StringBuilder buf = new StringBuilder();
         for (int x = 0; x < files.length; x++) {
-            if (selector.isSelected(basedir,filenames[x],files[x])) {
+            if (selector.isSelected(basedir, filenames[x], files[x])) {
                 buf.append('T');
-            }
-            else {
+            } else {
                 buf.append('F');
             }
         }

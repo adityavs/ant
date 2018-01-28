@@ -18,11 +18,9 @@
 
 package org.apache.tools.ant.taskdefs;
 
-import java.io.IOException;
-
-import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.ProjectComponent;
 import org.apache.tools.ant.Task;
+import org.apache.tools.ant.util.FileUtils;
 
 /**
  * Logs standard output and error of a subprocess to the log system of ant.
@@ -57,14 +55,10 @@ public class LogStreamHandler extends PumpStreamHandler {
     /**
      * Stop the log stream handler.
      */
+    @Override
     public void stop() {
         super.stop();
-        try {
-            getErr().close();
-            getOut().close();
-        } catch (IOException e) {
-            // plain impossible
-            throw new BuildException(e);
-        }
+        FileUtils.close(getErr());
+        FileUtils.close(getOut());
     }
 }

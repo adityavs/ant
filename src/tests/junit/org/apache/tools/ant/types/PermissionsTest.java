@@ -25,8 +25,7 @@ import org.junit.Test;
 import static org.junit.Assert.fail;
 
 /**
- * JUnit 3 testcases for org.apache.tools.ant.types.Permissions.
- *
+ * JUnit 4 testcases for org.apache.tools.ant.types.Permissions.
  */
 public class PermissionsTest {
 
@@ -101,7 +100,7 @@ public class PermissionsTest {
             String s = System.getProperty("user.home");
             System.setProperty("user.home", s);
             fail("Could perform an action that should have been forbidden.");
-        } catch (SecurityException e){
+        } catch (SecurityException e) {
             // Was expected, test passes
         } finally {
             perms.restoreSecurityManager();
@@ -115,7 +114,7 @@ public class PermissionsTest {
         try {
             System.getProperty("os.name");
             fail("Could perform an action that should have been forbidden.");
-        } catch (SecurityException e){
+        } catch (SecurityException e) {
             // Was expected, test passes
         } finally {
             perms.restoreSecurityManager();
@@ -129,7 +128,7 @@ public class PermissionsTest {
         try {
             System.setProperty("line.separator",ls);
             fail("Could perform an action that should have been forbidden.");
-        } catch (SecurityException e){
+        } catch (SecurityException e) {
             //TODO assert exception message
             // Was expected, test passes
         } finally {
@@ -144,7 +143,7 @@ public class PermissionsTest {
         try {
             System.out.println("If this is the last line on standard out the testExit f.a.i.l.e.d");
             System.exit(3);
-            fail("Totaly impossible that this fail is ever executed. Please let me know if it is!");
+            fail("Totally impossible that this fail is ever executed. Please let me know if it is!");
         } catch (ExitException e) {
             if (e.getStatus() != 3) {
                 fail("Received wrong exit status in Exit Exception.");

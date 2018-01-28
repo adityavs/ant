@@ -24,11 +24,13 @@ import org.apache.tools.ant.BuildFileRule;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.taskdefs.rmic.RmicAdapterFactory;
 import org.apache.tools.ant.taskdefs.rmic.DefaultRmicAdapter;
+import org.apache.tools.ant.util.JavaEnvUtils;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 /**
@@ -37,7 +39,7 @@ import static org.junit.Assert.fail;
  */
 public class RmicAdvancedTest {
 
-    private final static String TASKDEFS_DIR = "src/etc/testcases/taskdefs/rmic/";
+    private static final String TASKDEFS_DIR = "src/etc/testcases/taskdefs/rmic/";
 
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
@@ -137,7 +139,7 @@ public class RmicAdvancedTest {
      * test weblogic
      */
     @Test
-    @Ignore("WLRmin tests don't work")
+    @Ignore("WLRmic tests don't work")
     public void XtestWlrmic() throws Exception {
         buildRule.executeTarget("testWlrmic");
     }
@@ -146,7 +148,7 @@ public class RmicAdvancedTest {
      *  test weblogic's stripping of -J args
      */
     @Test
-    @Ignore("WLRmin tests don't work")
+    @Ignore("WLRmic tests don't work")
     public void XtestWlrmicJArg() throws Exception {
         buildRule.executeTarget("testWlrmicJArg");
     }
@@ -155,8 +157,7 @@ public class RmicAdvancedTest {
      * test the forking compiler
      */
     @Test
-    @Ignore("WLRmin tests don't work")
-    public void NotestForking() throws Exception {
+    public void testForking() throws Exception {
         buildRule.executeTarget("testForking");
     }
 
@@ -226,7 +227,6 @@ public class RmicAdvancedTest {
         }
     }
 
-
     /**
      * A unit test for JUnit
      */
@@ -241,7 +241,6 @@ public class RmicAdvancedTest {
         //dont look for much text here as it is vendor and version dependent
         AntAssert.assertContains("unimplemented.class", buildRule.getLog());
     }
-
 
     /**
      * A unit test for JUnit
@@ -269,28 +268,25 @@ public class RmicAdvancedTest {
         }
     }
 
-
     @Test
     public void testMagicPropertyIsEmptyString() throws Exception {
         buildRule.executeTarget("testMagicPropertyIsEmptyString");
     }
-
 
     @Test
     @Ignore("Previously named to prevent execution")
     public void NotestFailingAdapter() throws Exception {
         try {
             buildRule.executeTarget("testFailingAdapter");
-            fail("Expected failures to propogate");
+            fail("Expected failures to propagate");
         } catch (BuildException ex) {
             AntAssert.assertContains(Rmic.ERROR_RMIC_FAILED, ex.getMessage());
         }
     }
 
-
     /**
      * test that version 1.1 stubs are good
-     * @throws Exception
+     * @throws Exception if something goes wrong
      */
     @Test
     public void testVersion11() throws Exception {
@@ -299,7 +295,7 @@ public class RmicAdvancedTest {
 
     /**
      * test that version 1.1 stubs are good
-     * @throws Exception
+     * @throws Exception if something goes wrong
      */
     @Test
     public void testVersion11Dest() throws Exception {
@@ -309,7 +305,7 @@ public class RmicAdvancedTest {
     /**
      * test that version 1.2 stubs are good
      *
-     * @throws Exception
+     * @throws Exception if something goes wrong
      */
     @Test
     public void testVersion12() throws Exception {
@@ -319,7 +315,7 @@ public class RmicAdvancedTest {
     /**
      * test that version 1.2 stubs are good
      *
-     * @throws Exception
+     * @throws Exception if something goes wrong
      */
     @Test
     public void testVersion12Dest() throws Exception {
@@ -329,7 +325,7 @@ public class RmicAdvancedTest {
     /**
      * test that version compat stubs are good
      *
-     * @throws Exception
+     * @throws Exception if something goes wrong
      */
     @Test
     public void testVersionCompat() throws Exception {
@@ -339,7 +335,7 @@ public class RmicAdvancedTest {
     /**
      * test that version compat stubs are good
      *
-     * @throws Exception
+     * @throws Exception if something goes wrong
      */
     @Test
     public void testVersionCompatDest() throws Exception {
@@ -347,69 +343,49 @@ public class RmicAdvancedTest {
     }
 
     /**
-     * test that passes -Xnew to sun's rmic.
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testXnew() throws Exception {
-        buildRule.executeTarget("testXnew");
-    }
-
-    /**
-     * test that passes -Xnew to sun's rmic.
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testXnewDest() throws Exception {
-        buildRule.executeTarget("testXnewDest");
-    }
-
-    /**
      * test that passes -Xnew to sun's rmic running in a different VM.
      *
-     * @throws Exception
+     * @throws Exception if something goes wrong
      */
     @Test
     public void testXnewForked() throws Exception {
-        buildRule.executeTarget("testXnewForked");
+        xnewTest("testXnewForked");
     }
 
     /**
      * test that passes -Xnew to sun's rmic running in a different VM.
      *
-     * @throws Exception
+     * @throws Exception if something goes wrong
      */
     @Test
     public void testXnewForkedDest() throws Exception {
-        buildRule.executeTarget("testXnewForkedDest");
+        xnewTest("testXnewForkedDest");
     }
 
     /**
      * test that runs the new xnew compiler adapter.
      *
-     * @throws Exception
+     * @throws Exception if something goes wrong
      */
     @Test
     public void testXnewCompiler() throws Exception {
-        buildRule.executeTarget("testXnewCompiler");
+        xnewTest("testXnewCompiler");
     }
 
     /**
      * test that runs the new xnew compiler adapter.
      *
-     * @throws Exception
+     * @throws Exception if something goes wrong
      */
     @Test
     public void testXnewCompilerDest() throws Exception {
-        buildRule.executeTarget("testXnewCompilerDest");
+        xnewTest("testXnewCompilerDest");
     }
 
     /**
      * test that verifies that IDL compiles.
      *
-     * @throws Exception
+     * @throws Exception if something goes wrong
      */
     @Test
     public void testIDL() throws Exception {
@@ -419,7 +395,7 @@ public class RmicAdvancedTest {
     /**
      * test that verifies that IDL compiles.
      *
-     * @throws Exception
+     * @throws Exception if something goes wrong
      */
     @Test
     public void testIDLDest() throws Exception {
@@ -429,7 +405,7 @@ public class RmicAdvancedTest {
     /**
      * test that verifies that IIOP compiles.
      *
-     * @throws Exception
+     * @throws Exception if something goes wrong
      */
     @Test
     public void testIIOP() throws Exception {
@@ -439,11 +415,24 @@ public class RmicAdvancedTest {
     /**
      * test that verifies that IIOP compiles.
      *
-     * @throws Exception
+     * @throws Exception if something goes wrong
      */
     @Test
     public void testIIOPDest() throws Exception {
         buildRule.executeTarget("testIIOPDest");
+    }
+
+    private void xnewTest(String target) {
+        if (!JavaEnvUtils.isAtLeastJavaVersion(JavaEnvUtils.JAVA_9)) {
+            buildRule.executeTarget(target);
+        } else {
+            try {
+                buildRule.executeTarget(target);
+                fail("Target should have thrown a BuildException");
+            } catch (BuildException ex) {
+                assertEquals("JDK9 has removed support for -Xnew", ex.getMessage());
+            }
+        }
     }
 
     /**

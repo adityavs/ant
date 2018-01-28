@@ -71,6 +71,7 @@ public class StringResource extends Resource {
      * Enforce String immutability.
      * @param s the new name/value for this StringResource.
      */
+    @Override
     public synchronized void setName(String s) {
         if (getName() != null) {
             throw new BuildException(new ImmutableResourceException());
@@ -90,6 +91,7 @@ public class StringResource extends Resource {
      * Synchronize access.
      * @return the name/value of this StringResource.
      */
+    @Override
     public synchronized String getName() {
         return super.getName();
     }
@@ -107,6 +109,7 @@ public class StringResource extends Resource {
      *
      * @return true if this resource exists.
      */
+    @Override
     public boolean isExists() {
         return getValue() != null;
     }
@@ -144,16 +147,19 @@ public class StringResource extends Resource {
      * @return the size, as a long, 0 if the Resource does not exist (for
      *         compatibility with java.io.File), or UNKNOWN_SIZE if not known.
      */
+    @Override
     public synchronized long getSize() {
-        return isReference() ? ((Resource) getCheckedRef()).getSize()
-                : getContent().length();
+        return isReference() ? getCheckedRef().getSize()
+            : getContent().length();
     }
 
     /**
      * Get the hash code for this Resource.
      * @return hash code as int.
      */
-    public synchronized int hashCode() {
+    @Override
+    public synchronized int hashCode() { //NOSONAR
+        // super.equals + super.compareTo are consistent with this implementation
         if (isReference()) {
             return getCheckedRef().hashCode();
         }
@@ -166,6 +172,7 @@ public class StringResource extends Resource {
      * @return the string contents of the resource.
      * @since Ant 1.7
      */
+    @Override
     public String toString() {
         return String.valueOf(getContent());
     }
@@ -178,9 +185,10 @@ public class StringResource extends Resource {
      * @throws UnsupportedOperationException if InputStreams are not
      *         supported for this Resource type.
      */
+    @Override
     public synchronized InputStream getInputStream() throws IOException {
         if (isReference()) {
-            return ((Resource) getCheckedRef()).getInputStream();
+            return getCheckedRef().getInputStream();
         }
         String content = getContent();
         if (content == null) {
@@ -198,9 +206,10 @@ public class StringResource extends Resource {
      * @throws UnsupportedOperationException if OutputStreams are not
      *         supported for this Resource type.
      */
+    @Override
     public synchronized OutputStream getOutputStream() throws IOException {
         if (isReference()) {
-            return ((Resource) getCheckedRef()).getOutputStream();
+            return getCheckedRef().getOutputStream();
         }
         if (getValue() != null) {
             throw new ImmutableResourceException();
@@ -212,6 +221,7 @@ public class StringResource extends Resource {
      * Overrides the super version.
      * @param r the Reference to set.
      */
+    @Override
     public void setRefid(Reference r) {
         if (encoding != DEFAULT_ENCODING) {
             throw tooManyAttributes();
@@ -227,19 +237,9 @@ public class StringResource extends Resource {
         return getValue();
     }
 
-    /**
-     * This method is only for use by our private helper output stream.
-     * It contains specific logic for expanding properties.
-     * @param output the output
-     */
-    private void setValueFromOutputStream(String output) {
-        String value;
-        if (getProject() != null) {
-            value = getProject().replaceProperties(output);
-        } else {
-            value = output;
-        }
-        setValue(value);
+    @Override
+    protected StringResource getCheckedRef() {
+        return (StringResource) super.getCheckedRef();
     }
 
     private class StringResourceFilterOutputStream extends FilterOutputStream {
@@ -250,12 +250,24 @@ public class StringResource extends Resource {
             baos = (ByteArrayOutputStream) out;
         }
 
+        @Override
         public void close() throws IOException {
             super.close();
             String result = encoding == null
                     ? baos.toString() : baos.toString(encoding);
 
-            StringResource.this.setValueFromOutputStream(result);
+            setValueFromOutputStream(result);
         }
+
+        private void setValueFromOutputStream(String output) {
+            String value;
+            if (getProject() != null) {
+                value = getProject().replaceProperties(output);
+            } else {
+                value = output;
+            }
+            setValue(value);
+        }
+
     }
 }

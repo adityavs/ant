@@ -17,6 +17,8 @@
  */
 package org.apache.tools.ant.taskdefs;
 
+import java.io.File;
+
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.BuildFileRule;
 import org.junit.Before;
@@ -40,27 +42,27 @@ public class MkdirTest {
     @Test
     public void test1() {
         try {
-			buildRule.executeTarget("test1");
-			fail("BuildException expected: required argument missing");
-		} catch (BuildException ex) {
-			//TODO assert value
-		}
+            buildRule.executeTarget("test1");
+            fail("BuildException expected: required argument missing");
+        } catch (BuildException ex) {
+            //TODO assert value
+        }
     }
 
     @Test
     public void test2() {
         try {
-			buildRule.executeTarget("test2");
-			fail("BuildException expected: directory already exists as a file");
-		} catch (BuildException ex) {
-			//TODO assert value
-		}
+            buildRule.executeTarget("test2");
+            fail("BuildException expected: directory already exists as a file");
+        } catch (BuildException ex) {
+            //TODO assert value
+        }
     }
 
     @Test
     public void test3() {
         buildRule.executeTarget("test3");
-        java.io.File f = new java.io.File(buildRule.getProject().getProperty("output"), "testdir.tmp");
+        File f = new File(buildRule.getProject().getProperty("output"), "testdir.tmp");
         if (!f.exists() || !f.isDirectory()) {
             fail("mkdir failed");
         } else {

@@ -24,7 +24,7 @@
 
 <body>
 
-<h2><a name="netrexxc">NetRexxC</a></h2>
+<h2 id="netrexxc">NetRexxC</h2>
 <h3>Description</h3>
 <p>Compiles a <a href="http://www2.hursley.ibm.com/netrexx" target="_top">NetRexx</a>
 source tree within the running (Apache Ant) VM.</p>
@@ -58,9 +58,12 @@ supports most attributes of <code>&lt;fileset&gt;</code>
 or from the command line as<br>
 <code>ant -Dant.netrexxc.verbose=noverbose ...</code>
 </p>
+<p><strong>Note</strong>: This task depends on external libraries not
+included in the Apache Ant distribution. See <a href="../install.html#librarydependencies">Library Dependencies</a>
+for more information.</p>
 
 <h3>Parameters</h3>
-<table border="1" cellpadding="2" cellspacing="0">
+<table>
   <tr>
     <td valign="top"><b>Attribute</b></td>
     <td valign="top"><b>Description</b></td>
@@ -332,7 +335,5 @@ or from the command line as<br>
   </p>
 </blockquote>
 
-
 </body>
 </html>
-

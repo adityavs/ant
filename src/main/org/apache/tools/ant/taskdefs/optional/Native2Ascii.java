@@ -69,6 +69,7 @@ public class Native2Ascii extends MatchingTask {
 
     /**
      * The value of the reverse attribute.
+     *
      * @return the reverse attribute.
      * @since Ant 1.6.3
      */
@@ -89,6 +90,7 @@ public class Native2Ascii extends MatchingTask {
 
     /**
      * The value of the encoding attribute.
+     *
      * @return the encoding attribute.
      * @since Ant 1.6.3
      */
@@ -127,6 +129,7 @@ public class Native2Ascii extends MatchingTask {
 
     /**
      * Choose the implementation for this particular task.
+     *
      * @param impl the name of the implementation
      * @since Ant 1.6.3
      */
@@ -142,7 +145,6 @@ public class Native2Ascii extends MatchingTask {
      * Defines the FileNameMapper to use (nested mapper element).
      *
      * @return the mapper to use for file name translations.
-     *
      * @throws BuildException if more than one mapper is defined.
      */
     public Mapper createMapper() throws BuildException {
@@ -156,6 +158,7 @@ public class Native2Ascii extends MatchingTask {
 
     /**
      * A nested filenamemapper
+     *
      * @param fileNameMapper the mapper to add
      * @since Ant 1.6.3
      */
@@ -165,8 +168,8 @@ public class Native2Ascii extends MatchingTask {
 
     /**
      * Adds an implementation specific command-line argument.
-     * @return a ImplementationSpecificArgument to be configured
      *
+     * @return a ImplementationSpecificArgument to be configured
      * @since Ant 1.6.3
      */
     public ImplementationSpecificArgument createArg() {
@@ -180,6 +183,7 @@ public class Native2Ascii extends MatchingTask {
      * The classpath to use when loading the native2ascii
      * implementation if it is not a built-in one.
      *
+     * @return Path
      * @since Ant 1.8.0
      */
     public Path createImplementationClasspath() {
@@ -188,12 +192,14 @@ public class Native2Ascii extends MatchingTask {
 
     /**
      * Set the adapter explicitly.
+     *
+     * @param adapter Native2AsciiAdapter
      * @since Ant 1.8.0
      */
     public void add(Native2AsciiAdapter adapter) {
         if (nestedAdapter != null) {
-            throw new BuildException("Can't have more than one native2ascii"
-                                     + " adapter");
+            throw new BuildException(
+                "Can't have more than one native2ascii adapter");
         }
         nestedAdapter = adapter;
     }
@@ -203,6 +209,7 @@ public class Native2Ascii extends MatchingTask {
      *
      * @throws BuildException is there is a problem in the task execution.
      */
+    @Override
     public void execute() throws BuildException {
 
         DirectoryScanner scanner = null; // Scanner to find our inputs
@@ -222,11 +229,11 @@ public class Native2Ascii extends MatchingTask {
         // to be set, so we don't stomp every file.  One could still
         // include a file with the same extension, but ....
         if (srcDir.equals(destDir) && extension == null && mapper == null) {
-            throw new BuildException("The ext attribute or a mapper must be set if"
-                                     + " src and dest dirs are the same.");
+            throw new BuildException(
+                "The ext attribute or a mapper must be set if src and dest dirs are the same.");
         }
 
-        FileNameMapper m = null;
+        FileNameMapper m;
         if (mapper == null) {
             if (extension == null) {
                 m = new IdentityMapper();
@@ -270,8 +277,7 @@ public class Native2Ascii extends MatchingTask {
 
         // Make sure we're not about to clobber something
         if (srcFile.equals(destFile)) {
-            throw new BuildException("file " + srcFile
-                                     + " would overwrite its self");
+            throw new BuildException("file %s would overwrite itself", srcFile);
         }
 
         // Make intermediate directories if needed
@@ -282,17 +288,15 @@ public class Native2Ascii extends MatchingTask {
 
             if (!parentFile.exists()
                 && !(parentFile.mkdirs() || parentFile.isDirectory())) {
-                throw new BuildException("cannot create parent directory "
-                                         + parentName);
+                throw new BuildException("cannot create parent directory %s",
+                    parentName);
             }
         }
 
         log("converting " + srcName, Project.MSG_VERBOSE);
-        Native2AsciiAdapter ad =
-            nestedAdapter != null ? nestedAdapter :
-            Native2AsciiAdapterFactory.getAdapter(facade.getImplementation(),
-                                                  this,
-                                                  createImplementationClasspath());
+        Native2AsciiAdapter ad = nestedAdapter != null ? nestedAdapter
+                : Native2AsciiAdapterFactory.getAdapter(facade.getImplementation(), this,
+                        createImplementationClasspath());
         if (!ad.convert(this, srcFile, destFile)) {
             throw new BuildException("conversion failed");
         }
@@ -310,19 +314,21 @@ public class Native2Ascii extends MatchingTask {
 
     private class ExtMapper implements FileNameMapper {
 
+        @Override
         public void setFrom(String s) {
         }
+
+        @Override
         public void setTo(String s) {
         }
 
+        @Override
         public String[] mapFileName(String fileName) {
             int lastDot = fileName.lastIndexOf('.');
             if (lastDot >= 0) {
-                return new String[] {fileName.substring(0, lastDot)
-                                         + extension};
-            } else {
-                return new String[] {fileName + extension};
+                return new String[] {fileName.substring(0, lastDot) + extension};
             }
+            return new String[] {fileName + extension};
         }
     }
 }

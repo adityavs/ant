@@ -98,7 +98,7 @@ public class Assertions extends DataType implements Cloneable {
 
     /**
      * enable or disable system assertions.
-     * Default is not set (neither -enablesystemassersions or -disablesytemassertions
+     * Default is not set (neither -enablesystemassertions or -disablesytemassertions
      * are used on the command line).
      * @param enableSystemAssertions if true enable system assertions
      */
@@ -117,7 +117,7 @@ public class Assertions extends DataType implements Cloneable {
      * @param ref the reference to use
      */
     public void setRefid(Reference ref) {
-        if (assertionList.size() > 0 || enableSystemAssertions != null) {
+        if (!assertionList.isEmpty() || enableSystemAssertions != null) {
             throw tooManyAttributes();
         }
         super.setRefid(ref);
@@ -130,13 +130,12 @@ public class Assertions extends DataType implements Cloneable {
     private Assertions getFinalReference() {
         if (getRefid() == null) {
             return this;
-        } else {
-            Object o = getRefid().getReferencedObject(getProject());
-            if (!(o instanceof Assertions)) {
-                throw new BuildException("reference is of wrong type");
-            }
-            return (Assertions) o;
         }
+        Object o = getRefid().getReferencedObject(getProject());
+        if (!(o instanceof Assertions)) {
+            throw new BuildException("reference is of wrong type");
+        }
+        return (Assertions) o;
     }
 
     /**
@@ -229,8 +228,8 @@ public class Assertions extends DataType implements Cloneable {
 
     /**
      * helper method to add a string JVM argument to a command
-     * @param command
-     * @param arg
+     * @param command ditto
+     * @param arg ditto
      */
     private static void addVmArgument(CommandlineJava command, String arg) {
         Commandline.Argument argument;
@@ -245,16 +244,16 @@ public class Assertions extends DataType implements Cloneable {
      * @return a cli
      * @throws CloneNotSupportedException if the super class does not support cloning
      */
+    @Override
     public Object clone() throws CloneNotSupportedException {
         Assertions that = (Assertions) super.clone();
-        that.assertionList = new ArrayList<BaseAssertion>(assertionList);
+        that.assertionList = new ArrayList<>(assertionList);
         return that;
     }
 
     /**
      * base class for our assertion elements.
      */
-
     public abstract static class BaseAssertion {
         private String packageName;
         private String className;
@@ -309,7 +308,7 @@ public class Assertions extends DataType implements Cloneable {
             if (getPackageName() != null && getClassName() != null) {
                 throw new BuildException("Both package and class have been set");
             }
-            StringBuffer command = new StringBuffer(getCommandPrefix());
+            StringBuilder command = new StringBuilder(getCommandPrefix());
             //see if it is a package or a class
             if (getPackageName() != null) {
                 //packages get a ... prefix
@@ -337,6 +336,7 @@ public class Assertions extends DataType implements Cloneable {
          * get the prefix used to begin the command; -ea or -da.
          * @return prefix
          */
+        @Override
         public String getCommandPrefix() {
             return "-ea";
         }
@@ -351,6 +351,7 @@ public class Assertions extends DataType implements Cloneable {
          * get the prefix used to begin the command; -ea or -da.
          * @return prefix
          */
+        @Override
         public String getCommandPrefix() {
             return "-da";
         }

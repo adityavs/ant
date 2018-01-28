@@ -39,11 +39,9 @@ import static org.junit.Assume.assumeTrue;
  */
 public class ImageTest {
 
-    private final static String TASKDEFS_DIR = 
-        "src/etc/testcases/taskdefs/optional/image/";
-    private final static String LARGEIMAGE = "largeimage.jpg";
-
     private static final FileUtils FILE_UTILS = FileUtils.getFileUtils();
+    private static final String TASKDEFS_DIR = "src/etc/testcases/taskdefs/optional/image/";
+    private static final String LARGEIMAGE = "largeimage.jpg";
 
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
@@ -66,10 +64,7 @@ public class ImageTest {
         AntAssert.assertContains("Processing File", buildRule.getLog());
 
         File f = new File(buildRule.getOutputDir(), LARGEIMAGE);
-        assertTrue(
-                   "Did not create "+f.getAbsolutePath(),
-                   f.exists());
-
+        assertTrue("Did not create " + f.getAbsolutePath(), f.exists());
     }
 
     @Test
@@ -78,14 +73,13 @@ public class ImageTest {
         AntAssert.assertContains("Processing File", buildRule.getLog());
         File f = new File(buildRule.getOutputDir(), LARGEIMAGE);
         assumeTrue("Could not change file modificaiton date",
-                f.setLastModified(f.lastModified() - (FILE_UTILS.getFileTimestampGranularity() * 2)));
+                f.setLastModified(f.lastModified() - FILE_UTILS.getFileTimestampGranularity() * 2));
         long lastModified = f.lastModified();
         buildRule.executeTarget("testOverwriteTrue");
         AntAssert.assertContains("Processing File", buildRule.getLog());
         f = new File(buildRule.getOutputDir(), LARGEIMAGE);
         long overwrittenLastModified = f.lastModified();
-        assertTrue("File was not overwritten.",
-                   lastModified < overwrittenLastModified);
+        assertTrue("File was not overwritten.", lastModified < overwrittenLastModified);
     }
 
     @Test
@@ -98,8 +92,7 @@ public class ImageTest {
         AntAssert.assertContains("Processing File", buildRule.getLog());
         f = new File(buildRule.getOutputDir(), LARGEIMAGE);
         long overwrittenLastModified = f.lastModified();
-        assertTrue("File was overwritten.",
-                   lastModified == overwrittenLastModified);
+        assertTrue("File was overwritten.", lastModified == overwrittenLastModified);
     }
 
     @Test
@@ -107,10 +100,7 @@ public class ImageTest {
         buildRule.executeTarget("testSimpleScaleWithMapper");
         AntAssert.assertContains("Processing File", buildRule.getLog());
         File f = new File(buildRule.getOutputDir(), "scaled-" + LARGEIMAGE);
-        assertTrue(
-                   "Did not create "+f.getAbsolutePath(),
-                   f.exists());
-
+        assertTrue("Did not create " + f.getAbsolutePath(), f.exists());
     }
 
     @Test
@@ -119,15 +109,11 @@ public class ImageTest {
         try {
             buildRule.executeTarget("testFailOnError");
             AntAssert.assertContains("Unable to process image stream", buildRule.getLog());
-        }
-        catch (RuntimeException re){
-            assertTrue("Run time exception should say "
-                       + "'Unable to process image stream'. :" 
+        } catch (RuntimeException re){
+            assertTrue("Run time exception should say 'Unable to process image stream'. :"
                        + re.toString(),
-                       re.toString()
-                       .indexOf("Unable to process image stream") > -1);
+                       re.toString().indexOf("Unable to process image stream") > -1);
         }
     }
 
 }
-

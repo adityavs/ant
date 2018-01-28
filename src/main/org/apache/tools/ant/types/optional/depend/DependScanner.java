@@ -19,8 +19,10 @@ package org.apache.tools.ant.types.optional.depend;
 
 import java.io.File;
 import java.util.Enumeration;
-import java.util.Hashtable;
+import java.util.Set;
 import java.util.Vector;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.DirectoryScanner;
@@ -48,7 +50,7 @@ public class DependScanner extends DirectoryScanner {
      */
     private Vector<String> included;
 
-    private Vector<File> additionalBaseDirs = new Vector<File>();
+    private Vector<File> additionalBaseDirs = new Vector<>();
 
     /**
      * The parent scanner which gives the basic set of files. Only files which
@@ -82,15 +84,13 @@ public class DependScanner extends DirectoryScanner {
      *
      * @return the names of the files.
      */
+    @Override
     public String[] getIncludedFiles() {
-        String[] files = new String[getIncludedFilesCount()];
-        for (int i = 0; i < files.length; i++) {
-            files[i] = (String) included.elementAt(i);
-        }
-        return files;
+        return included.toArray(new String[getIncludedFilesCount()]);
     }
 
     /** {@inheritDoc}. */
+    @Override
     public synchronized int getIncludedFilesCount() {
         if (included == null) {
             throw new IllegalStateException();
@@ -103,12 +103,14 @@ public class DependScanner extends DirectoryScanner {
      *
      * @exception IllegalStateException when basedir was set incorrectly.
      */
+    @Override
     public synchronized void scan() throws IllegalStateException {
-        included = new Vector<String>();
+        included = new Vector<>();
         String analyzerClassName = DEFAULT_ANALYZER_CLASS;
-        DependencyAnalyzer analyzer = null;
+        DependencyAnalyzer analyzer;
         try {
-            Class<? extends DependencyAnalyzer> analyzerClass = Class.forName(analyzerClassName)
+            Class<? extends DependencyAnalyzer> analyzerClass =
+                Class.forName(analyzerClassName)
                     .asSubclass(DependencyAnalyzer.class);
             analyzer = analyzerClass.newInstance();
         } catch (Exception e) {
@@ -116,28 +118,22 @@ public class DependScanner extends DirectoryScanner {
                                      + analyzerClassName, e);
         }
         analyzer.addClassPath(new Path(null, basedir.getPath()));
-        for (Enumeration<File> e = additionalBaseDirs.elements(); e.hasMoreElements();) {
-            File additionalBaseDir = e.nextElement();
-            analyzer.addClassPath(new Path(null, additionalBaseDir.getPath()));
-        }
+        additionalBaseDirs.stream().map(File::getPath)
+            .map(p -> new Path(null, p)).forEach(analyzer::addClassPath);
 
-        for (Enumeration<String> e = rootClasses.elements(); e.hasMoreElements();) {
-            String rootClass = e.nextElement();
-            analyzer.addRootClass(rootClass);
-        }
+        rootClasses.forEach(analyzer::addRootClass);
+
+        Set<String> parentSet = Stream.of(parentScanner.getIncludedFiles())
+            .collect(Collectors.toSet());
+
         Enumeration<String> e = analyzer.getClassDependencies();
 
-        String[] parentFiles = parentScanner.getIncludedFiles();
-        Hashtable<String, String> parentSet = new Hashtable<String, String>();
-        for (int i = 0; i < parentFiles.length; ++i) {
-            parentSet.put(parentFiles[i], parentFiles[i]);
-        }
         while (e.hasMoreElements()) {
-            String classname = (String) e.nextElement();
-            String filename = classname.replace('.', File.separatorChar);
-            filename = filename + ".class";
+            String classname = e.nextElement();
+            String filename =
+                classname.replace('.', File.separatorChar) + ".class";
             File depFile = new File(basedir, filename);
-            if (depFile.exists() && parentSet.containsKey(filename)) {
+            if (depFile.exists() && parentSet.contains(filename)) {
                 // This is included
                 included.addElement(filename);
             }
@@ -147,75 +143,85 @@ public class DependScanner extends DirectoryScanner {
     /**
      * @see DirectoryScanner#addDefaultExcludes
      */
+    @Override
     public void addDefaultExcludes() {
     }
 
     /**
      * @see DirectoryScanner#getExcludedDirectories
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
+    @Override
     public String[] getExcludedDirectories() {
         return null;
     }
 
     /**
      * @see DirectoryScanner#getExcludedFiles
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
+    @Override
     public String[] getExcludedFiles() {
         return null;
     }
 
     /**
      * @see DirectoryScanner#getIncludedDirectories
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
+    @Override
     public String[] getIncludedDirectories() {
         return new String[0];
     }
 
     /**
      * @see DirectoryScanner#getIncludedDirsCount
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
+    @Override
     public int getIncludedDirsCount() {
         return 0;
     }
 
     /**
      * @see DirectoryScanner#getNotIncludedDirectories
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
+    @Override
     public String[] getNotIncludedDirectories() {
         return null;
     }
 
     /**
      * @see DirectoryScanner#getNotIncludedFiles
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
+    @Override
     public String[] getNotIncludedFiles() {
         return null;
     }
 
     /**
      * @see DirectoryScanner#setExcludes
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
+    @Override
     public void setExcludes(String[] excludes) {
     }
 
     /**
      * @see DirectoryScanner#setIncludes
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
+    @Override
     public void setIncludes(String[] includes) {
     }
 
     /**
      * @see DirectoryScanner#setCaseSensitive
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
+    @Override
     public void setCaseSensitive(boolean isCaseSensitive) {
     }
 

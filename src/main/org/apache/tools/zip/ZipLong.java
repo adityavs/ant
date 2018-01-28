@@ -75,7 +75,7 @@ public final class ZipLong implements Cloneable {
      * @param bytes the bytes to store as a ZipLong
      * @since 1.1
      */
-    public ZipLong (byte[] bytes) {
+    public ZipLong(byte[] bytes) {
         this(bytes, 0);
     }
 
@@ -85,7 +85,7 @@ public final class ZipLong implements Cloneable {
      * @param offset the offset to start
      * @since 1.1
      */
-    public ZipLong (byte[] bytes, int offset) {
+    public ZipLong(byte[] bytes, int offset) {
         value = ZipLong.getValue(bytes, offset);
     }
 
@@ -190,7 +190,7 @@ public final class ZipLong implements Cloneable {
             return super.clone();
         } catch (CloneNotSupportedException cnfe) {
             // impossible
-            throw new RuntimeException(cnfe);
+            throw new RuntimeException(cnfe); //NOSONAR
         }
     }
 

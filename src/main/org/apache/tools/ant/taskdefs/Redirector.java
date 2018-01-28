@@ -39,6 +39,7 @@ import org.apache.tools.ant.Task;
 import org.apache.tools.ant.filters.util.ChainReaderHelper;
 import org.apache.tools.ant.types.FilterChain;
 import org.apache.tools.ant.util.ConcatFileInputStream;
+import org.apache.tools.ant.util.FileUtils;
 import org.apache.tools.ant.util.KeepAliveOutputStream;
 import org.apache.tools.ant.util.LazyFileOutputStream;
 import org.apache.tools.ant.util.LeadPipeInputStream;
@@ -533,6 +534,8 @@ public class Redirector {
      * <p>Binary output will not be split into lines which may make
      * error and normal output look mixed up when they get written to
      * the same stream.</p>
+     *
+     * @param b boolean
      * @since 1.9.4
      */
     public void setBinaryOutput(final boolean b) {
@@ -983,22 +986,10 @@ public class Redirector {
      */
     public void setProperties() {
         synchronized (outMutex) {
-            if (baos != null) {
-                try {
-                    baos.close();
-                } catch (final IOException eyeOhEx) {
-                    // Ignore exception
-                }
-            }
+            FileUtils.close(baos);
         }
         synchronized (errMutex) {
-            if (errorBaos != null) {
-                try {
-                    errorBaos.close();
-                } catch (final IOException eyeOhEx) {
-                    // Ignore exception
-                }
-            }
+            FileUtils.close(errorBaos);
         }
     }
 

@@ -18,7 +18,6 @@
 package org.apache.tools.ant.taskdefs;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.OutputStream;
 
 import org.apache.tools.ant.BuildException;
@@ -59,8 +58,7 @@ public class EchoXML extends XMLFragment {
     /**
      * Set the namespace policy for the xml file
      * @param n namespace policy: "ignore," "elementsOnly," or "all"
-     * @see
-     * org.apache.tools.ant.util.DOMElementWriter.XmlNamespacePolicy
+     * @see org.apache.tools.ant.util.DOMElementWriter.XmlNamespacePolicy
      */
     public void setNamespacePolicy(NamespacePolicy n) {
         namespacePolicy = n;
@@ -83,7 +81,7 @@ public class EchoXML extends XMLFragment {
         OutputStream os = null;
         try {
             if (file != null) {
-                os = new FileOutputStream(file.getAbsolutePath(), append);
+                os = FileUtils.newOutputStream(file.toPath(), append);
             } else {
                 os = new LogOutputStream(this, Project.MSG_INFO);
             }
@@ -109,11 +107,13 @@ public class EchoXML extends XMLFragment {
         public static final NamespacePolicy DEFAULT
             = new NamespacePolicy(IGNORE);
 
-        public NamespacePolicy() {}
+        public NamespacePolicy() {
+        }
 
         public NamespacePolicy(String s) {
             setValue(s);
         }
+
         /** {@inheritDoc}. */
         @Override
         public String[] getValues() {
@@ -124,14 +124,15 @@ public class EchoXML extends XMLFragment {
             String s = getValue();
             if (IGNORE.equalsIgnoreCase(s)) {
                 return DOMElementWriter.XmlNamespacePolicy.IGNORE;
-            } else if (ELEMENTS.equalsIgnoreCase(s)) {
+            }
+            if (ELEMENTS.equalsIgnoreCase(s)) {
                 return
                     DOMElementWriter.XmlNamespacePolicy.ONLY_QUALIFY_ELEMENTS;
-            } else if (ALL.equalsIgnoreCase(s)) {
-                return DOMElementWriter.XmlNamespacePolicy.QUALIFY_ALL;
-            } else {
-                throw new BuildException("Invalid namespace policy: " + s);
             }
+            if (ALL.equalsIgnoreCase(s)) {
+                return DOMElementWriter.XmlNamespacePolicy.QUALIFY_ALL;
+            }
+            throw new BuildException("Invalid namespace policy: " + s);
         }
     }
 }

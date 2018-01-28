@@ -40,16 +40,14 @@ public class ParallelTest {
     public final BuildFileRule buildRule = new BuildFileRule();
 
     /** Standard property value for the basic test */
-    public final static String DIRECT_MESSAGE = "direct";
+    public static final String DIRECT_MESSAGE = "direct";
     /** Standard property value for the basic and fail test */
-    public final static String DELAYED_MESSAGE = "delayed";
+    public static final String DELAYED_MESSAGE = "delayed";
     /** Standard property value for the fail test */
-    public final static String FAILURE_MESSAGE = "failure";
+    public static final String FAILURE_MESSAGE = "failure";
 
-    /** the build fiel associated with this test */
-    public final static String TEST_BUILD_FILE
-         = "src/etc/testcases/taskdefs/parallel.xml";
-
+    /** the build file associated with this test */
+    public static final String TEST_BUILD_FILE = "src/etc/testcases/taskdefs/parallel.xml";
 
     /** The JUnit setup method */
     @Before
@@ -92,10 +90,10 @@ public class ParallelTest {
 
     /**
      * the test result string should match the regex
-     * <code>^(\|\d+\/(+-)*)+\|$</code> for someting like
+     * <code>^(\|\d+\/(+-)*)+\|$</code> for something like
      * <code>|3/++--+-|5/+++++-----|</code>
      *
-     *@return -1 no more tests
+     * @return -1 no more tests
      *          # start pos of next test
      */
     static int countThreads(String s, int start) {

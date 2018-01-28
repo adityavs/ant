@@ -28,7 +28,7 @@ import org.apache.tools.ant.util.LineOrientedOutputStream;
 /**
  * Logs each line written to this stream to the log system of ant.
  *
- * Tries to be smart about line separators.<br>
+ * <p>Tries to be smart about line separators.</p>
  *
  * @since Ant 1.2
  */
@@ -77,7 +77,7 @@ public class LogOutputStream extends LineOrientedOutputStream {
             super.processBuffer();
         } catch (IOException e) {
             // impossible since *our* processLine doesn't throw an IOException
-            throw new RuntimeException("Impossible IOException caught: " + e);
+            throw new RuntimeException("Impossible IOException caught: " + e); //NOSONAR
         }
     }
 

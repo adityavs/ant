@@ -53,6 +53,7 @@ public class ScriptFilter extends TokenFilter.ChainableReaderFilter {
      * Set the project.
      * @param project the owner of this component.
      */
+    @Override
     public void setProject(Project project) {
         super.setProject(project);
         helper.setProjectComponent(this);
@@ -70,7 +71,7 @@ public class ScriptFilter extends TokenFilter.ChainableReaderFilter {
     /**
      * Initialize.
      *
-     * @exception BuildException if someting goes wrong
+     * @exception BuildException if something goes wrong
      */
     private void init() throws BuildException {
         if (runner != null) {
@@ -105,6 +106,7 @@ public class ScriptFilter extends TokenFilter.ChainableReaderFilter {
      * @param token the token to be filtered
      * @return the filtered token
      */
+    @Override
     public String filter(String token) {
         init();
         setToken(token);
@@ -113,7 +115,7 @@ public class ScriptFilter extends TokenFilter.ChainableReaderFilter {
     }
 
     /**
-     * Load the script from an external file ; optional.
+     * Load the script from an external file; optional.
      *
      * @param file the file containing the script source.
      */
@@ -179,5 +181,15 @@ public class ScriptFilter extends TokenFilter.ChainableReaderFilter {
      */
     public void setSetBeans(boolean setBeans) {
         helper.setSetBeans(setBeans);
+    }
+
+    /**
+     * Set the encoding of the script from an external file; optional.
+     *
+     * @param encoding the encoding of the file containing the script source.
+     * @since Ant 1.10.2
+     */
+    public void setEncoding(String encoding) {
+        helper.setEncoding(encoding);
     }
 }

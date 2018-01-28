@@ -46,7 +46,7 @@ import static org.junit.Assert.fail;
  */
 public class ANTLRTest {
 
-    private final static String TASKDEFS_DIR = "src/etc/testcases/taskdefs/optional/antlr/";
+    private static final String TASKDEFS_DIR = "src/etc/testcases/taskdefs/optional/antlr/";
 
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
@@ -188,7 +188,7 @@ public class ANTLRTest {
         buildRule.executeTarget("test9");
         assertNotContains("Skipped grammar file.", buildRule.getFullLog());
 
-        FileUtilities.rollbackTimetamps(buildRule.getOutputDir(), 5);
+        FileUtilities.rollbackTimestamps(buildRule.getOutputDir(), 5);
 
         buildRule.executeTarget("normalRecompile");
         assertNotContains("Skipped grammar file.", buildRule.getFullLog());
@@ -200,17 +200,17 @@ public class ANTLRTest {
         buildRule.executeTarget("test9");
         assertNotContains("Skipped grammar file.", buildRule.getFullLog());
 
-        FileUtilities.rollbackTimetamps(buildRule.getOutputDir(), 5);
+        FileUtilities.rollbackTimestamps(buildRule.getOutputDir(), 5);
 
         buildRule.executeTarget("supergrammarChangeRecompile");
         assertNotContains("Skipped grammar file.", buildRule.getFullLog());
 
     }
 
-}
-
-class HTMLFilter implements FilenameFilter {
-    public boolean accept(File dir, String name) {
-        return name.endsWith("html");
+    class HTMLFilter implements FilenameFilter {
+        public boolean accept(File dir, String name) {
+            return name.endsWith("html");
+        }
     }
+
 }

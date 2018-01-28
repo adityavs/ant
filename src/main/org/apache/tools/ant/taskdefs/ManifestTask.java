@@ -19,12 +19,12 @@
 package org.apache.tools.ant.taskdefs;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.util.Enumeration;
 
 import org.apache.tools.ant.BuildException;
@@ -32,7 +32,6 @@ import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
 import org.apache.tools.ant.taskdefs.Manifest.Attribute;
 import org.apache.tools.ant.types.EnumeratedAttribute;
-import org.apache.tools.ant.util.FileUtils;
 
 /**
  * Creates a manifest file for inclusion in a JAR, Ant task wrapper
@@ -91,6 +90,7 @@ public class ManifestTask extends Task {
          *
          * @return a String array of the allowed values.
          */
+        @Override
         public String[] getValues() {
             return new String[] {"update", "replace"};
         }
@@ -157,13 +157,15 @@ public class ManifestTask extends Task {
         char ch = name.charAt(0);
 
         if (ch == '-' || ch == '_') {
-            throw new BuildException("Manifest attribute names must not start with '" + ch + "'.");
+            throw new BuildException(
+                "Manifest attribute names must not start with '%c'.", ch);
         }
 
         for (int i = 0; i < name.length(); i++) {
             ch = name.charAt(i);
             if (VALID_ATTRIBUTE_CHARS.indexOf(ch) < 0) {
-                throw new BuildException("Manifest attribute names must not contain '" + ch + "'");
+                throw new BuildException(
+                    "Manifest attribute names must not contain '%c'", ch);
             }
         }
     }
@@ -196,6 +198,7 @@ public class ManifestTask extends Task {
     /**
      * Whether to merge Class-Path attributes.
      *
+     * @param b boolean
      * @since Ant 1.8.0
      */
     public void setMergeClassPathAttributes(boolean b) {
@@ -206,6 +209,7 @@ public class ManifestTask extends Task {
      * Whether to flatten multi-valued attributes (i.e. Class-Path)
      * into a single one.
      *
+     * @param b boolean
      * @since Ant 1.8.0
      */
     public void setFlattenAttributes(boolean b) {
@@ -217,6 +221,7 @@ public class ManifestTask extends Task {
      *
      * @throws BuildException if the manifest cannot be written.
      */
+    @Override
     public void execute() throws BuildException {
         if (manifestFile == null) {
             throw new BuildException("the file attribute is required");
@@ -227,15 +232,9 @@ public class ManifestTask extends Task {
         BuildException error = null;
 
         if (manifestFile.exists()) {
-            FileInputStream fis = null;
-            InputStreamReader isr = null;
-            try {
-                fis = new FileInputStream(manifestFile);
-                if (encoding == null) {
-                    isr = new InputStreamReader(fis, "UTF-8");
-                } else {
-                    isr = new InputStreamReader(fis, encoding);
-                }
+            Charset charset = Charset.forName(encoding == null ? "UTF-8" : encoding);
+            try (InputStreamReader isr = new InputStreamReader(
+                Files.newInputStream(manifestFile.toPath()), charset)) {
                 current = new Manifest(isr);
             } catch (ManifestException m) {
                 error = new BuildException("Existing manifest " + manifestFile
@@ -243,8 +242,6 @@ public class ManifestTask extends Task {
             } catch (IOException e) {
                 error = new BuildException("Failed to read " + manifestFile,
                                            e, getLocation());
-            } finally {
-                FileUtils.close(isr);
             }
         }
 
@@ -255,7 +252,7 @@ public class ManifestTask extends Task {
                     Project.MSG_WARN);
         }
         try {
-            if (mode.getValue().equals("update") && manifestFile.exists()) {
+            if ("update".equals(mode.getValue()) && manifestFile.exists()) {
                 if (current != null) {
                     toWrite.merge(current, false, mergeClassPaths);
                 } else if (error != null) {
@@ -274,11 +271,8 @@ public class ManifestTask extends Task {
             return;
         }
 
-        PrintWriter w = null;
-        try {
-            FileOutputStream fos = new FileOutputStream(manifestFile);
-            OutputStreamWriter osw = new OutputStreamWriter(fos, Manifest.JAR_ENCODING);
-            w = new PrintWriter(osw);
+        try (PrintWriter w = new PrintWriter(new OutputStreamWriter(
+            Files.newOutputStream(manifestFile.toPath()), Manifest.JAR_ENCODING))) {
             toWrite.write(w, flattenClassPaths);
             if (w.checkError()) {
                 throw new IOException("Encountered an error writing manifest");
@@ -286,8 +280,6 @@ public class ManifestTask extends Task {
         } catch (IOException e) {
             throw new BuildException("Failed to write " + manifestFile,
                                      e, getLocation());
-        } finally {
-            FileUtils.close(w);
         }
     }
 }

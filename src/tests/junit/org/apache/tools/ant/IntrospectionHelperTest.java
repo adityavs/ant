@@ -19,8 +19,10 @@
 package org.apache.tools.ant;
 
 import java.io.File;
-import java.lang.reflect.Method;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Hashtable;
@@ -28,6 +30,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
 import org.apache.tools.ant.taskdefs.condition.Os;
 import org.junit.Before;
 import org.junit.ComparisonFailure;
@@ -96,7 +99,8 @@ public class IntrospectionHelperTest {
         ih = IntrospectionHelper.getHelper(String.class);
         try {
             m = ih.getAddTextMethod();
-        } catch (BuildException e) {}
+        } catch (BuildException e) {
+        }
     }
 
     @Test
@@ -219,7 +223,7 @@ public class IntrospectionHelperTest {
             Class expect = (Class) elemMap.get(name);
             assertNotNull("Support for "+name+" in IntrospectioNHelperTest?",
                           expect);
-            assertEquals("Return type of "+name, expect, ih.getElementType(name));
+            assertEquals("Return type of " + name, expect, ih.getElementType(name));
             elemMap.remove(name);
         }
         assertTrue("Found all", elemMap.isEmpty());
@@ -244,7 +248,8 @@ public class IntrospectionHelperTest {
         try {
             actualMap.clear();
             //TODO we should be asserting a value somewhere in here
-        } catch (UnsupportedOperationException e) {}
+        } catch (UnsupportedOperationException e) {
+        }
     }
 
     @Test
@@ -274,7 +279,8 @@ public class IntrospectionHelperTest {
         return null;
     }
 
-    public void createThree() {}
+    public void createThree() {
+    }
 
     public Object[] createFour() {
         return null;
@@ -292,19 +298,24 @@ public class IntrospectionHelperTest {
         throw new NullPointerException();
     }
 
-    public void addSeven(String s, String s2) {}
+    public void addSeven(String s, String s2) {
+    }
 
-    public void addEight() {}
+    public void addEight() {
+    }
 
     public String addNine(String s) {
         return null;
     }
 
-    public void addTen(String[] s) {}
+    public void addTen(String[] s) {
+    }
 
-    public void addEleven(int i) {}
+    public void addEleven(int i) {
+    }
 
-    public void addTwelve(Class c) {}
+    public void addTwelve(Class c) {
+    }
 
     public void addThirteen(StringBuffer sb) {
         sb.append("test");
@@ -376,7 +387,7 @@ public class IntrospectionHelperTest {
         ih.setAttribute(p, this, "ten", "2");
         try {
             ih.setAttribute(p, this, "ten", "3");
-            fail(projectBasedir+"2 shouldn't be equals to "+projectBasedir+"3");
+            fail(projectBasedir + "2 shouldn't be equals to " + projectBasedir + "3");
         } catch (BuildException be) {
             assertTrue(be.getCause() instanceof AssertionError);
         }
@@ -466,6 +477,7 @@ public class IntrospectionHelperTest {
         attrMap.put("seventeen", Byte.TYPE);
         attrMap.put("eightteen", Short.TYPE);
         attrMap.put("nineteen", Double.TYPE);
+        attrMap.put("twenty", Path.class);
 
         /*
          * JUnit 3.7 adds a getName method to TestCase - so we now
@@ -515,7 +527,8 @@ public class IntrospectionHelperTest {
         try {
             actualMap.clear();
             //TODO we should be asserting a value somewhere in here
-        } catch (UnsupportedOperationException e) {}
+        } catch (UnsupportedOperationException e) {
+        }
     }
 
     @Test
@@ -523,9 +536,9 @@ public class IntrospectionHelperTest {
         assertAttrMethod("seven", "setSeven", String.class,
                          "2", "3");
         assertAttrMethod("eight", "setEight", Integer.TYPE,
-                         new Integer(2), new Integer(3));
+                         Integer.valueOf(2), Integer.valueOf(3));
         assertAttrMethod("nine", "setNine", Integer.class,
-                         new Integer(2), new Integer(3));
+                         Integer.valueOf(2), Integer.valueOf(3));
         assertAttrMethod("ten", "setTen", File.class,
                          new File(projectBasedir + 2), new File("toto"));
         assertAttrMethod("eleven", "setEleven", Boolean.TYPE,
@@ -537,15 +550,17 @@ public class IntrospectionHelperTest {
         assertAttrMethod("fourteen", "setFourteen", StringBuffer.class,
                          new StringBuffer("2"), new StringBuffer("3"));
         assertAttrMethod("fifteen", "setFifteen", Character.TYPE,
-                         new Character('a'), new Character('b'));
+                         Character.valueOf('a'), Character.valueOf('b'));
         assertAttrMethod("sixteen", "setSixteen", Character.class,
-                         new Character('a'), new Character('b'));
+                         Character.valueOf('a'), Character.valueOf('b'));
         assertAttrMethod("seventeen", "setSeventeen", Byte.TYPE,
-                         new Byte((byte)17), new Byte((byte)10));
+                         Byte.valueOf((byte) 17), Byte.valueOf((byte) 10));
         assertAttrMethod("eightteen", "setEightteen", Short.TYPE,
-                         new Short((short)18), new Short((short)10));
+                         Short.valueOf((short) 18), Short.valueOf((short) 10));
         assertAttrMethod("nineteen", "setNineteen", Double.TYPE,
-                         new Double(19), new Double((short)10));
+                         Double.valueOf(19), Double.valueOf((short) 10));
+        assertAttrMethod("twenty", "setTwenty", Path.class,
+                         new File(projectBasedir + 20).toPath(), Paths.get("toto"));
 
         try {
             assertAttrMethod("onehundred", null, null, null, null);
@@ -565,13 +580,17 @@ public class IntrospectionHelperTest {
         return 0;
     }
 
-    public void setThree() {}
+    public void setThree() {
+    }
 
-    public void setFour(String s1, String s2) {}
+    public void setFour(String s1, String s2) {
+    }
 
-    public void setFive(String[] s) {}
+    public void setFive(String[] s) {
+    }
 
-    public void setSix(Project p) {}
+    public void setSix(Project p) {
+    }
 
     public void setSeven(String s) {
         assertEquals("2", s);
@@ -588,11 +607,11 @@ public class IntrospectionHelperTest {
     public void setTen(File f) {
         String path = f.getAbsolutePath();
         if (Os.isFamily("unix") || Os.isFamily("openvms")) {
-            assertEquals(projectBasedir+"2", path);
+            assertEquals(projectBasedir + "2", path);
         } else if (Os.isFamily("netware")) {
-            assertEquals(projectBasedir+"2", path.toLowerCase(Locale.US));
+            assertEquals(projectBasedir + "2", path.toLowerCase(Locale.US));
         } else {
-            assertEquals(":"+projectBasedir+"2",
+            assertEquals(":" + projectBasedir + "2",
                          path.toLowerCase(Locale.US).substring(1));
         }
     }
@@ -632,6 +651,18 @@ public class IntrospectionHelperTest {
     public void setNineteen(double d) {
         double diff = d - 19;
         assertTrue("Expected 19, received " + d, diff > -1e-6 && diff < 1e-6);
+    }
+
+    public void setTwenty(Path p) {
+        String path = p.toAbsolutePath().toString();
+        if (Os.isFamily("unix") || Os.isFamily("openvms")) {
+            assertEquals(projectBasedir + "20", path);
+        } else if (Os.isFamily("netware")) {
+            assertEquals(projectBasedir + "20", path.toLowerCase(Locale.US));
+        } else {
+            assertEquals(":" + projectBasedir + "20",
+                         path.toLowerCase(Locale.US).substring(1));
+        }
     }
 
     @Test

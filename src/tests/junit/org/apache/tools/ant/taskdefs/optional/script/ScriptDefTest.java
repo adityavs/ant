@@ -117,10 +117,8 @@ public class ScriptDefTest {
     public void testDoubleDef() {
         buildRule.executeTarget("doubledef");
         String log = buildRule.getLog();
-        assertTrue("Task1 did not execute",
-            log.indexOf("Task1") != -1);
-        assertTrue("Task2 did not execute",
-            log.indexOf("Task2") != -1);
+        assertTrue("Task1 did not execute", log.indexOf("Task1") != -1);
+        assertTrue("Task2 did not execute", log.indexOf("Task2") != -1);
     }
 
     @Test
@@ -142,5 +140,45 @@ public class ScriptDefTest {
             log.indexOf("Attribute value = test") != -1);
     }
 
+    @Test
+    public void testUseSrcAndEncoding() {
+        final String readerEncoding = "UTF-8";
+        buildRule.getProject().setProperty("useSrcAndEncoding.reader.encoding", readerEncoding);
+        buildRule.executeTarget("useSrcAndEncoding");
+    }
 
+    @Test
+    public void testUseSrcAndEncodingFailure() {
+        final String readerEncoding = "ISO-8859-1";
+        buildRule.getProject().setProperty("useSrcAndEncoding.reader.encoding", readerEncoding);
+        try {
+            buildRule.executeTarget("useSrcAndEncoding");
+            fail("should have failed with reader's encoding [" + readerEncoding +
+                "] different from the writer's encoding [" +
+                buildRule.getProject().getProperty("useSrcAndEncoding.encoding") + "]");
+        } catch(BuildException e) {
+            assertTrue(e.getMessage().matches(
+                    "expected <eacute \\[\u00e9]> but was <eacute \\[\u00c3\u00a9]>"));
+        }
+    }
+
+    @Test
+    public void testUseCompiled() {
+
+        final long duration;
+        {
+            long start = System.nanoTime();
+            buildRule.executeTarget("useCompiled");
+            duration = System.nanoTime() - start;
+        }
+
+        final long notCompiledDuration;
+        {
+            long start = System.nanoTime();
+            buildRule.executeTarget("useNotCompiled");
+            notCompiledDuration = System.nanoTime() - start;
+        }
+
+        assertTrue(duration < notCompiledDuration);
+    }
 }

@@ -29,16 +29,11 @@ public class JakartaRegexpRegexp extends JakartaRegexpMatcher
 
     private static final int DECIMAL = 10;
 
-    /** Constructor for JakartaRegexpRegexp */
-    public JakartaRegexpRegexp() {
-        super();
-    }
-
     /**
      * Convert ant regexp substitution option to apache regex options.
      *
      * @param options the ant regexp options
-     * @return the apache regex substition options
+     * @return the apache regex substitution options
      */
     protected int getSubsOptions(int options) {
         int subsOptions = RE.REPLACE_FIRSTONLY;
@@ -56,12 +51,13 @@ public class JakartaRegexpRegexp extends JakartaRegexpMatcher
      * @return the result of the operation
      * @throws BuildException on error
      */
+    @Override
     public String substitute(String input, String argument, int options)
         throws BuildException {
-        Vector v = getGroups(input, options);
+        Vector<String> v = getGroups(input, options);
 
         // replace \1 with the corresponding group
-        StringBuffer result = new StringBuffer();
+        StringBuilder result = new StringBuilder();
         for (int i = 0; i < argument.length(); i++) {
             char c = argument.charAt(i);
             if (c == '\\') {
@@ -81,10 +77,8 @@ public class JakartaRegexpRegexp extends JakartaRegexpMatcher
                 result.append(c);
             }
         }
-        argument = result.toString();
-
         RE reg = getCompiledPattern(options);
         int sOptions = getSubsOptions(options);
-        return reg.subst(input, argument, sOptions);
+        return reg.subst(input, result.toString(), sOptions);
     }
 }

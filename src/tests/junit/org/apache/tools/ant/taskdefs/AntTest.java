@@ -45,7 +45,7 @@ import static org.junit.Assert.fail;
 /**
  */
 public class AntTest {
-    
+
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
 
@@ -126,9 +126,7 @@ public class AntTest {
         File dir1 = buildRule.getProject().getBaseDir();
         File dir2 = buildRule.getProject().resolveFile("..");
         testBaseDirs("explicitBasedir1",
-                     new String[] {dir1.getAbsolutePath(),
-                                   dir2.getAbsolutePath()
-                     });
+                new String[] {dir1.getAbsolutePath(), dir2.getAbsolutePath()});
     }
 
     @Test
@@ -136,9 +134,7 @@ public class AntTest {
         File dir1 = buildRule.getProject().getBaseDir();
         File dir2 = buildRule.getProject().resolveFile("..");
         testBaseDirs("explicitBasedir2",
-                     new String[] {dir1.getAbsolutePath(),
-                                   dir2.getAbsolutePath()
-                     });
+                new String[] {dir1.getAbsolutePath(), dir2.getAbsolutePath()});
     }
 
     @Test
@@ -152,9 +148,7 @@ public class AntTest {
         File dir1 = buildRule.getProject().getBaseDir();
         File dir2 = buildRule.getProject().resolveFile("ant");
         testBaseDirs("doNotInheritBasedir",
-                     new String[] {dir1.getAbsolutePath(),
-                                   dir2.getAbsolutePath()
-                     });
+                new String[] {dir1.getAbsolutePath(), dir2.getAbsolutePath()});
     }
 
     @Test
@@ -162,10 +156,7 @@ public class AntTest {
         File dir1 = buildRule.getProject().getBaseDir();
         File dir2 = buildRule.getProject().resolveFile("ant");
         testBaseDirs("tripleCall",
-                     new String[] {dir1.getAbsolutePath(),
-                                   dir2.getAbsolutePath(),
-                                   dir1.getAbsolutePath()
-                     });
+                new String[] {dir1.getAbsolutePath(), dir2.getAbsolutePath(), dir1.getAbsolutePath()});
     }
 
     protected void testBaseDirs(String target, String[] dirs) {
@@ -415,12 +406,23 @@ public class AntTest {
             expectedBasedirs = dirs;
         }
 
-        public void buildStarted(BuildEvent event) {}
-        public void buildFinished(BuildEvent event) {}
-        public void targetFinished(BuildEvent event){}
-        public void taskStarted(BuildEvent event) {}
-        public void taskFinished(BuildEvent event) {}
-        public void messageLogged(BuildEvent event) {}
+        public void buildStarted(BuildEvent event) {
+        }
+
+        public void buildFinished(BuildEvent event) {
+        }
+
+        public void targetFinished(BuildEvent event) {
+        }
+
+        public void taskStarted(BuildEvent event) {
+        }
+
+        public void taskFinished(BuildEvent event) {
+        }
+
+        public void messageLogged(BuildEvent event) {
+        }
 
         public void targetStarted(BuildEvent event) {
             if (event.getTarget().getName().equals("")) {
@@ -455,12 +457,23 @@ public class AntTest {
             this.value = value;
         }
 
-        public void buildStarted(BuildEvent event) {}
-        public void buildFinished(BuildEvent event) {}
-        public void targetFinished(BuildEvent event){}
-        public void taskStarted(BuildEvent event) {}
-        public void taskFinished(BuildEvent event) {}
-        public void messageLogged(BuildEvent event) {}
+        public void buildStarted(BuildEvent event) {
+        }
+
+        public void buildFinished(BuildEvent event) {
+        }
+
+        public void targetFinished(BuildEvent event) {
+        }
+
+        public void taskStarted(BuildEvent event) {
+        }
+
+        public void taskFinished(BuildEvent event) {
+        }
+
+        public void messageLogged(BuildEvent event) {
+        }
 
         public void targetStarted(BuildEvent event) {
             if (event.getTarget().getName().equals("")) {
@@ -488,7 +501,7 @@ public class AntTest {
                             String[] l1 = expect.list();
                             String[] l2 = received.list();
                             if (l1.length == l2.length) {
-                                for (int i=0; i<l1.length; i++) {
+                                for (int i = 0; i < l1.length; i++) {
                                     if (!l1[i].equals(l2[i])) {
                                         assertTrue(msg, !shouldBeEqual);
                                     }
@@ -570,12 +583,23 @@ public class AntTest {
             this.expectedValues = values;
         }
 
-        public void buildStarted(BuildEvent event) {}
-        public void buildFinished(BuildEvent event) {}
-        public void targetFinished(BuildEvent event){}
-        public void taskStarted(BuildEvent event) {}
-        public void taskFinished(BuildEvent event) {}
-        public void messageLogged(BuildEvent event) {}
+        public void buildStarted(BuildEvent event) {
+        }
+
+        public void buildFinished(BuildEvent event) {
+        }
+
+        public void targetFinished(BuildEvent event) {
+        }
+
+        public void taskStarted(BuildEvent event) {
+        }
+
+        public void taskFinished(BuildEvent event) {
+        }
+
+        public void messageLogged(BuildEvent event) {
+        }
 
         public void targetStarted(BuildEvent event) {
             if (event.getTarget().getName().equals("")) {
@@ -602,6 +626,5 @@ public class AntTest {
         }
 
     }
-
 
 }

@@ -42,6 +42,8 @@ public abstract class SSHBase extends Task implements LogListener {
     private boolean failOnError = true;
     private boolean verbose;
     private final SSHUserInfo userInfo;
+    private int serverAliveCountMax = 3;
+    private int serverAliveIntervalSeconds = 0;
 
     /**
      * Constructor for SSHBase.
@@ -71,7 +73,7 @@ public abstract class SSHBase extends Task implements LogListener {
     /**
      * Set the failonerror flag.
      * Default is true
-     * @param failure if true throw a build exception when a failure occuries,
+     * @param failure if true throw a build exception when a failure occurs,
      *                otherwise just log the failure and continue
      */
     public void setFailonerror(final boolean failure) {
@@ -102,6 +104,48 @@ public abstract class SSHBase extends Task implements LogListener {
      */
     public boolean getVerbose() {
         return verbose;
+    }
+
+    /**
+     * Set the serverAliveCountMax value.
+     * @param countMax int
+     * @since Ant 1.9.7
+     */
+    public void setServerAliveCountMax(final int countMax) {
+        if (countMax <= 0) {
+            throw new BuildException("ssh server alive count max setting cannot be negative or zero");
+        }
+        this.serverAliveCountMax = countMax;
+    }
+
+    /**
+     * Get the serverAliveCountMax value.
+     * @return the serverAliveCountMax value
+     * @since Ant 1.9.7
+     */
+    public int getServerAliveCountMax() {
+        return serverAliveCountMax;
+    }
+
+    /**
+     * Set the serverAliveIntervalSeconds value in seconds.
+     * @param interval int
+     * @since Ant 1.9.7
+     */
+    public void setServerAliveIntervalSeconds(final int interval) {
+        if (interval < 0) {
+            throw new BuildException("ssh server alive interval setting cannot be negative");
+        }
+        this.serverAliveIntervalSeconds = interval;
+    }
+
+    /**
+     * Get the serverAliveIntervalSeconds value in seconds.
+     * @return the serverAliveIntervalSeconds value in seconds
+     * @since Ant 1.9.7
+     */
+    public int getServerAliveIntervalSeconds() {
+        return serverAliveIntervalSeconds;
     }
 
     /**
@@ -181,9 +225,10 @@ public abstract class SSHBase extends Task implements LogListener {
 
     /**
      * Initialize the task.
-     * This initializizs the known hosts and sets the default port.
+     * This initializes the known hosts and sets the default port.
      * @throws BuildException on error
      */
+    @Override
     public void init() throws BuildException {
         super.init();
         this.knownHosts = System.getProperty("user.home") + "/.ssh/known_hosts";
@@ -199,14 +244,17 @@ public abstract class SSHBase extends Task implements LogListener {
         final JSch jsch = new JSch();
         final SSHBase base = this;
         if (verbose) {
-            JSch.setLogger(new com.jcraft.jsch.Logger(){
-                    public boolean isEnabled(final int level){
-                        return true;
-                    }
-                    public void log(final int level, final String message){
-                        base.log(message, Project.MSG_INFO);
-                    }
-                });
+            JSch.setLogger(new com.jcraft.jsch.Logger() {
+                @Override
+                public boolean isEnabled(final int level) {
+                    return true;
+                }
+
+                @Override
+                public void log(final int level, final String message) {
+                    base.log(message, Project.MSG_INFO);
+                }
+            });
         }
         if (null != userInfo.getKeyfile()) {
             jsch.addIdentity(userInfo.getKeyfile());
@@ -221,6 +269,12 @@ public abstract class SSHBase extends Task implements LogListener {
         session.setConfig("PreferredAuthentications",
                 "publickey,keyboard-interactive,password");
         session.setUserInfo(userInfo);
+
+        if (getServerAliveIntervalSeconds() > 0) {
+            session.setServerAliveCountMax(getServerAliveCountMax());
+            session.setServerAliveInterval(getServerAliveIntervalSeconds() * 1000);
+        }
+
         log("Connecting to " + host + ":" + port);
         session.connect();
         return session;

@@ -35,7 +35,7 @@ public class XsltTest {
     /**
      * where tasks run
      */
-    private final static String TASKDEFS_DIR = "src/etc/testcases/taskdefs/optional/";
+    private static final String TASKDEFS_DIR = "src/etc/testcases/taskdefs/optional/";
 
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
@@ -44,7 +44,6 @@ public class XsltTest {
     public void setUp() {
         buildRule.configureProject(TASKDEFS_DIR + "xslt.xml");
     }
-
 
     @Test
     public void testCatchNoDtd() {
@@ -83,4 +82,3 @@ public class XsltTest {
         }
     }
 }
-

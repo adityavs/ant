@@ -204,7 +204,8 @@ public final class LineContainsRegExp
     }
 
     /**
-     * Whether to match casesensitevly.
+     * Whether to match casesensitively.
+     * @param b boolean
      * @since Ant 1.8.2
      */
     public void setCaseSensitive(boolean b) {
@@ -220,6 +221,17 @@ public final class LineContainsRegExp
     }
 
     /**
+     * Set the regular expression as an attribute.
+     * @param pattern String
+     * @since Ant 1.10.2
+     */
+    public void setRegexp(String pattern) {
+        RegularExpression regexp = new RegularExpression();
+        regexp.setPattern(pattern);
+        regexps.addElement(regexp);
+    }
+
+    /**
      * Parses parameters to add user defined regular expressions.
      */
     private void initialize() {
@@ -227,10 +239,7 @@ public final class LineContainsRegExp
         if (params != null) {
             for (int i = 0; i < params.length; i++) {
                 if (REGEXP_KEY.equals(params[i].getType())) {
-                    String pattern = params[i].getValue();
-                    RegularExpression regexp = new RegularExpression();
-                    regexp.setPattern(pattern);
-                    regexps.addElement(regexp);
+                    setRegexp(params[i].getValue());
                 } else if (NEGATE_KEY.equals(params[i].getType())) {
                     setNegate(Project.toBoolean(params[i].getValue()));
                 } else if (CS_KEY.equals(params[i].getType())) {

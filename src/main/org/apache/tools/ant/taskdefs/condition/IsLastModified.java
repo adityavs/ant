@@ -69,9 +69,11 @@ public class IsLastModified extends ProjectComponent implements Condition {
      */
     public void setPattern(final String pattern) {
         dfFactory = new Touch.DateFormatFactory() {
+            @Override
             public DateFormat getPrimaryFormat() {
                 return new SimpleDateFormat(pattern);
             }
+            @Override
             public DateFormat getFallbackFormat() {
                 return null;
             }
@@ -104,8 +106,8 @@ public class IsLastModified extends ProjectComponent implements Condition {
      */
     protected void validate() throws BuildException {
         if (millis >= 0 && dateTime != null) {
-            throw new BuildException("Only one of dateTime and millis can be"
-                                     + " set");
+            throw new BuildException(
+                "Only one of dateTime and millis can be set");
         }
         if (millis < 0 && dateTime == null) {
             throw new BuildException("millis or dateTime is required");
@@ -129,7 +131,7 @@ public class IsLastModified extends ProjectComponent implements Condition {
             return System.currentTimeMillis();
         }
         DateFormat df = dfFactory.getPrimaryFormat();
-        ParseException pe = null;
+        ParseException pe;
         try {
             return df.parse(dateTime).getTime();
         } catch (ParseException peOne) {
@@ -144,24 +146,21 @@ public class IsLastModified extends ProjectComponent implements Condition {
                 }
             }
         }
-        if (pe != null) {
-            throw new BuildException(pe.getMessage(), pe, getLocation());
-        }
-        /* NOTREACHED */
-        return 0;
+        throw new BuildException(pe.getMessage(), pe, getLocation());
     }
 
     /**
      * evaluate the condition
-     * @return true or false depending on the compoarison mode and the time of the resource
-     * @throws BuildException
+     * @return true or false depending on the comparison mode and the time of the resource
+     * @throws BuildException if something goes wrong
      */
+    @Override
     public boolean eval() throws BuildException {
         validate();
         long expected = getMillis();
         long actual = resource.getLastModified();
         log("expected timestamp: " + expected + " (" + new Date(expected) + ")"
-            + ", actual timestamp: " + actual + " (" + new Date(actual) + ")" ,
+            + ", actual timestamp: " + actual + " (" + new Date(actual) + ")",
             Project.MSG_VERBOSE);
         if (CompareMode.EQUALS_TEXT.equals(mode.getValue())) {
             return expected == actual;
@@ -209,6 +208,7 @@ public class IsLastModified extends ProjectComponent implements Condition {
             setValue(s);
         }
 
+        @Override
         public String[] getValues() {
             return new String[] {
                 EQUALS_TEXT, BEFORE_TEXT, AFTER_TEXT, NOT_BEFORE_TEXT,

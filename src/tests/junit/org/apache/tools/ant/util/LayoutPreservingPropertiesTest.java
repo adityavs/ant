@@ -20,8 +20,8 @@ package org.apache.tools.ant.util;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.InputStreamReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Properties;
 
 import org.junit.Test;
@@ -74,7 +74,7 @@ public class LayoutPreservingPropertiesTest {
         lpf.setProperty(" prop one ", "  leading and trailing spaces ");
         lpf.setProperty("prop\ttwo", "contains\ttab");
         lpf.setProperty("prop\nthree", "contains\nnewline");
-        lpf.setProperty("prop\rfour", "contains\rcarraige return");
+        lpf.setProperty("prop\rfour", "contains\rcarriage return");
         lpf.setProperty("prop\ffive", "contains\fform feed");
         lpf.setProperty("prop\\six", "contains\\backslash");
         lpf.setProperty("prop:seven", "contains:colon");
@@ -93,7 +93,7 @@ public class LayoutPreservingPropertiesTest {
                              + " spaces ") > -1);
         assertTrue(s.indexOf("prop\\ttwo=contains\\ttab") > -1);
         assertTrue(s.indexOf("prop\\nthree=contains\\nnewline") > -1);
-        assertTrue(s.indexOf("prop\\rfour=contains\\rcarraige return") > -1);
+        assertTrue(s.indexOf("prop\\rfour=contains\\rcarriage return") > -1);
         assertTrue(s.indexOf("prop\\\\six=contains\\\\backslash") > -1);
         assertTrue(s.indexOf("prop\\:seven=contains\\:colon") > -1);
         assertTrue(s.indexOf("prop\\=eight=contains\\=equals") > -1);

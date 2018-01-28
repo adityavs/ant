@@ -21,12 +21,12 @@ package org.apache.tools.ant.taskdefs.optional.ejb;
 import java.io.File;
 import java.io.IOException;
 import java.util.Hashtable;
-import java.util.Iterator;
 
 import javax.xml.parsers.SAXParser;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
+import org.apache.tools.ant.taskdefs.optional.ejb.EjbJar.DTDLocation;
 import org.xml.sax.SAXException;
 
 /**
@@ -35,9 +35,8 @@ import org.xml.sax.SAXException;
  * <code>ejbjar</code> task.  If only stubs and skeletons need to be generated
  * (in other words, if no JAR file needs to be created), refer to the
  * <code>iplanet-ejbc</code> task and the <code>IPlanetEjbcTask</code> class.
- * <p>
- * The following attributes may be specified by the user:
- *   <ul>
+ * <p>The following attributes may be specified by the user:</p>
+ * <ul>
  *     <li><i>destdir</i> -- The base directory into which the generated JAR
  *                           files will be written.  Each JAR file is written
  *                           in directories which correspond to their location
@@ -72,15 +71,14 @@ import org.xml.sax.SAXException;
  *     <li><i>suffix</i> -- String value appended to the JAR filename when
  *                          creating each JAR.  This attribute is not required
  *                          (if omitted, it defaults to ".jar").
- *   </ul>
- * <p>
- * For each EJB descriptor found in the "ejbjar" parent task, this deployment
+ * </ul>
+ * <p>For each EJB descriptor found in the "ejbjar" parent task, this deployment
  * tool will locate the three classes that comprise the EJB.  If these class
  * files cannot be located in the specified <code>srcdir</code> directory, the
  * task will fail.  The task will also attempt to locate the EJB stubs and
  * skeletons in this directory.  If found, the timestamps on the stubs and
  * skeletons will be checked to ensure they are up to date.  Only if these files
- * cannot be found or if they are out of date will ejbc be called.
+ * cannot be found or if they are out of date will ejbc be called.</p>
  *
  * @see    IPlanetEjbc
  */
@@ -107,7 +105,7 @@ public class IPlanetDeploymentTool extends GenericDeploymentTool {
      * we may determine the name of the EJB JAR file using this display-name,
      * but this has not be implemented yet.
      */
-    private String  displayName;
+    private String displayName;
 
     /*
      * Regardless of the name of the iAS-specific EJB descriptor file, it will
@@ -202,25 +200,26 @@ public class IPlanetDeploymentTool extends GenericDeploymentTool {
         int startOfName = descriptorFileName.lastIndexOf(File.separatorChar) + 1;
         String stdXml = descriptorFileName.substring(startOfName);
         if (stdXml.equals(EJB_DD) && (getConfig().baseJarName == null)) {
-            String msg = "No name specified for the completed JAR file.  The EJB"
-                            + " descriptor should be prepended with the JAR "
-                            + "name or it should be specified using the "
-                            + "attribute \"basejarname\" in the \"ejbjar\" task.";
-            throw new BuildException(msg, getLocation());
+            throw new BuildException(
+                "No name specified for the completed JAR file.  The EJB"
+                    + " descriptor should be prepended with the JAR "
+                    + "name or it should be specified using the "
+                    + "attribute \"basejarname\" in the \"ejbjar\" task.",
+                getLocation());
         }
 
         File iasDescriptor = new File(getConfig().descriptorDir,
                                         getIasDescriptorName());
         if ((!iasDescriptor.exists()) || (!iasDescriptor.isFile())) {
-            String msg = "The iAS-specific EJB descriptor ("
-                            + iasDescriptor + ") was not found.";
-            throw new BuildException(msg, getLocation());
+            throw new BuildException("The iAS-specific EJB descriptor ("
+                + iasDescriptor + ") was not found.", getLocation());
         }
 
         if ((iashome != null) && (!iashome.isDirectory())) {
-            String msg = "If \"iashome\" is specified, it must be a valid "
-                            + "directory (it was set to " + iashome + ").";
-            throw new BuildException(msg, getLocation());
+            throw new BuildException(
+                "If \"iashome\" is specified, it must be a valid directory (it was set to "
+                    + iashome + ").",
+                getLocation());
         }
     }
 
@@ -240,10 +239,10 @@ public class IPlanetDeploymentTool extends GenericDeploymentTool {
      *                           exception
      */
     @Override
-    protected Hashtable parseEjbFiles(String descriptorFileName,
+    protected Hashtable<String, File> parseEjbFiles(String descriptorFileName,
                          SAXParser saxParser) throws IOException, SAXException {
 
-        Hashtable files;
+        Hashtable<String, File> files;
 
         /* Build and populate an instance of the ejbc utility */
         IPlanetEjbc ejbc = new IPlanetEjbc(
@@ -260,12 +259,9 @@ public class IPlanetDeploymentTool extends GenericDeploymentTool {
             ejbc.setIasHomeDir(iashome);
         }
         if (getConfig().dtdLocations != null) {
-            for (Iterator i = getConfig().dtdLocations.iterator();
-                 i.hasNext();) {
-                EjbJar.DTDLocation dtdLocation =
-                    (EjbJar.DTDLocation) i.next();
+            for (DTDLocation dtdLocation : getConfig().dtdLocations) {
                 ejbc.registerDTD(dtdLocation.getPublicId(),
-                                 dtdLocation.getLocation());
+                    dtdLocation.getLocation());
             }
         }
 
@@ -292,7 +288,7 @@ public class IPlanetDeploymentTool extends GenericDeploymentTool {
                 int endOfCmp = cmpDescriptors[i].lastIndexOf('/');
                 String cmpDescriptor = cmpDescriptors[i].substring(endOfCmp + 1);
 
-                File   cmpFile = new File(baseDir, relativePath + cmpDescriptor);
+                File cmpFile = new File(baseDir, relativePath + cmpDescriptor);
                 if (!cmpFile.exists()) {
                     throw new BuildException("The CMP descriptor file ("
                             + cmpFile + ") could not be found.", getLocation());
@@ -300,7 +296,6 @@ public class IPlanetDeploymentTool extends GenericDeploymentTool {
                 files.put(cmpDescriptors[i], cmpFile);
             }
         }
-
         return files;
     }
 
@@ -313,7 +308,7 @@ public class IPlanetDeploymentTool extends GenericDeploymentTool {
      * @param ddPrefix not used
      */
     @Override
-    protected void addVendorFiles(Hashtable ejbFiles, String ddPrefix) {
+    protected void addVendorFiles(Hashtable<String, File> ejbFiles, String ddPrefix) {
         ejbFiles.put(META_DIR + IAS_DD, new File(getConfig().descriptorDir,
                      getIasDescriptorName()));
     }

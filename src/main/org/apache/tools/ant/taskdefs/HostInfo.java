@@ -43,11 +43,11 @@ import org.apache.tools.ant.Task;
 public class HostInfo extends Task {
     private static final String DEF_REM_ADDR6 = "::";
 
-    private static final String DEF_REM_ADDR4 = "0.0.0.0";
+    private static final String DEF_REM_ADDR4 = "0.0.0.0"; //NOSONAR
 
     private static final String DEF_LOCAL_ADDR6 = "::1";
 
-    private static final String DEF_LOCAL_ADDR4 = "127.0.0.1";
+    private static final String DEF_LOCAL_ADDR4 = "127.0.0.1"; //NOSONAR
 
     private static final String DEF_LOCAL_NAME = "localhost";
     private static final String DEF_DOMAIN = "localdomain";
@@ -105,8 +105,9 @@ public class HostInfo extends Task {
      * @throws BuildException
      *             on error.
      */
+    @Override
     public void execute() throws BuildException {
-        if (host == null || "".equals(host)) {
+        if (host == null || host.isEmpty()) {
             executeLocal();
         } else {
             executeRemote();
@@ -115,7 +116,7 @@ public class HostInfo extends Task {
 
     private void executeLocal() {
         try {
-            inetAddrs = new LinkedList<InetAddress>();
+            inetAddrs = new LinkedList<>();
             Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
             while (interfaces.hasMoreElements()) {
                 NetworkInterface currentif = interfaces.nextElement();
@@ -175,34 +176,32 @@ public class HostInfo extends Task {
         if (best == null) {
             // none selected so far, so this one is better.
             best = current;
+        } else if (current == null || current.isLoopbackAddress()) {
+            // definitely not better than the previously selected address.
+        } else if (current.isLinkLocalAddress()) {
+            // link local considered better than loopback
+            if (best.isLoopbackAddress()) {
+                best = current;
+            }
+        } else if (current.isSiteLocalAddress()) {
+            // site local considered better than link local (and loopback)
+            // address with hostname resolved considered better than
+            // address without hostname
+            if (best.isLoopbackAddress()
+                    || best.isLinkLocalAddress()
+                    || (best.isSiteLocalAddress() && !hasHostName(best))) {
+                best = current;
+            }
         } else {
-            if (current == null || current.isLoopbackAddress()) {
-                // definitely not better than the previously selected address.
-            } else if (current.isLinkLocalAddress()) {
-                // link local considered better than loopback
-                if (best.isLoopbackAddress()) {
-                    best = current;
-                }
-            } else if (current.isSiteLocalAddress()) {
-                // site local considered better than link local (and loopback)
-                // address with hostname resolved considered better than
-                // address without hostname
-                if (best.isLoopbackAddress()
-                        || best.isLinkLocalAddress()
-                        || (best.isSiteLocalAddress() && !hasHostName(best))) {
-                    best = current;
-                }
-            } else {
-                // current is a "Global address", considered better than
-                // site local (and better than link local, loopback)
-                // address with hostname resolved considered better than
-                // address without hostname
-                if (best.isLoopbackAddress()
-                        || best.isLinkLocalAddress()
-                        || best.isSiteLocalAddress()
-                        || !hasHostName(best)) {
-                    best = current;
-                }
+            // current is a "Global address", considered better than
+            // site local (and better than link local, loopback)
+            // address with hostname resolved considered better than
+            // address without hostname
+            if (best.isLoopbackAddress()
+                    || best.isLinkLocalAddress()
+                    || best.isSiteLocalAddress()
+                    || !hasHostName(best)) {
+                best = current;
             }
         }
         return best;
@@ -242,7 +241,7 @@ public class HostInfo extends Task {
         int idx = fqdn.indexOf('.');
         if (idx > 0) {
             setProperty(NAME, fqdn.substring(0, idx));
-            setProperty(DOMAIN, fqdn.substring(idx+1));
+            setProperty(DOMAIN, fqdn.substring(idx + 1));
         } else {
             setProperty(NAME, fqdn);
             setProperty(DOMAIN, DEF_DOMAIN);

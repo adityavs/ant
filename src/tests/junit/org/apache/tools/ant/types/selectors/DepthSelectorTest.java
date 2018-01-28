@@ -31,7 +31,7 @@ import static org.junit.Assert.fail;
  *
  */
 public class DepthSelectorTest {
-    
+
     @Rule
     public final BaseSelectorRule selectorRule = new BaseSelectorRule();
 
@@ -140,8 +140,6 @@ public class DepthSelectorTest {
         s.setMax(1);
         results = selectorRule.selectionString(s);
         assertEquals("FFFFFTTTFFFT", results);
-
-
     }
 
 }

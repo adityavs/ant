@@ -55,7 +55,7 @@ public class Target implements TaskContainer {
     private List<String> dependencies = null;
 
     /** Children of this target (tasks and data types). */
-    private List<Object> children = new ArrayList<Object>();
+    private List<Object> children = new ArrayList<>();
 
     /** Since Ant 1.6.2 */
     private Location location = Location.UNKNOWN_LOCATION;
@@ -145,7 +145,7 @@ public class Target implements TaskContainer {
     public static List<String> parseDepends(String depends,
                                                 String targetName,
                                                 String attributeName) {
-        List<String> list = new ArrayList<String>();
+        List<String> list = new ArrayList<>();
         if (depends.length() > 0) {
             StringTokenizer tok =
                 new StringTokenizer(depends, ",", true);
@@ -225,7 +225,7 @@ public class Target implements TaskContainer {
      * @return an array of the tasks currently within this target
      */
     public Task[] getTasks() {
-        List<Task> tasks = new ArrayList<Task>(children.size());
+        List<Task> tasks = new ArrayList<>(children.size());
         for (Object o : children) {
             if (o instanceof Task) {
                 tasks.add((Task) o);
@@ -242,7 +242,7 @@ public class Target implements TaskContainer {
      */
     public void addDependency(String dependency) {
         if (dependencies == null) {
-            dependencies = new ArrayList<String>(2);
+            dependencies = new ArrayList<>(2);
         }
         dependencies.add(dependency);
     }
@@ -253,8 +253,8 @@ public class Target implements TaskContainer {
      * @return an enumeration of the dependencies of this target (enumeration of String)
      */
     public Enumeration<String> getDependencies() {
-        return Collections
-                .enumeration(dependencies == null ? Collections.<String> emptyList() : dependencies);
+        return dependencies == null ? Collections.emptyEnumeration()
+            : Collections.enumeration(dependencies);
     }
 
     /**
@@ -284,7 +284,12 @@ public class Target implements TaskContainer {
      */
     public void setIf(String property) {
         ifString = property == null ? "" : property;
-        setIf(new IfStringCondition(ifString));
+        setIf(() -> {
+            PropertyHelper propertyHelper =
+                PropertyHelper.getPropertyHelper(getProject());
+            Object o = propertyHelper.parseProperties(ifString);
+            return propertyHelper.testIfCondition(o);
+        });
     }
 
     /**
@@ -301,6 +306,7 @@ public class Target implements TaskContainer {
     /**
      * Same as {@link #setIf(String)} but requires a {@link Condition} instance
      *
+     * @param condition Condition
      * @since 1.9
      */
     public void setIf(Condition condition) {
@@ -331,7 +337,12 @@ public class Target implements TaskContainer {
      */
     public void setUnless(String property) {
         unlessString = property == null ? "" : property;
-        setUnless(new UnlessStringCondition(unlessString));
+        setUnless(() -> {
+            PropertyHelper propertyHelper =
+                PropertyHelper.getPropertyHelper(getProject());
+            Object o = propertyHelper.parseProperties(unlessString);
+            return !propertyHelper.testUnlessCondition(o);
+        });
     }
 
     /**
@@ -348,6 +359,7 @@ public class Target implements TaskContainer {
     /**
      * Same as {@link #setUnless(String)} but requires a {@link Condition} instance
      *
+     * @param condition Condition
      * @since 1.9
      */
     public void setUnless(Condition condition) {
@@ -390,6 +402,7 @@ public class Target implements TaskContainer {
      * @return the name of this target, or <code>null</code> if the
      *         name has not been set yet.
      */
+    @Override
     public String toString() {
         return name;
     }
@@ -426,8 +439,8 @@ public class Target implements TaskContainer {
         try {
             // use index-based approach to avoid ConcurrentModificationExceptions;
             // also account for growing target children
-        	// do not optimize this loop by replacing children.size() by a variable
-        	// as children can be added dynamically as in RhinoScriptTest where a target is adding work for itself
+            // do not optimize this loop by replacing children.size() by a variable
+            // as children can be added dynamically as in RhinoScriptTest where a target is adding work for itself
             for (int i = 0; i < children.size(); i++) {
                 Object o = children.get(i);
                 if (o instanceof Task) {
@@ -490,43 +503,5 @@ public class Target implements TaskContainer {
         while ((index = children.indexOf(el)) >= 0) {
             children.set(index, o);
         }
-    }
-
-    /**
-     * Condition evaluating the 'if' attribute with the PropertyHelper.
-     */
-    private class IfStringCondition implements Condition {
-
-        private String condition;
-
-        public IfStringCondition(String condition) {
-            this.condition = condition;
-        }
-
-        public boolean eval() throws BuildException {
-            PropertyHelper propertyHelper = PropertyHelper.getPropertyHelper(getProject());
-            Object o = propertyHelper.parseProperties(condition);
-            return propertyHelper.testIfCondition(o);
-        }
-
-    }
-
-    /**
-     * Condition evaluating the 'unless' attribute with the PropertyHelper.
-     */
-    private class UnlessStringCondition implements Condition {
-
-        private String condition;
-
-        public UnlessStringCondition(String condition) {
-            this.condition = condition;
-        }
-
-        public boolean eval() throws BuildException {
-            PropertyHelper propertyHelper = PropertyHelper.getPropertyHelper(getProject());
-            Object o = propertyHelper.parseProperties(condition);
-            return !propertyHelper.testUnlessCondition(o);
-        }
-
     }
 }

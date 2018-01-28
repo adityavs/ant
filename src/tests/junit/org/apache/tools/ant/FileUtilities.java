@@ -58,7 +58,6 @@ public class FileUtilities {
         }
     }
 
-
     /**
      * Modified the timestamp on a file so it's <tt>seconds</tt> earlier than it was before. Where <tt>file</tt>
      * is a directory, this function recurses into all child files (and directories) and reduces their modified
@@ -66,12 +65,12 @@ public class FileUtilities {
      * @param file the file to change, or the directory to change then recurse into
      * @param seconds how many seconds to roll the timestamp back by
      */
-    public static void rollbackTimetamps(File file, long seconds) {
+    public static void rollbackTimestamps(File file, long seconds) {
         if (null == file || !file.exists()) {
             return;
         }
 
-        assumeTrue(file.setLastModified(file.lastModified() - (seconds * 1000)));
+        assumeTrue(file.setLastModified(file.lastModified() - seconds * 1000));
 
         if (file.isDirectory()) {
             File[] children = file.listFiles();
@@ -80,7 +79,7 @@ public class FileUtilities {
                 return;
             }
             for (File child : children) {
-                rollbackTimetamps(child, seconds);
+                rollbackTimestamps(child, seconds);
             }
         }
     }

@@ -20,35 +20,37 @@ package org.apache.tools.ant.taskdefs.optional.junit;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.PropertyHelper;
 import org.apache.tools.ant.Task;
+import org.apache.tools.ant.taskdefs.optional.junit.JUnitTaskMirror.JUnitResultFormatterMirror;
 import org.apache.tools.ant.types.EnumeratedAttribute;
 import org.apache.tools.ant.util.KeepAliveOutputStream;
 
 /**
- * <p> A wrapper for the implementations of <code>JUnitResultFormatter</code>.
+ * <p>A wrapper for the implementations of <code>JUnitResultFormatter</code>.
  * In particular, used as a nested <code>&lt;formatter&gt;</code> element in
- * a <code>&lt;junit&gt;</code> task.
- * <p> For example,
- * <code><pre>
+ * a <code>&lt;junit&gt;</code> task.</p>
+ *
+ * For example,
+ * <pre>
  *       &lt;junit printsummary="no" haltonfailure="yes" fork="false"&gt;
  *           &lt;formatter type="plain" usefile="false" /&gt;
  *           &lt;test name="org.apache.ecs.InternationalCharTest" /&gt;
- *       &lt;/junit&gt;</pre></code>
+ *       &lt;/junit&gt;</pre>
  * adds a <code>plain</code> type implementation
  * (<code>PlainJUnitResultFormatter</code>) to display the results of the test.
  *
- * <p> Either the <code>type</code> or the <code>classname</code> attribute
- * must be set.
+ * <p>Either the <code>type</code> or the <code>classname</code> attribute
+ * must be set.</p>
  *
  * @see JUnitTask
  * @see XMLJUnitResultFormatter
@@ -58,6 +60,18 @@ import org.apache.tools.ant.util.KeepAliveOutputStream;
  * @see JUnitResultFormatter
  */
 public class FormatterElement {
+    /** xml formatter class */
+    public static final String XML_FORMATTER_CLASS_NAME =
+        "org.apache.tools.ant.taskdefs.optional.junit.XMLJUnitResultFormatter";
+    /** brief formatter class */
+    public static final String BRIEF_FORMATTER_CLASS_NAME =
+        "org.apache.tools.ant.taskdefs.optional.junit.BriefJUnitResultFormatter";
+    /** plain formatter class */
+    public static final String PLAIN_FORMATTER_CLASS_NAME =
+        "org.apache.tools.ant.taskdefs.optional.junit.PlainJUnitResultFormatter";
+    /** failure recorder class */
+    public static final String FAILURE_RECORDER_CLASS_NAME =
+        "org.apache.tools.ant.taskdefs.optional.junit.FailureRecorder";
 
     private String classname;
     private String extension;
@@ -73,64 +87,59 @@ public class FormatterElement {
      */
     private Project project;
 
-    /** xml formatter class */
-    public static final String XML_FORMATTER_CLASS_NAME =
-        "org.apache.tools.ant.taskdefs.optional.junit.XMLJUnitResultFormatter";
-    /** brief formatter class */
-    public static final String BRIEF_FORMATTER_CLASS_NAME =
-        "org.apache.tools.ant.taskdefs.optional.junit.BriefJUnitResultFormatter";
-    /** plain formatter class */
-    public static final String PLAIN_FORMATTER_CLASS_NAME =
-        "org.apache.tools.ant.taskdefs.optional.junit.PlainJUnitResultFormatter";
-    /** failure recorder class */
-    public static final String FAILURE_RECORDER_CLASS_NAME =
-        "org.apache.tools.ant.taskdefs.optional.junit.FailureRecorder";
-
     /**
-     * <p> Quick way to use a standard formatter.
+     * <p>Quick way to use a standard formatter.</p>
      *
-     * <p> At the moment, there are three supported standard formatters.
+     * <p>At the moment, there are three supported standard formatters.</p>
      * <ul>
-     * <li> The <code>xml</code> type uses a <code>XMLJUnitResultFormatter</code>.
-     * <li> The <code>brief</code> type uses a <code>BriefJUnitResultFormatter</code>.
-     * <li> The <code>plain</code> type (the default) uses a <code>PlainJUnitResultFormatter</code>.
-     * <li> The <code>failure</code> type uses a <code>FailureRecorder</code>.
+     * <li>The <code>xml</code> type uses a <code>XMLJUnitResultFormatter</code>.</li>
+     * <li>The <code>brief</code> type uses a <code>BriefJUnitResultFormatter</code>.</li>
+     * <li>The <code>plain</code> type (the default) uses a <code>PlainJUnitResultFormatter</code>.</li>
+     * <li>The <code>failure</code> type uses a <code>FailureRecorder</code>.</li>
      * </ul>
      *
-     * <p> Sets <code>classname</code> attribute - so you can't use that
-     * attribute if you use this one.
+     * <p>Sets <code>classname</code> attribute - so you can't use that
+     * attribute if you use this one.</p>
+     *
      * @param type the enumerated value to use.
      */
     public void setType(TypeAttribute type) {
-        if ("xml".equals(type.getValue())) {
+        switch (type.getValue()) {
+        case "xml":
             setClassname(XML_FORMATTER_CLASS_NAME);
-        } else {
-            if ("brief".equals(type.getValue())) {
-                setClassname(BRIEF_FORMATTER_CLASS_NAME);
-            } else {
-                if ("failure".equals(type.getValue())) {
-                    setClassname(FAILURE_RECORDER_CLASS_NAME);
-                } else { // must be plain, ensured by TypeAttribute
-                    setClassname(PLAIN_FORMATTER_CLASS_NAME);
-                }
-            }
+            break;
+        case "brief":
+            setClassname(BRIEF_FORMATTER_CLASS_NAME);
+            break;
+        case "failure":
+            setClassname(FAILURE_RECORDER_CLASS_NAME);
+            break;
+        default:
+            setClassname(PLAIN_FORMATTER_CLASS_NAME);
+            break;
         }
     }
 
     /**
-     * <p> Set name of class to be used as the formatter.
+     * Set name of class to be used as the formatter.
+     * <p>This class must implement <code>JUnitResultFormatter</code></p>
      *
-     * <p> This class must implement <code>JUnitResultFormatter</code>
      * @param classname the name of the formatter class.
      */
     public void setClassname(String classname) {
         this.classname = classname;
-        if (XML_FORMATTER_CLASS_NAME.equals(classname)) {
-           setExtension(".xml");
-        } else if (PLAIN_FORMATTER_CLASS_NAME.equals(classname)) {
-           setExtension(".txt");
-        } else if (BRIEF_FORMATTER_CLASS_NAME.equals(classname)) {
-           setExtension(".txt");
+        if (classname != null) {
+            switch (classname) {
+            case XML_FORMATTER_CLASS_NAME:
+                setExtension(".xml");
+                break;
+            case PLAIN_FORMATTER_CLASS_NAME:
+                setExtension(".txt");
+                break;
+            case BRIEF_FORMATTER_CLASS_NAME:
+                setExtension(".txt");
+                break;
+            }
         }
     }
 
@@ -159,18 +168,18 @@ public class FormatterElement {
     }
 
     /**
-     * <p> Set the file which the formatte should log to.
+     * Set the file which the formatter should log to.
      *
-     * <p> Note that logging to file must be enabled .
+     * <p>Note that logging to file must be enabled.</p>
      */
     void setOutfile(File out) {
         this.outFile = out;
     }
 
     /**
-     * <p> Set output stream for formatter to use.
+     * Set output stream for formatter to use.
      *
-     * <p> Defaults to standard out.
+     * <p>Defaults to standard out.</p>
      * @param out the output stream to use.
      */
     public void setOutput(OutputStream out) {
@@ -220,7 +229,7 @@ public class FormatterElement {
     /**
      * Set whether this formatter should NOT be used. It will be used
      * if the expression evaluates to false or the name of a property
-     * which has not been set, orthwise it will not be used.
+     * which has not been set, otherwise it will not be used.
      * @param unlessCond name of property
      * @since Ant 1.8.0
      */
@@ -231,7 +240,7 @@ public class FormatterElement {
     /**
      * Set whether this formatter should NOT be used. It will be used
      * if the expression evaluates to false or the name of a property
-     * which has not been set, orthwise it will not be used.
+     * which has not been set, otherwise it will not be used.
      * @param unlessCond name of property
      */
     public void setUnless(String unlessCond) {
@@ -266,7 +275,6 @@ public class FormatterElement {
         this.project = project;
     }
 
-
     /**
      * @since Ant 1.6
      */
@@ -279,7 +287,7 @@ public class FormatterElement {
         //although this code appears to duplicate that of ClasspathUtils.newInstance,
         //we cannot use that because this formatter may run in a forked process,
         //without that class.
-        Class f = null;
+        Class<?> f;
         try {
             if (loader == null) {
                 f = Class.forName(classname);
@@ -296,32 +304,27 @@ public class FormatterElement {
                 + ": " + e, e);
         }
 
-        Object o = null;
+        JUnitResultFormatterMirror r;
         try {
-            o = f.newInstance();
-        } catch (InstantiationException e) {
-            throw new BuildException(e);
-        } catch (IllegalAccessException e) {
+            r = f.asSubclass(JUnitResultFormatterMirror.class).newInstance();
+        } catch (ClassCastException e) {
+            throw new BuildException("%s is not a JUnitResultFormatter",
+                classname);
+        } catch (InstantiationException | IllegalAccessException e) {
             throw new BuildException(e);
         }
 
-        if (!(o instanceof JUnitTaskMirror.JUnitResultFormatterMirror)) {
-            throw new BuildException(classname + " is not a JUnitResultFormatter");
-        }
-        JUnitTaskMirror.JUnitResultFormatterMirror r =
-            (JUnitTaskMirror.JUnitResultFormatterMirror) o;
         if (useFile && outFile != null) {
             out = new DelayedFileOutputStream(outFile);
         }
         r.setOutput(out);
-
 
         boolean needToSetProjectReference = true;
         try {
             Field field = r.getClass().getField("project");
             Object value = field.get(r);
             if (value instanceof Project) {
-                // there is already a project reference so dont overwrite this
+                // there is already a project reference so don't overwrite this
                 needToSetProjectReference = false;
             }
         } catch (NoSuchFieldException e) {
@@ -333,8 +336,8 @@ public class FormatterElement {
         if (needToSetProjectReference) {
             Method setter;
             try {
-                setter = r.getClass().getMethod("setProject", new Class[] {Project.class});
-                setter.invoke(r, new Object[] {project});
+                setter = r.getClass().getMethod("setProject", Project.class);
+                setter.invoke(r, project);
             } catch (NoSuchMethodException e) {
                 // no setProject to invoke; just ignore
             } catch (IllegalAccessException e) {
@@ -348,12 +351,13 @@ public class FormatterElement {
     }
 
     /**
-     * <p> Enumerated attribute with the values "plain", "xml", "brief" and "failure".
+     * Enumerated attribute with the values "plain", "xml", "brief" and "failure".
      *
-     * <p> Use to enumerate options for <code>type</code> attribute.
+     * <p>Use to enumerate options for <code>type</code> attribute.</p>
      */
     public static class TypeAttribute extends EnumeratedAttribute {
         /** {@inheritDoc}. */
+        @Override
         public String[] getValues() {
             return new String[] {"plain", "xml", "brief", "failure"};
         }
@@ -378,7 +382,7 @@ public class FormatterElement {
         public void write(int b) throws IOException {
             synchronized (this) {
                 if (outputStream == null) {
-                    outputStream = new BufferedOutputStream(new FileOutputStream(file));
+                    outputStream = new BufferedOutputStream(Files.newOutputStream(file.toPath()));
                 }
             }
             outputStream.write(b);

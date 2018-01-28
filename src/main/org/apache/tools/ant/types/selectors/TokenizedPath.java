@@ -19,10 +19,12 @@
 package org.apache.tools.ant.types.selectors;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.util.FileUtils;
-import org.apache.tools.ant.util.SymbolicLinkUtils;
 
 /**
  * Container for a path that has been split into its components.
@@ -38,9 +40,6 @@ public class TokenizedPath {
 
     /** Helper. */
     private static final FileUtils FILE_UTILS = FileUtils.getFileUtils();
-    /** Helper. */
-    private static final SymbolicLinkUtils SYMLINK_UTILS =
-        SymbolicLinkUtils.getSymbolicLinkUtils();
     /** iterations for case-sensitive scanning. */
     private static final boolean[] CS_SCAN_ONLY = new boolean[] {true};
     /** iterations for non-case-sensitive scanning. */
@@ -93,12 +92,14 @@ public class TokenizedPath {
 
     /**
      * The depth (or length) of a path.
+     * @return int
      */
     public int depth() {
         return tokenizedPath.length;
     }
 
-    /* package */ String[] getTokens() {
+    /* package */
+    String[] getTokens() {
         return tokenizedPath;
     }
 
@@ -135,31 +136,27 @@ public class TokenizedPath {
      * Do we have to traverse a symlink when trying to reach path from
      * basedir?
      * @param base base File (dir).
+     * @return boolean
      */
     public boolean isSymlink(File base) {
         for (int i = 0; i < tokenizedPath.length; i++) {
-            try {
-                if ((base != null
-                     && SYMLINK_UTILS.isSymbolicLink(base, tokenizedPath[i]))
-                    ||
-                    (base == null
-                     && SYMLINK_UTILS.isSymbolicLink(tokenizedPath[i]))
-                    ) {
-                    return true;
-                }
-                base = new File(base, tokenizedPath[i]);
-            } catch (java.io.IOException ioe) {
-                String msg = "IOException caught while checking "
-                    + "for links, couldn't get canonical path!";
-                // will be caught and redirected to Ant's logging system
-                System.err.println(msg);
+            final Path pathToTraverse;
+            if (base == null) {
+                pathToTraverse = Paths.get(tokenizedPath[i]);
+            } else {
+                pathToTraverse = Paths.get(base.toPath().toString(), tokenizedPath[i]);
             }
+            if (Files.isSymbolicLink(pathToTraverse)) {
+                return true;
+            }
+            base = new File(base, tokenizedPath[i]);
         }
         return false;
     }
 
     /**
      * true if the original paths are equal.
+     * @return boolean
      */
     @Override
     public boolean equals(Object o) {
@@ -189,8 +186,8 @@ public class TokenizedPath {
             }
             String[] files = base.list();
             if (files == null) {
-                throw new BuildException("IO error scanning directory "
-                                         + base.getAbsolutePath());
+                throw new BuildException("IO error scanning directory %s",
+                    base.getAbsolutePath());
             }
             boolean found = false;
             boolean[] matchCase = cs ? CS_SCAN_ONLY : CS_THEN_NON_CS;
@@ -214,6 +211,8 @@ public class TokenizedPath {
     /**
      * Creates a TokenizedPattern from the same tokens that make up
      * this path.
+     *
+     * @return TokenizedPattern
      */
     public TokenizedPattern toPattern() {
         return new TokenizedPattern(path, tokenizedPath);

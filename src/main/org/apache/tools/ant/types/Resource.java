@@ -21,17 +21,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.BigInteger;
+import java.util.Collections;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
+import java.util.Optional;
 
 import org.apache.tools.ant.types.resources.FileProvider;
 
 /**
  * Describes a "File-like" resource (File, ZipEntry, etc.).
- *
+ * <p>
  * This class is meant to be used by classes needing to record path
  * and date/time information about a file, a zip entry or some similar
  * resource (URL, archive in a version control repository, ...).
+ * </p>
  *
  * @since Ant 1.5.2
  * @see org.apache.tools.ant.types.resources.Touchable
@@ -139,7 +141,7 @@ public class Resource extends DataType implements Comparable<Resource>, Resource
      * @return the name of this resource.
      */
     public String getName() {
-        return isReference() ? ((Resource) getCheckedRef()).getName() : name;
+        return isReference() ? getCheckedRef().getName() : name;
     }
 
     /**
@@ -158,7 +160,7 @@ public class Resource extends DataType implements Comparable<Resource>, Resource
      */
     public boolean isExists() {
         if (isReference()) {
-            return ((Resource) getCheckedRef()).isExists();
+            return getCheckedRef().isExists();
         }
         //default true:
         return exists == null || exists.booleanValue();
@@ -185,7 +187,7 @@ public class Resource extends DataType implements Comparable<Resource>, Resource
      */
     public long getLastModified() {
         if (isReference()) {
-            return ((Resource) getCheckedRef()).getLastModified();
+            return getCheckedRef().getLastModified();
         }
         if (!isExists() || lastmodified == null) {
             return UNKNOWN_DATETIME;
@@ -209,7 +211,7 @@ public class Resource extends DataType implements Comparable<Resource>, Resource
      */
     public boolean isDirectory() {
         if (isReference()) {
-            return ((Resource) getCheckedRef()).isDirectory();
+            return getCheckedRef().isDirectory();
         }
         //default false:
         return directory != null && directory.booleanValue();
@@ -242,7 +244,7 @@ public class Resource extends DataType implements Comparable<Resource>, Resource
      */
     public long getSize() {
         if (isReference()) {
-            return ((Resource) getCheckedRef()).getSize();
+            return getCheckedRef().getSize();
         }
         return isExists()
             ? (size != null ? size.longValue() : UNKNOWN_SIZE)
@@ -253,13 +255,13 @@ public class Resource extends DataType implements Comparable<Resource>, Resource
      * Clone this Resource.
      * @return copy of this.
      */
-    public Object clone() {
+    @Override
+    public Resource clone() {
         try {
-            return super.clone();
+            return (Resource) super.clone();
         } catch (CloneNotSupportedException e) {
             throw new UnsupportedOperationException(
-                    "CloneNotSupportedException for a Resource caught. "
-                    + "Derived classes must support cloning.");
+                "CloneNotSupportedException for a Resource caught. Derived classes must support cloning.");
         }
     }
 
@@ -270,9 +272,10 @@ public class Resource extends DataType implements Comparable<Resource>, Resource
      *         is less than, equal to, or greater than the specified Resource.
      * @since Ant 1.6
      */
+    @Override
     public int compareTo(Resource other) {
         if (isReference()) {
-            return ((Resource) getCheckedRef()).compareTo(other);
+            return getCheckedRef().compareTo(other);
         }
         return toString().compareTo(other.toString());
     }
@@ -283,7 +286,11 @@ public class Resource extends DataType implements Comparable<Resource>, Resource
      * @return true if the specified Object is equal to this Resource.
      * @since Ant 1.7
      */
+    @Override
     public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
         if (isReference()) {
             return getCheckedRef().equals(other);
         }
@@ -296,6 +303,7 @@ public class Resource extends DataType implements Comparable<Resource>, Resource
      * @return hash code as int.
      * @since Ant 1.7
      */
+    @Override
     public int hashCode() {
         if (isReference()) {
             return getCheckedRef().hashCode();
@@ -315,7 +323,7 @@ public class Resource extends DataType implements Comparable<Resource>, Resource
      */
     public InputStream getInputStream() throws IOException {
         if (isReference()) {
-            return ((Resource) getCheckedRef()).getInputStream();
+            return getCheckedRef().getInputStream();
         }
         throw new UnsupportedOperationException();
     }
@@ -331,7 +339,7 @@ public class Resource extends DataType implements Comparable<Resource>, Resource
      */
     public OutputStream getOutputStream() throws IOException {
         if (isReference()) {
-            return ((Resource) getCheckedRef()).getOutputStream();
+            return getCheckedRef().getOutputStream();
         }
         throw new UnsupportedOperationException();
     }
@@ -341,24 +349,10 @@ public class Resource extends DataType implements Comparable<Resource>, Resource
      * @return an Iterator of Resources.
      * @since Ant 1.7
      */
+    @Override
     public Iterator<Resource> iterator() {
-        return isReference() ? ((Resource) getCheckedRef()).iterator()
-            : new Iterator<Resource>() {
-            private boolean done = false;
-            public boolean hasNext() {
-                return !done;
-            }
-            public Resource next() {
-                if (done) {
-                    throw new NoSuchElementException();
-                }
-                done = true;
-                return Resource.this;
-            }
-            public void remove() {
-                throw new UnsupportedOperationException();
-            }
-        };
+        return isReference() ? getCheckedRef().iterator()
+            : Collections.singleton(this).iterator();
     }
 
     /**
@@ -366,8 +360,9 @@ public class Resource extends DataType implements Comparable<Resource>, Resource
      * @return the size of this ResourceCollection.
      * @since Ant 1.7
      */
+    @Override
     public int size() {
-        return isReference() ? ((Resource) getCheckedRef()).size() : 1;
+        return isReference() ? getCheckedRef().size() : 1;
     }
 
     /**
@@ -375,8 +370,9 @@ public class Resource extends DataType implements Comparable<Resource>, Resource
      * @return whether this Resource is a FileProvider.
      * @since Ant 1.7
      */
+    @Override
     public boolean isFilesystemOnly() {
-        return (isReference() && ((Resource) getCheckedRef()).isFilesystemOnly())
+        return (isReference() && getCheckedRef().isFilesystemOnly())
             || this.as(FileProvider.class) != null;
     }
 
@@ -385,6 +381,7 @@ public class Resource extends DataType implements Comparable<Resource>, Resource
      * @return this Resource formatted as a String.
      * @since Ant 1.7
      */
+    @Override
     public String toString() {
         if (isReference()) {
             return getCheckedRef().toString();
@@ -401,7 +398,7 @@ public class Resource extends DataType implements Comparable<Resource>, Resource
      * @since Ant 1.7
      */
     public final String toLongString() {
-        return isReference() ? ((Resource) getCheckedRef()).toLongString()
+        return isReference() ? getCheckedRef().toLongString()
             : getDataTypeName() + " \"" + toString() + '"';
     }
 
@@ -409,6 +406,7 @@ public class Resource extends DataType implements Comparable<Resource>, Resource
      * Overrides the base version.
      * @param r the Reference to set.
      */
+    @Override
     public void setRefid(Reference r) {
         if (name != null
             || exists != null
@@ -431,9 +429,28 @@ public class Resource extends DataType implements Comparable<Resource>, Resource
      * <p>This implementation of the method will return the current
      * instance itself if it can be assigned to the given class.</p>
      *
+     * @param <T> desired type
+     * @param clazz a class
+     * @return resource of a desired type
      * @since Ant 1.8.0
      */
     public <T> T as(Class<T> clazz) {
         return clazz.isAssignableFrom(getClass()) ? clazz.cast(this) : null;
+    }
+
+    /**
+     * Return {@link #as(Class)} as an {@link Optional}.
+     * @param <T> desired type
+     * @param clazz a class
+     * @return {@link Optional} resource of a desired type
+     * @since Ant 1.10.2
+     */
+    public <T> Optional<T> asOptional(Class<T> clazz) {
+        return Optional.ofNullable(as(clazz));
+    }
+
+    @Override
+    protected Resource getCheckedRef() {
+        return (Resource) super.getCheckedRef();
     }
 }

@@ -30,7 +30,7 @@ import org.apache.tools.ant.util.FileNameMapper;
  * Element to define a FileNameMapper.
  *
  */
-public class Mapper extends DataType implements Cloneable {
+public class Mapper extends DataType {
     // CheckStyle:VisibilityModifier OFF - bc
 
     protected MapperType type = null;
@@ -187,6 +187,7 @@ public class Mapper extends DataType implements Cloneable {
      * @param r the reference to another mapper
      * @throws BuildException if other attributes are set
      */
+    @Override
     public void setRefid(Reference r) throws BuildException {
         if (type != null || from != null || to != null) {
             throw tooManyAttributes();
@@ -306,6 +307,7 @@ public class Mapper extends DataType implements Cloneable {
         /**
          * @return the filenamemapper names
          */
+        @Override
         public String[] getValues() {
             return new String[] {"identity", "flatten", "glob",
                                  "merge", "regexp", "package", "unpackage"};

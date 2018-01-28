@@ -43,7 +43,7 @@ public class UpToDateTest {
         File srcDir = buildRule.getProject().resolveFile("source");
         assumeTrue("Could not change modification timestamp of source directory",
                 srcDir.setLastModified(srcDir.lastModified()
-                - (3 * FileUtils.getFileUtils().getFileTimestampGranularity())));
+                - 3 * FileUtils.getFileUtils().getFileTimestampGranularity()));
     }
 
     @After
@@ -54,24 +54,24 @@ public class UpToDateTest {
     @Test
     public void testFilesetUpToDate() {
         buildRule.executeTarget("testFilesetUpToDate");
-		assertEquals("true", buildRule.getProject().getProperty("foo"));
+        assertEquals("true", buildRule.getProject().getProperty("foo"));
     }
 
     @Test
     public void testFilesetOutOfDate() {
         buildRule.executeTarget("testFilesetOutOfDate");
-		assertNull(buildRule.getProject().getProperty("foo"));
+        assertNull(buildRule.getProject().getProperty("foo"));
     }
 
     @Test
     public void testRCUpToDate() {
         buildRule.executeTarget("testRCUpToDate");
-		assertEquals("true", buildRule.getProject().getProperty("foo"));
+        assertEquals("true", buildRule.getProject().getProperty("foo"));
     }
 
     @Test
     public void testRCOutOfDate() {
         buildRule.executeTarget("testRCOutOfDate");
-		assertNull(buildRule.getProject().getProperty("foo"));
+        assertNull(buildRule.getProject().getProperty("foo"));
     }
 }

@@ -56,6 +56,12 @@ public final class MagicNames {
     public static final String SCRIPT_REPOSITORY = "org.apache.ant.scriptrepo";
 
     /**
+     * The name of the script cache used by the script runner.
+     * Value {@value}
+     */
+    public static final String SCRIPT_CACHE = "org.apache.ant.scriptcache";
+
+    /**
      * The name of the reference to the System Class Loader.
      * Value {@value}
      **/
@@ -252,7 +258,7 @@ public final class MagicNames {
     /**
      * Name of the project reference holding an instance of {@link
      * org.apache.tools.ant.taskdefs.launcher.CommandLauncher} to use
-     * when executing commands with the help of an external skript.
+     * when executing commands with the help of an external script.
      *
      * <p>Alternatively this is the name of a system property holding
      * the fully qualified class name of a {@link
@@ -266,7 +272,7 @@ public final class MagicNames {
     /**
      * Name of the project reference holding an instance of {@link
      * org.apache.tools.ant.taskdefs.launcher.CommandLauncher} to use
-     * when executing commands without the help of an external skript.
+     * when executing commands without the help of an external script.
      *
      * <p>Alternatively this is the name of a system property holding
      * the fully qualified class name of a {@link
@@ -289,5 +295,31 @@ public final class MagicNames {
      * Value {@value}
      */
     public static final String HTTP_AGENT_PROPERTY = "ant.http.agent";
+
+    /**
+     * Magic property that can be set to contain a value for tstamp's
+     * "now" in order to make builds that use the task create
+     * reproducible results.
+     *
+     * <p>The value is expected to be a number representing the date
+     * as seconds since the epoch.</p>
+     *
+     * Value: {@value}
+     * @since Ant 1.10.2
+     */
+    public static final String TSTAMP_NOW = "ant.tstamp.now";
+
+    /**
+     * Magic property that can be set to contain a value for tstamp's
+     * "now" in order to make builds that use the task create
+     * reproducible results.
+     *
+     * <p>The value is expected to be in ISO time format
+     * (<i>1972-04-17T08:07</i>)</p>
+     *
+     * Value: {@value}
+     * @since Ant 1.10.2
+     */
+    public static final String TSTAMP_NOW_ISO = "ant.tstamp.now.iso";
 }
 

@@ -91,8 +91,7 @@ public class XMLCatalogTest {
             Source result = catalog.resolve("i/dont/exist.dtd", null);
             String expected = toURLString(new File(project.getBaseDir() +
                                                    "/i/dont/exist.dtd"));
-            String resultStr =
-                fileURLPartWithoutLeadingSlashes((SAXSource)result);
+            String resultStr = fileURLPartWithoutLeadingSlashes((SAXSource) result);
             assertTrue("Empty catalog should return input with a system ID like "
                        + expected + " but was " + resultStr,
                        expected.endsWith(resultStr));
@@ -120,7 +119,6 @@ public class XMLCatalogTest {
 
     @Test
     public void testNonExistentEntry() throws IOException, SAXException, TransformerException {
-
         ResourceLocation dtd = new ResourceLocation();
         dtd.setPublicId("PUBLIC ID ONE");
         dtd.setLocation("i/dont/exist.dtd");
@@ -132,8 +130,7 @@ public class XMLCatalogTest {
         Source result = catalog.resolve("i/dont/exist.dtd", null);
         String expected = toURLString(new File(project.getBaseDir().toURL() +
                                                "/i/dont/exist.dtd"));
-        String resultStr =
-            fileURLPartWithoutLeadingSlashes((SAXSource)result);
+        String resultStr = fileURLPartWithoutLeadingSlashes((SAXSource) result);
         assertTrue("Nonexistent Catalog entry return input with a system ID like "
                    + expected + " but was " + resultStr,
                    expected.endsWith(resultStr));
@@ -175,8 +172,8 @@ public class XMLCatalogTest {
         catalog.setRefid(new Reference(project, "catalog"));
 
         try {
-            InputSource result = catalog.resolveEntity("PUBLIC ID ONE",
-                                                       "i/dont/exist.dtd");
+            @SuppressWarnings("unused")
+            InputSource result = catalog.resolveEntity("PUBLIC ID ONE", "i/dont/exist.dtd");
             fail("Can make XMLCatalog a Reference to itself.");
         } catch (BuildException be) {
             assertEquals("This data type contains a circular reference.",
@@ -198,14 +195,14 @@ public class XMLCatalogTest {
         catalog1.setRefid(new Reference(project, "catalog2"));
 
         try {
-            catalog1.resolveEntity("PUBLIC ID ONE",
-                                                        "i/dont/exist.dtd");
+            catalog1.resolveEntity("PUBLIC ID ONE", "i/dont/exist.dtd");
             fail("Can make circular reference");
         } catch (BuildException be) {
             assertEquals("This data type contains a circular reference.",
                     be.getMessage());
         }
     }
+
     // inspired by Bugzilla Report 23913
     // a problem used to happen under Windows when the location of the DTD was given as an absolute path
     // possibly with a mixture of file separators
@@ -222,15 +219,11 @@ public class XMLCatalogTest {
         InputSource result = catalog.resolveEntity("-//stevo//DTD doc 1.0//EN",
                                                    "nap:chemical+brothers");
         assertNotNull(result);
-        assertEquals(toURLString(dtdFile),
-                     result.getSystemId());
-
-
+        assertEquals(toURLString(dtdFile), result.getSystemId());
     }
 
     @Test
     public void testSimpleEntry() throws IOException, SAXException {
-
         ResourceLocation dtd = new ResourceLocation();
         dtd.setPublicId("-//stevo//DTD doc 1.0//EN");
         String sysid = "src/etc/testcases/taskdefs/optional/xml/doc.dtd";
@@ -241,14 +234,12 @@ public class XMLCatalogTest {
         InputSource result = catalog.resolveEntity("-//stevo//DTD doc 1.0//EN",
                                                    "nap:chemical+brothers");
         assertNotNull(result);
-        assertEquals(toURLString(dtdFile),
-                     result.getSystemId());
+        assertEquals(toURLString(dtdFile), result.getSystemId());
 
     }
 
     @Test
     public void testEntryReference() throws IOException, SAXException, TransformerException {
-
         String publicId = "-//stevo//DTD doc 1.0//EN";
         String sysid = "src/etc/testcases/taskdefs/optional/xml/doc.dtd";
 
@@ -278,23 +269,18 @@ public class XMLCatalogTest {
         catalog1.setRefid(new Reference(project, "catalog"));
         catalog2.setRefid(new Reference(project, "catalog1"));
 
-        InputSource isResult = catalog2.resolveEntity(publicId,
-                                                    "nap:chemical+brothers");
+        InputSource isResult = catalog2.resolveEntity(publicId, "nap:chemical+brothers");
 
         assertNotNull(isResult);
-        assertEquals(toURLString(dtdFile),
-                     isResult.getSystemId());
-
+        assertEquals(toURLString(dtdFile), isResult.getSystemId());
 
             Source result = catalog.resolve(uri, null);
             assertNotNull(result);
-            assertEquals(toURLString(xmlFile),
-                         result.getSystemId());
+            assertEquals(toURLString(xmlFile), result.getSystemId());
     }
 
     @Test
     public void testNestedCatalog() throws IOException, SAXException, TransformerException {
-
         String publicId = "-//stevo//DTD doc 1.0//EN";
         String dtdLoc = "src/etc/testcases/taskdefs/optional/xml/doc.dtd";
 
@@ -316,22 +302,17 @@ public class XMLCatalogTest {
         XMLCatalog catalog1 = newCatalog();
         catalog1.addConfiguredXMLCatalog(catalog);
 
-        InputSource isResult = catalog1.resolveEntity(publicId,
-                                                    "nap:chemical+brothers");
+        InputSource isResult = catalog1.resolveEntity(publicId, "nap:chemical+brothers");
         assertNotNull(isResult);
-        assertEquals(toURLString(dtdFile),
-                     isResult.getSystemId());
+        assertEquals(toURLString(dtdFile), isResult.getSystemId());
 
         Source result = catalog.resolve(uri, null);
         assertNotNull(result);
-        assertEquals(toURLString(xmlFile),
-                     result.getSystemId());
-
+        assertEquals(toURLString(xmlFile), result.getSystemId());
     }
 
     @Test
     public void testResolverBase() throws MalformedURLException, TransformerException {
-
         String uri = "http://foo.com/bar/blah.xml";
         String uriLoc = "etc/testcases/taskdefs/optional/xml/about.xml";
         String base = toURLString(project.getBaseDir()) + "/src/";
@@ -344,15 +325,11 @@ public class XMLCatalogTest {
 
         Source result = catalog.resolve(uri, base);
         assertNotNull(result);
-        assertEquals(toURLString(xmlFile),
-                     result.getSystemId());
-
+        assertEquals(toURLString(xmlFile), result.getSystemId());
     }
 
     @Test
     public void testClasspath() throws IOException, TransformerException, SAXException {
-
-
         String publicId = "-//stevo//DTD doc 1.0//EN";
         String dtdLoc = "testcases/taskdefs/optional/xml/doc.dtd";
         String path1 = project.getBaseDir().toString() + "/src/etc";
@@ -377,8 +354,7 @@ public class XMLCatalogTest {
         aPath.append(new Path(project, path2));
         catalog.setClasspath(aPath);
 
-        InputSource isResult = catalog.resolveEntity(publicId,
-                                                   "nap:chemical+brothers");
+        InputSource isResult = catalog.resolveEntity(publicId, "nap:chemical+brothers");
         assertNotNull(isResult);
         String resultStr1 = new URL(isResult.getSystemId()).getFile();
         assertTrue(toURLString(dtdFile).endsWith(resultStr1));
@@ -387,6 +363,5 @@ public class XMLCatalogTest {
         assertNotNull(result);
         String resultStr = new URL(result.getSystemId()).getFile();
         assertTrue(toURLString(xmlFile).endsWith(resultStr));
-
     }
 }

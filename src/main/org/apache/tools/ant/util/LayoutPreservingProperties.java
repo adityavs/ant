@@ -20,7 +20,6 @@ package org.apache.tools.ant.util;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -28,9 +27,12 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.io.PushbackReader;
+import java.io.Serializable;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 /**
@@ -78,6 +80,8 @@ import java.util.Properties;
  * although the key-value pair <code>beta=two</code> is removed.</p>
  */
 public class LayoutPreservingProperties extends Properties {
+    private static final long serialVersionUID = 1L;
+
     private String LS = StringUtils.LINE_SEP;
 
     /**
@@ -85,12 +89,12 @@ public class LayoutPreservingProperties extends Properties {
      * of. Comments and blank lines are logical lines; they are not
      * removed.
      */
-    private ArrayList logicalLines = new ArrayList();
+    private List<LogicalLine> logicalLines = new ArrayList<>();
 
     /**
      * Position in the <code>logicalLines</code> list, keyed by property name.
      */
-    private HashMap keyedPairLines = new HashMap();
+    private Map<String, Integer> keyedPairLines = new HashMap<>();
 
     /**
      * Flag to indicate that, when we remove a property from the file, we
@@ -175,14 +179,14 @@ public class LayoutPreservingProperties extends Properties {
         value = escapeValue(value);
 
         if (keyedPairLines.containsKey(key)) {
-            final Integer i = (Integer) keyedPairLines.get(key);
+            final Integer i = keyedPairLines.get(key);
             final Pair p = (Pair) logicalLines.get(i.intValue());
             p.setValue(value);
         } else {
             key = escapeName(key);
             final Pair p = new Pair(key, value);
             p.setNew(true);
-            keyedPairLines.put(key, new Integer(logicalLines.size()));
+            keyedPairLines.put(key, Integer.valueOf(logicalLines.size()));
             logicalLines.add(p);
         }
     }
@@ -197,7 +201,7 @@ public class LayoutPreservingProperties extends Properties {
     @Override
     public Object remove(final Object key) {
         final Object obj = super.remove(key);
-        final Integer i = (Integer) keyedPairLines.remove(key);
+        final Integer i = keyedPairLines.remove(key);
         if (null != i) {
             if (removeComments) {
                 removeCommentsEndingAt(i.intValue());
@@ -208,14 +212,14 @@ public class LayoutPreservingProperties extends Properties {
     }
 
     @Override
-    public Object clone() {
+    public LayoutPreservingProperties clone() {
         final LayoutPreservingProperties dolly =
             (LayoutPreservingProperties) super.clone();
-        dolly.keyedPairLines = (HashMap) this.keyedPairLines.clone();
-        dolly.logicalLines = (ArrayList) this.logicalLines.clone();
+        dolly.keyedPairLines = new HashMap<>(this.keyedPairLines);
+        dolly.logicalLines = new ArrayList<>(this.logicalLines);
         final int size = dolly.logicalLines.size();
         for (int j = 0; j < size; j++) {
-            final LogicalLine line = (LogicalLine) dolly.logicalLines.get(j);
+            final LogicalLine line = dolly.logicalLines.get(j);
             if (line instanceof Pair) {
                 final Pair p = (Pair) line;
                 dolly.logicalLines.set(j, p.clone());
@@ -232,9 +236,7 @@ public class LayoutPreservingProperties extends Properties {
      */
     public void listLines(final PrintStream out) {
         out.println("-- logical lines --");
-        final Iterator i = logicalLines.iterator();
-        while (i.hasNext()) {
-            final LogicalLine line = (LogicalLine) i.next();
+        for (LogicalLine line : logicalLines) {
             if (line instanceof Blank) {
                 out.println("blank:   \"" + line + "\"");
             } else if (line instanceof Comment) {
@@ -248,9 +250,10 @@ public class LayoutPreservingProperties extends Properties {
     /**
      * Save the properties to a file.
      * @param dest the file to write to
+     * @throws IOException if save fails
      */
     public void saveAs(final File dest) throws IOException {
-        final FileOutputStream fos = new FileOutputStream(dest);
+        final OutputStream fos = Files.newOutputStream(dest.toPath());
         store(fos, null);
         fos.close();
     }
@@ -271,7 +274,7 @@ public class LayoutPreservingProperties extends Properties {
             }
         }
 
-        // we may be updatiung a file written by this class, replace
+        // we may be updating a file written by this class, replace
         // the date comment instead of adding a new one and preserving
         // the one written last time
         if (totalLines > skipLines
@@ -288,11 +291,9 @@ public class LayoutPreservingProperties extends Properties {
         osw.write("#" + DateUtils.getDateForHeader() + LS);
 
         boolean writtenSep = false;
-        for (final Iterator i = logicalLines.subList(skipLines, totalLines).iterator();
-             i.hasNext();) {
-            final LogicalLine line = (LogicalLine) i.next();
+        for (LogicalLine line : logicalLines.subList(skipLines, totalLines)) {
             if (line instanceof Pair) {
-                if (((Pair)line).isNew()) {
+                if (((Pair) line).isNew()) {
                     if (!writtenSep) {
                         osw.write(LS);
                         writtenSep = true;
@@ -308,7 +309,7 @@ public class LayoutPreservingProperties extends Properties {
 
     /**
      * Reads a properties file into an internally maintained
-     * collection of logical lines (possibly spanning physcial lines),
+     * collection of logical lines (possibly spanning physical lines),
      * which make up the comments, blank lines and properties of the
      * file.
      * @param is the stream from which to read the data
@@ -317,7 +318,7 @@ public class LayoutPreservingProperties extends Properties {
         final InputStreamReader isr = new InputStreamReader(is, ResourceUtils.ISO_8859_1);
         final PushbackReader pbr = new PushbackReader(isr, 1);
 
-        if (logicalLines.size() > 0) {
+        if (!logicalLines.isEmpty()) {
             // we add a blank line for spacing
             logicalLines.add(new Blank());
         }
@@ -327,8 +328,8 @@ public class LayoutPreservingProperties extends Properties {
 
         boolean continuation = false;
         boolean comment = false;
-        final StringBuffer fileBuffer = new StringBuffer();
-        final StringBuffer logicalLineBuffer = new StringBuffer();
+        final StringBuilder fileBuffer = new StringBuilder();
+        final StringBuilder logicalLineBuffer = new StringBuilder();
         while (s != null) {
             fileBuffer.append(s).append(LS);
 
@@ -349,20 +350,20 @@ public class LayoutPreservingProperties extends Properties {
             logicalLineBuffer.append(s);
 
             if (!continuation) {
-                LogicalLine line = null;
+                LogicalLine line;
                 if (comment) {
                     line = new Comment(logicalLineBuffer.toString());
                 } else if (logicalLineBuffer.toString().trim().length() == 0) {
                     line = new Blank();
                 } else {
                     line = new Pair(logicalLineBuffer.toString());
-                    final String key = unescape(((Pair)line).getName());
+                    final String key = unescape(((Pair) line).getName());
                     if (keyedPairLines.containsKey(key)) {
                         // this key is already present, so we remove it and add
                         // the new one
                         remove(key);
                     }
-                    keyedPairLines.put(key, new Integer(logicalLines.size()));
+                    keyedPairLines.put(key, Integer.valueOf(logicalLines.size()));
                 }
                 logicalLines.add(line);
                 logicalLineBuffer.setLength(0);
@@ -384,7 +385,7 @@ public class LayoutPreservingProperties extends Properties {
      * @since Ant 1.8.2
      */
     private String readFirstLine(final PushbackReader r) throws IOException {
-        final StringBuffer sb = new StringBuffer(80);
+        final StringBuilder sb = new StringBuilder(80);
         int ch = r.read();
         boolean hasCR = false;
         // when reaching EOF before the first EOL, assume native line
@@ -432,7 +433,7 @@ public class LayoutPreservingProperties extends Properties {
     }
 
     /**
-     * Unescape the string according to the rules for a Properites
+     * Unescape the string according to the rules for a Properties
      * file, as laid out in the docs for <a
      * href="http://java.sun.com/j2se/1.3/docs/api/java/util/Properties.html">java.util.Properties</a>.
      * @param s the string to unescape (coming from the source file)
@@ -442,7 +443,7 @@ public class LayoutPreservingProperties extends Properties {
         /*
          * The following combinations are converted:
          * \n  newline
-         * \r  carraige return
+         * \r  carriage return
          * \f  form feed
          * \t  tab
          * \\  backslash
@@ -454,13 +455,14 @@ public class LayoutPreservingProperties extends Properties {
         final char[] ch = new char[s.length() + 1];
         s.getChars(0, s.length(), ch, 0);
         ch[s.length()] = '\n';
-        final StringBuffer buffy = new StringBuffer(s.length());
+        final StringBuilder buffy = new StringBuilder(s.length());
         for (int i = 0; i < ch.length; i++) {
             char c = ch[i];
             if (c == '\n') {
                 // we have hit out end-of-string marker
                 break;
-            } else if (c == '\\') {
+            }
+            if (c == '\\') {
                 // possibly an escape sequence
                 c = ch[++i];
                 if (c == 'n') {
@@ -473,7 +475,7 @@ public class LayoutPreservingProperties extends Properties {
                     buffy.append('\t');
                 } else if (c == 'u') {
                     // handle unicode escapes
-                    c = unescapeUnicode(ch, i+1);
+                    c = unescapeUnicode(ch, i + 1);
                     i += 4;
                     buffy.append(c);
                 } else {
@@ -540,7 +542,7 @@ public class LayoutPreservingProperties extends Properties {
         s.getChars(0, s.length(), ch, 0);
         final String forEscaping = "\t\f\r\n\\:=#!";
         final String escaped = "tfrn\\:=#!";
-        final StringBuffer buffy = new StringBuffer(s.length());
+        final StringBuilder buffy = new StringBuilder(s.length());
         boolean leadingSpace = true;
         for (int i = 0; i < ch.length; i++) {
             final char c = ch[i];
@@ -553,7 +555,7 @@ public class LayoutPreservingProperties extends Properties {
             }
             final int p = forEscaping.indexOf(c);
             if (p != -1) {
-                buffy.append("\\").append(escaped.substring(p,p+1));
+                buffy.append("\\").append(escaped.substring(p, p + 1));
             } else if (c < 0x0020 || c > 0x007e) {
                 buffy.append(escapeUnicode(c));
             } else {
@@ -571,10 +573,10 @@ public class LayoutPreservingProperties extends Properties {
      */
     private String escapeUnicode(final char ch) {
         return "\\" + UnicodeUtil.EscapeUnicode(ch);
-        }
+    }
 
     /**
-     * Remove the comments in the leading up the {@link logicalLines}
+     * Remove the comments in the leading up the {@link #logicalLines}
      * list leading up to line <code>pos</code>.
      * @param pos the line number to which the comments lead
      */
@@ -618,7 +620,9 @@ public class LayoutPreservingProperties extends Properties {
     /**
      * A logical line of the properties input stream.
      */
-    private abstract static class LogicalLine {
+    private abstract static class LogicalLine implements Serializable {
+        private static final long serialVersionUID = 1L;
+
         private String text;
 
         public LogicalLine(final String text) {
@@ -639,6 +643,8 @@ public class LayoutPreservingProperties extends Properties {
      * A blank line of the input stream.
      */
     private static class Blank extends LogicalLine {
+        private static final long serialVersionUID = 1L;
+
         public Blank() {
             super("");
         }
@@ -648,6 +654,8 @@ public class LayoutPreservingProperties extends Properties {
      * A comment line of the input stream.
      */
     private class Comment extends LogicalLine {
+        private static final long serialVersionUID = 1L;
+
         public Comment(final String text) {
             super(text);
         }
@@ -655,10 +663,12 @@ public class LayoutPreservingProperties extends Properties {
 
     /**
      * A key-value pair from the input stream. This may span more than
-     * one physical line, but it is constitutes as a single logical
+     * one physical line, but it is constitues as a single logical
      * line.
      */
     private static class Pair extends LogicalLine implements Cloneable {
+        private static final long serialVersionUID = 1L;
+
         private String name;
         private String value;
         private boolean added;
@@ -676,6 +686,7 @@ public class LayoutPreservingProperties extends Properties {
             return name;
         }
 
+        @SuppressWarnings("unused")
         public String getValue() {
             return value;
         }
@@ -694,13 +705,13 @@ public class LayoutPreservingProperties extends Properties {
         }
 
         @Override
-        public Object clone() {
-            Object dolly = null;
+        public Pair clone() {
+            Pair dolly = null;
             try {
-                dolly = super.clone();
+                dolly = (Pair) super.clone();
             } catch (final CloneNotSupportedException e) {
                 // should be fine
-                e.printStackTrace();
+                e.printStackTrace(); //NOSONAR
             }
             return dolly;
         }
@@ -711,10 +722,10 @@ public class LayoutPreservingProperties extends Properties {
             if (pos == -1) {
                 // trim leading whitespace only
                 name = text;
-                value = null;
+                setValue(null);
             } else {
                 name = text.substring(0, pos);
-                value = text.substring(pos+1, text.length());
+                setValue(text.substring(pos + 1, text.length()));
             }
             // trim leading whitespace only
             name = stripStart(name, " \t\f");
@@ -726,7 +737,7 @@ public class LayoutPreservingProperties extends Properties {
             }
 
             int i = 0;
-            for (;i < s.length(); i++) {
+            for (; i < s.length(); i++) {
                 if (chars.indexOf(s.charAt(i)) == -1) {
                     break;
                 }

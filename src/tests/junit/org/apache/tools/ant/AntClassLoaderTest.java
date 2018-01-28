@@ -19,16 +19,21 @@
 package org.apache.tools.ant;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.net.URL;
+import java.util.Enumeration;
 
 import org.apache.tools.ant.types.Path;
 import org.apache.tools.ant.util.FileUtils;
+import org.apache.tools.ant.util.CollectionUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -39,9 +44,9 @@ import org.junit.Test;
  *
  */
 public class AntClassLoaderTest {
-	
-	@Rule
-	public BuildFileRule buildRule = new BuildFileRule();
+
+    @Rule
+    public BuildFileRule buildRule = new BuildFileRule();
 
     private AntClassLoader loader;
 
@@ -57,7 +62,7 @@ public class AntClassLoaderTest {
             loader.cleanup();
         }
     }
-    
+
     //test inspired by bug report 37085
     @Test
     public void testJarWithManifestInDirWithSpace() {
@@ -65,24 +70,24 @@ public class AntClassLoaderTest {
         String extjarstring = buildRule.getProject().getProperty("ext.jar");
         Path myPath = new Path(buildRule.getProject());
         myPath.setLocation(new File(mainjarstring));
-        buildRule.getProject().setUserProperty("build.sysclasspath","ignore");
+        buildRule.getProject().setUserProperty("build.sysclasspath", "ignore");
         loader = buildRule.getProject().createClassLoader(myPath);
         String path = loader.getClasspath();
         assertEquals(mainjarstring + File.pathSeparator + extjarstring, path);
     }
-    
+
     @Test
     public void testJarWithManifestInNonAsciiDir() {
         String mainjarstring = buildRule.getProject().getProperty("main.jar.nonascii");
         String extjarstring = buildRule.getProject().getProperty("ext.jar.nonascii");
         Path myPath = new Path(buildRule.getProject());
         myPath.setLocation(new File(mainjarstring));
-        buildRule.getProject().setUserProperty("build.sysclasspath","ignore");
+        buildRule.getProject().setUserProperty("build.sysclasspath", "ignore");
         loader = buildRule.getProject().createClassLoader(myPath);
         String path = loader.getClasspath();
         assertEquals(mainjarstring + File.pathSeparator + extjarstring, path);
     }
-    
+
     @Test
     public void testCleanup() throws BuildException {
         Path path = new Path(buildRule.getProject(), ".");
@@ -124,7 +129,7 @@ public class AntClassLoaderTest {
         buildRule.executeTarget("prepareGetPackageTest");
         Path myPath = new Path(buildRule.getProject());
         myPath.setLocation(new File(buildRule.getProject().getProperty("test.jar")));
-        buildRule.getProject().setUserProperty("build.sysclasspath","ignore");
+        buildRule.getProject().setUserProperty("build.sysclasspath", "ignore");
         loader = buildRule.getProject().createClassLoader(myPath);
         assertNotNull("should find class", loader.findClass("org.example.Foo"));
         assertNotNull("should find package",
@@ -137,7 +142,7 @@ public class AntClassLoaderTest {
         Path myPath = new Path(buildRule.getProject());
         File testJar = new File(buildRule.getProject().getProperty("test.jar"));
         myPath.setLocation(testJar);
-        buildRule.getProject().setUserProperty("build.sysclasspath","ignore");
+        buildRule.getProject().setUserProperty("build.sysclasspath", "ignore");
         loader = buildRule.getProject().createClassLoader(myPath);
         Class<?> foo = loader.findClass("org.example.Foo");
         URL codeSourceLocation =
@@ -153,7 +158,7 @@ public class AntClassLoaderTest {
 
         Path myPath = new Path(buildRule.getProject());
         myPath.setLocation(jar);
-        buildRule.getProject().setUserProperty("build.sysclasspath","ignore");
+        buildRule.getProject().setUserProperty("build.sysclasspath", "ignore");
         loader = buildRule.getProject().createClassLoader(myPath);
         Class<?> foo = loader.findClass("org.example.Foo");
 
@@ -177,7 +182,7 @@ public class AntClassLoaderTest {
 
         Path myPath = new Path(buildRule.getProject());
         myPath.setLocation(jar);
-        buildRule.getProject().setUserProperty("build.sysclasspath","ignore");
+        buildRule.getProject().setUserProperty("build.sysclasspath", "ignore");
         loader = buildRule.getProject().createClassLoader(myPath);
         PrintStream sysErr = System.err;
         try {
@@ -190,12 +195,47 @@ public class AntClassLoaderTest {
             int startMessage = log.indexOf("CLASSPATH element ");
             assertTrue(startMessage >= 0);
             assertTrue(log.indexOf("foo.jar is not a JAR", startMessage) > 0);
-            log = errBuffer.toString();
-            startMessage = log.indexOf("CLASSPATH element ");
-            assertTrue(startMessage >= 0);
-            assertTrue(log.indexOf("foo.jar is not a JAR", startMessage) > 0);
         } finally {
             System.setErr(sysErr);
+        }
+    }
+
+    /**
+     * Asserts that getResources won't return resources that cannot be
+     * seen by AntClassLoader but by ClassLoader.this.parent.
+     *
+     * @see <a href="https://issues.apache.org/bugzilla/show_bug.cgi?id=46752">
+     *     https://issues.apache.org/bugzilla/show_bug.cgi?id=46752</a>
+     */
+    @SuppressWarnings("resource")
+    @Test
+    public void testGetResources() throws IOException {
+        AntClassLoader acl = new AntClassLoader(new EmptyLoader(), null,
+                                                new Path(null), true);
+        assertNull(acl.getResource("META-INF/MANIFEST.MF"));
+        assertFalse(acl.getResources("META-INF/MANIFEST.MF").hasMoreElements());
+
+        // double check using system classloader as parent
+        acl = new AntClassLoader(null, null, new Path(null), true);
+        assertNotNull(acl.getResource("META-INF/MANIFEST.MF"));
+        assertTrue(acl.getResources("META-INF/MANIFEST.MF").hasMoreElements());
+    }
+
+    @Test
+    public void testGetResourcesUsingFactory() throws IOException {
+        AntClassLoader acl =
+            AntClassLoader.newAntClassLoader(new EmptyLoader(), null,
+                                             new Path(null), true);
+        assertNull(acl.getResource("META-INF/MANIFEST.MF"));
+        assertFalse(acl.getResources("META-INF/MANIFEST.MF").hasMoreElements());
+    }
+
+    private static class EmptyLoader extends ClassLoader {
+        public URL getResource(String n) {
+            return null;
+        }
+        public Enumeration getResources(String n) {
+            return new CollectionUtils.EmptyEnumeration();
         }
     }
 

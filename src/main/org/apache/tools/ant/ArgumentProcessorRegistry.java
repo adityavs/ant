@@ -21,12 +21,14 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 
+import org.apache.tools.ant.util.FileUtils;
 import org.apache.tools.ant.util.LoaderUtils;
 
 /**
@@ -47,7 +49,7 @@ public class ArgumentProcessorRegistry {
     private static final String DEBUG_ARGUMENT_PROCESSOR_REPOSITORY = "ant.argument-processor-repo.debug";
 
     // The message log level is not accessible here because everything
-    // is instanciated statically
+    // is instantiated statically
     private static final boolean DEBUG = "true".equals(System.getProperty(DEBUG_ARGUMENT_PROCESSOR_REPOSITORY));
 
     private static final String SERVICE_ID = "META-INF/services/org.apache.tools.ant.ArgumentProcessor";
@@ -83,7 +85,7 @@ public class ArgumentProcessorRegistry {
             }
 
             InputStream systemResource = ClassLoader.getSystemResourceAsStream(SERVICE_ID);
-            if (systemResource != null) {
+            if (systemResource != null) { //NOSONAR
                 ArgumentProcessor processor = getProcessorByService(systemResource);
                 registerArgumentProcessor(processor);
             }
@@ -92,7 +94,7 @@ public class ArgumentProcessorRegistry {
                     + SERVICE_ID + " (" + e.getClass().getName() + ": "
                     + e.getMessage() + ")");
             if (DEBUG) {
-                e.printStackTrace(System.err);
+                e.printStackTrace(System.err); //NOSONAR
             }
         }
     }
@@ -127,7 +129,7 @@ public class ArgumentProcessorRegistry {
         } catch (Exception e) {
             throw new BuildException("The argument processor class"
                     + processorClass.getClass().getName()
-                    + " could not be instanciated with a default constructor",
+                    + " could not be instantiated with a default constructor",
                     e);
         }
         return processor;
@@ -150,7 +152,7 @@ public class ArgumentProcessorRegistry {
         try {
             try {
                 isr = new InputStreamReader(is, "UTF-8");
-            } catch (java.io.UnsupportedEncodingException e) {
+            } catch (UnsupportedEncodingException e) {
                 isr = new InputStreamReader(is);
             }
             BufferedReader rd = new BufferedReader(isr);
@@ -159,11 +161,7 @@ public class ArgumentProcessorRegistry {
                 return getProcessor(processorClassName);
             }
         } finally {
-            try {
-                isr.close();
-            } catch (IOException e) {
-                // ignore
-            }
+            FileUtils.close(isr);
         }
         return null;
     }

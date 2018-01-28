@@ -47,17 +47,17 @@ public class PropertyExpansionTest {
      */
     @Test
     public void testPropertyExpansion() {
-        assertExpandsTo("","");
-        assertExpandsTo("$","$");
-        assertExpandsTo("$$-","$-");
-        assertExpandsTo("$$","$");
-        buildRule.getProject().setProperty("expanded","EXPANDED");
-        assertExpandsTo("a${expanded}b","aEXPANDEDb");
-        assertExpandsTo("${expanded}${expanded}","EXPANDEDEXPANDED");
-        assertExpandsTo("$$$","$$");
-        assertExpandsTo("$$$$-","$$-");
-        assertExpandsTo("","");
-        assertExpandsTo("Class$$subclass","Class$subclass");
+        assertExpandsTo("", "");
+        assertExpandsTo("$", "$");
+        assertExpandsTo("$$-", "$-");
+        assertExpandsTo("$$", "$");
+        buildRule.getProject().setProperty("expanded", "EXPANDED");
+        assertExpandsTo("a${expanded}b", "aEXPANDEDb");
+        assertExpandsTo("${expanded}${expanded}", "EXPANDEDEXPANDED");
+        assertExpandsTo("$$$", "$$");
+        assertExpandsTo("$$$$-", "$$-");
+        assertExpandsTo("", "");
+        assertExpandsTo("Class$$subclass", "Class$subclass");
     }
 
     /**
@@ -65,26 +65,26 @@ public class PropertyExpansionTest {
      */
     @Test
     public void testDollarPassthru() {
-        assertExpandsTo("$-","$-");
-        assertExpandsTo("Class$subclass","Class$subclass");
-        assertExpandsTo("$$$-","$$-");
-        assertExpandsTo("$$$$$","$$$");
-        assertExpandsTo("${unassigned.property}","${unassigned.property}");
-        assertExpandsTo("a$b","a$b");
-        assertExpandsTo("$}}","$}}");
+        assertExpandsTo("$-", "$-");
+        assertExpandsTo("Class$subclass", "Class$subclass");
+        assertExpandsTo("$$$-", "$$-");
+        assertExpandsTo("$$$$$", "$$$");
+        assertExpandsTo("${unassigned.property}", "${unassigned.property}");
+        assertExpandsTo("a$b", "a$b");
+        assertExpandsTo("$}}", "$}}");
     }
 
 
     /**
-     * old things we dont want; not a test no more
+     * old things we don't want; not a test anymore
      */
     @Test
     @Ignore("Previously disabled through naming convention")
     public void oldtestQuirkyLegacyBehavior() {
-        assertExpandsTo("Class$subclass","Classsubclass");
-        assertExpandsTo("$$$-","$-");
-        assertExpandsTo("a$b","ab");
-        assertExpandsTo("$}}","}}");
+        assertExpandsTo("Class$subclass", "Classsubclass");
+        assertExpandsTo("$$$-", "$-");
+        assertExpandsTo("a$b", "ab");
+        assertExpandsTo("$}}", "}}");
     }
 
     /**
@@ -95,5 +95,4 @@ public class PropertyExpansionTest {
         assertEquals(source,expected,actual);
     }
 
-//end class
 }

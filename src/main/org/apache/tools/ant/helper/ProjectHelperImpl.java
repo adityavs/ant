@@ -18,10 +18,11 @@
 package org.apache.tools.ant.helper;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.nio.file.Files;
 import java.util.Locale;
 
 import org.apache.tools.ant.BuildException;
@@ -110,7 +111,7 @@ public class ProjectHelperImpl extends ProjectHelper {
                 + "default plugin");
         }
         File bFile = (File) source;
-        FileInputStream inputStream = null;
+        InputStream inputStream = null;
         InputSource inputSource = null;
 
         this.project = project;
@@ -124,7 +125,7 @@ public class ProjectHelperImpl extends ProjectHelper {
                 parser = new XMLReaderAdapter(JAXPUtils.getXMLReader());
             }
             String uri = FILE_UTILS.toURI(bFile.getAbsolutePath());
-            inputStream = new FileInputStream(bFile);
+            inputStream = Files.newInputStream(bFile.toPath());
             inputSource = new InputSource(inputStream);
             inputSource.setSystemId(uri);
             project.log("parsing buildfile " + bFile + " with URI = " + uri, Project.MSG_VERBOSE);
@@ -187,8 +188,8 @@ public class ProjectHelperImpl extends ProjectHelper {
         protected DocumentHandler parentHandler;
 
         /** Helper impl. With non-static internal classes, the compiler will generate
-            this automatically - but this will fail with some compilers ( reporting
-            "Expecting to find object/array on stack" ). If we pass it
+            this automatically - but this will fail with some compilers (reporting
+            "Expecting to find object/array on stack"). If we pass it
             explicitly it'll work with more compilers.
         */
         ProjectHelperImpl helperImpl;
@@ -302,10 +303,10 @@ public class ProjectHelperImpl extends ProjectHelper {
                             + "' for compliance with other XML tools", Project.MSG_WARN);
                 }
                 try {
-                    InputSource inputSource = new InputSource(new FileInputStream(file));
+                    InputSource inputSource = new InputSource(Files.newInputStream(file.toPath()));
                     inputSource.setSystemId(FILE_UTILS.toURI(file.getAbsolutePath()));
                     return inputSource;
-                } catch (FileNotFoundException fne) {
+                } catch (IOException fne) {
                     helperImpl.project.log(file.getAbsolutePath() + " could not be found",
                             Project.MSG_WARN);
                 }
@@ -600,7 +601,8 @@ public class ProjectHelperImpl extends ProjectHelper {
     private static void handleElement(ProjectHelperImpl helperImpl, DocumentHandler parent,
             Target target, String elementName, AttributeList attrs) throws SAXParseException {
         if (elementName.equals("description")) {
-            new DescriptionHandler(helperImpl, parent);
+            // created for side effect
+            new DescriptionHandler(helperImpl, parent); //NOSONAR
         } else if (helperImpl.project.getDataTypeDefinitions().get(elementName) != null) {
             new DataTypeHandler(helperImpl, parent, target).init(elementName, attrs);
         } else {

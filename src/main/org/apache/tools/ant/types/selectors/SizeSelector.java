@@ -62,16 +62,9 @@ public class SizeSelector extends BaseExtendSelector {
     private Comparison when = Comparison.EQUAL;
 
     /**
-     * Creates a new <code>SizeSelector</code> instance.
-     *
-     */
-    public SizeSelector() {
-    }
-
-    /**
      * Returns a <code>String</code> object representing the specified
-     * SizeSelector. This is "{sizeselector value: " + <"compare",
-     * "less", "more", "equal"> + "}".
+     * SizeSelector. This is "{sizeselector value: " + &lt;"compare",
+     * "less", "more", "equal"&gt; + "}".
      * @return a string describing this object
      */
     public String toString() {
@@ -164,7 +157,8 @@ public class SizeSelector extends BaseExtendSelector {
      *
      * @param parameters the complete set of parameters for this selector.
      */
-    public void setParameters(Parameter[] parameters) {
+    @Override
+    public void setParameters(Parameter... parameters) {
         super.setParameters(parameters);
         if (parameters != null) {
             for (int i = 0; i < parameters.length; i++) {
@@ -220,6 +214,7 @@ public class SizeSelector extends BaseExtendSelector {
      * @param file A File object for this filename.
      * @return whether the file should be selected or not.
      */
+    @Override
     public boolean isSelected(File basedir, String filename, File file) {
 
         // throw BuildException on error

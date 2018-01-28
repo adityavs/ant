@@ -39,7 +39,6 @@ public class CommandlineJavaTest {
 
     private String cloneVm;
 
-
     private Project project;
 
     @Before
@@ -88,7 +87,7 @@ public class CommandlineJavaTest {
 
         c.createClasspath(project).setLocation(project.resolveFile("build.xml"));
         c.createClasspath(project).setLocation(project.resolveFile(
-            System.getProperty(MagicNames.ANT_HOME)+"/lib/ant.jar"));
+            System.getProperty(MagicNames.ANT_HOME) + "/lib/ant.jar"));
         s = c.getCommandline();
         assertEquals("with classpath", 6, s.length);
         //        assertEquals("with classpath", "java", s[0]);
@@ -171,7 +170,7 @@ public class CommandlineJavaTest {
             "junit.textui.TestRunner",
             "org.apache.tools.ant.CommandlineJavaTest",
         };
-            
+
         // only the second iteration would pass because of PR 27218
         for (int i = 0; i < 3; i++) {
             String[] s = c.getCommandline();

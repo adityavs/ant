@@ -18,7 +18,6 @@
 
 package org.apache.tools.ant.types;
 
-
 import org.apache.tools.ant.BuildException;
 import org.junit.Test;
 
@@ -36,11 +35,11 @@ public class EnumeratedAttributeTest {
     @Test
     public void testContains() {
         EnumeratedAttribute t1 = new TestNormal();
-        for (int i=0; i<expected.length; i++) {
-            assertTrue(expected[i]+" is in TestNormal",
-                   t1.containsValue(expected[i]));
-            assertTrue(expected[i].toUpperCase()+" is in TestNormal",
-                   !t1.containsValue(expected[i].toUpperCase()));
+        for (String value : expected) {
+            assertTrue(value + " is in TestNormal",
+                    t1.containsValue(value));
+            assertTrue(value.toUpperCase() + " is in TestNormal",
+                    !t1.containsValue(value.toUpperCase()));
         }
         assertTrue("TestNormal doesn\'t have \"d\" attribute",
                !t1.containsValue("d"));
@@ -50,25 +49,25 @@ public class EnumeratedAttributeTest {
 
     @Test
     public void testFactory() {
-		Factory ea = (Factory)EnumeratedAttribute.getInstance(Factory.class, "one");
-		assertEquals("Factory did not set the right value.", ea.getValue(), "one");
-		try {
-	    	EnumeratedAttribute.getInstance(Factory.class, "illegal");
-	    	fail("Factory should fail when trying to set an illegal value.");
-		} catch (BuildException be) {
-			// was expected
+        Factory ea = (Factory) EnumeratedAttribute.getInstance(Factory.class, "one");
+        assertEquals("Factory did not set the right value.", ea.getValue(), "one");
+        try {
+            EnumeratedAttribute.getInstance(Factory.class, "illegal");
+            fail("Factory should fail when trying to set an illegal value.");
+        } catch (BuildException be) {
+            // was expected
             //TODO assert exception message
-		}
-	}
+        }
+    }
 
     @Test
-	public void testExceptions() {
+    public void testExceptions() {
         EnumeratedAttribute t1 = new TestNormal();
-        for (int i=0; i<expected.length; i++) {
+        for (String value : expected) {
             try {
-                t1.setValue(expected[i]);
+                t1.setValue(value);
             } catch (BuildException be) {
-                fail("unexpected exception for value "+expected[i]);
+                fail("unexpected exception for value " + value);
             }
         }
         try {
@@ -98,9 +97,9 @@ public class EnumeratedAttributeTest {
     }
 
     public static class Factory extends EnumeratedAttribute {
-    	public String[] getValues() {
-    		return new String[] { "one", "two", "three" };
-    	}
+        public String[] getValues() {
+            return new String[] {"one", "two", "three"};
+        }
     }
-    
+
 }

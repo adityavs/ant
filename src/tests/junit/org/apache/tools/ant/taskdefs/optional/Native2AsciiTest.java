@@ -19,6 +19,7 @@
 package org.apache.tools.ant.taskdefs.optional;
 
 import java.io.File;
+import java.io.IOException;
 
 import org.apache.tools.ant.BuildFileRule;
 import org.apache.tools.ant.util.FileUtils;
@@ -31,7 +32,7 @@ import static org.junit.Assert.assertTrue;
 
 public class Native2AsciiTest {
 
-    private final static String BUILD_XML = 
+    private static final String BUILD_XML =
         "src/etc/testcases/taskdefs/optional/native2ascii/build.xml";
 
     @Rule
@@ -48,7 +49,7 @@ public class Native2AsciiTest {
     }
 
     @Test
-    public void testIso8859_1() throws java.io.IOException {
+    public void testIso8859_1() throws IOException {
         buildRule.executeTarget("testIso8859-1");
         File in = buildRule.getProject().resolveFile("expected/iso8859-1.test");
         File out = new File(buildRule.getProject().getProperty("output"), "iso8859-1.test");

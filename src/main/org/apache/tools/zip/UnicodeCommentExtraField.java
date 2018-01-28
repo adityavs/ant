@@ -24,16 +24,15 @@ package org.apache.tools.zip;
  * <p>Stores the UTF-8 version of the file comment as stored in the
  * central directory header.</p>
  *
- * <p>See {@link
- * "http://www.pkware.com/documents/casestudies/APPNOTE.TXT PKWARE's
- * APPNOTE.TXT, section 4.6.8"}.</p>
+ * <p>See <a href="http://www.pkware.com/documents/casestudies/APPNOTE.TXT">PKWARE's
+ * APPNOTE.TXT, section 4.6.8</a>.</p>
  *
  */
 public class UnicodeCommentExtraField extends AbstractUnicodeExtraField {
 
     public static final ZipShort UCOM_ID = new ZipShort(0x6375);
 
-    public UnicodeCommentExtraField () {
+    public UnicodeCommentExtraField() {
     }
 
     /**

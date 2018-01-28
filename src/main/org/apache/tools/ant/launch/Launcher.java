@@ -25,18 +25,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.StringTokenizer;
 
-
-
-
 /**
  * This is a launcher for Ant.
  *
  * @since Ant 1.6
  */
 public class Launcher {
-
-    private Launcher() {
-    }
 
     /**
      * The Ant Home (installation) Directory property.
@@ -63,16 +57,10 @@ public class Launcher {
     public static final String ANT_PRIVATELIB = "lib";
 
     /**
-     * launch diagnostics flag; for debugging trouble at launch time.
-     */
-    public static boolean launchDiag = false;
-
-    /**
      * The location of a per-user library directory.
-     * <p>
-     * It's value is the concatenation of {@link #ANT_PRIVATEDIR}
+     * <p>It's value is the concatenation of {@link #ANT_PRIVATEDIR}
      * with {@link #ANT_PRIVATELIB}, with an appropriate file separator
-     * in between. For example, on Unix, it's <code>.ant/lib</code>.
+     * in between. For example, on Unix, it's <code>.ant/lib</code>.</p>
      */
     public static final String USER_LIBDIR =
         ANT_PRIVATEDIR + File.separatorChar + ANT_PRIVATELIB;
@@ -107,24 +95,33 @@ public class Launcher {
      */
     public static void main(final String[] args) {
         int exitCode;
+        boolean launchDiag = false;
         try {
             final Launcher launcher = new Launcher();
             exitCode = launcher.run(args);
+            launchDiag = launcher.launchDiag;
         } catch (final LaunchException e) {
             exitCode = EXIT_CODE_ERROR;
             System.err.println(e.getMessage());
         } catch (final Throwable t) {
             exitCode = EXIT_CODE_ERROR;
-            t.printStackTrace(System.err);
+            t.printStackTrace(System.err); //NOSONAR
         }
         if (exitCode != 0) {
             if (launchDiag) {
-                System.out.println("Exit code: "+exitCode);
+                System.out.println("Exit code: " + exitCode);
             }
             System.exit(exitCode);
         }
     }
 
+    /**
+     * launch diagnostics flag; for debugging trouble at launch time.
+     */
+    public boolean launchDiag = false;
+
+    private Launcher() {
+    }
 
     /**
      * Add a CLASSPATH or -lib to lib path urls.
@@ -154,7 +151,7 @@ public class Launcher {
                 }
             }
 
-            final URL url = Locator.fileToURL(element);
+            final URL url = new URL(element.toURI().toASCIIString());
             if (launchDiag) {
                 System.out.println("adding library URL: " + url);
             }
@@ -191,44 +188,45 @@ public class Launcher {
         }
 
         if (!antHome.exists()) {
-            throw new LaunchException("Ant home is set incorrectly or "
-                + "ant could not be located (estimated value="+antHome.getAbsolutePath()+")");
+            throw new LaunchException(
+                "Ant home is set incorrectly or ant could not be located (estimated value="
+                    + antHome.getAbsolutePath() + ")");
         }
 
-        final List<String> libPaths = new ArrayList<String>();
+        final List<String> libPaths = new ArrayList<>();
         String cpString = null;
-        final List<String> argList = new ArrayList<String>();
+        final List<String> argList = new ArrayList<>();
         String[] newArgs;
         boolean  noUserLib = false;
         boolean  noClassPath = false;
 
         for (int i = 0; i < args.length; ++i) {
-            if (args[i].equals("-lib")) {
+            if ("-lib".equals(args[i])) {
                 if (i == args.length - 1) {
-                    throw new LaunchException("The -lib argument must "
-                        + "be followed by a library location");
+                    throw new LaunchException(
+                        "The -lib argument must be followed by a library location");
                 }
                 libPaths.add(args[++i]);
-            } else if (args[i].equals("-cp")) {
+            } else if ("-cp".equals(args[i])) {
                 if (i == args.length - 1) {
-                    throw new LaunchException("The -cp argument must "
-                        + "be followed by a classpath expression");
+                    throw new LaunchException(
+                        "The -cp argument must be followed by a classpath expression");
                 }
                 if (cpString != null) {
-                    throw new LaunchException("The -cp argument must "
-                        + "not be repeated");
+                    throw new LaunchException(
+                        "The -cp argument must not be repeated");
                 }
                 cpString = args[++i];
-            } else if (args[i].equals("--nouserlib") || args[i].equals("-nouserlib")) {
+            } else if ("--nouserlib".equals(args[i]) || "-nouserlib".equals(args[i])) {
                 noUserLib = true;
-            } else if (args[i].equals("--launchdiag")) {
+            } else if ("--launchdiag".equals(args[i])) {
                 launchDiag = true;
-            } else if (args[i].equals("--noclasspath") || args[i].equals("-noclasspath")) {
+            } else if ("--noclasspath".equals(args[i]) || "-noclasspath".equals(args[i])) {
                 noClassPath = true;
-            } else if (args[i].equals("-main")) {
+            } else if ("-main".equals(args[i])) {
                 if (i == args.length - 1) {
-                    throw new LaunchException("The -main argument must "
-                            + "be followed by a library location");
+                    throw new LaunchException(
+                        "The -main argument must be followed by a library location");
                 }
                 mainClassname = args[++i];
             } else {
@@ -236,7 +234,7 @@ public class Launcher {
             }
         }
 
-        logPath("Launcher JAR",sourceJar);
+        logPath("Launcher JAR", sourceJar);
         logPath("Launcher JAR directory", sourceJar.getParentFile());
         logPath("java.home", new File(System.getProperty("java.home")));
 
@@ -255,13 +253,13 @@ public class Launcher {
         final URL[] userURLs   = noUserLib ? new URL[0] : getUserURLs();
 
         final File toolsJAR = Locator.getToolsJar();
-        logPath("tools.jar",toolsJAR);
+        logPath("tools.jar", toolsJAR);
         final URL[] jars = getJarArray(
             libURLs, userURLs, systemURLs, toolsJAR);
 
         // now update the class.path property
-        final StringBuffer baseClassPath
-            = new StringBuffer(System.getProperty(JAVA_CLASS_PATH));
+        final StringBuilder baseClassPath
+            = new StringBuilder(System.getProperty(JAVA_CLASS_PATH));
         if (baseClassPath.charAt(baseClassPath.length() - 1)
                 == File.pathSeparatorChar) {
             baseClassPath.setLength(baseClassPath.length() - 1);
@@ -276,12 +274,12 @@ public class Launcher {
 
         final URLClassLoader loader = new URLClassLoader(jars, Launcher.class.getClassLoader());
         Thread.currentThread().setContextClassLoader(loader);
-        Class<?> mainClass = null;
+        Class<? extends AntMain> mainClass = null;
         int exitCode = 0;
-        Throwable thrown=null;
+        Throwable thrown = null;
         try {
-            mainClass = loader.loadClass(mainClassname);
-            final AntMain main = (AntMain) mainClass.newInstance();
+            mainClass = loader.loadClass(mainClassname).asSubclass(AntMain.class);
+            final AntMain main = mainClass.newInstance();
             main.startAnt(newArgs, null, null);
         } catch (final InstantiationException ex) {
             System.err.println(
@@ -295,11 +293,11 @@ public class Launcher {
                     "Failed to locate" + mainClassname);
             thrown = cnfe;
         } catch (final Throwable t) {
-            t.printStackTrace(System.err);
-            thrown=t;
+            t.printStackTrace(System.err); //NOSONAR
+            thrown = t;
         }
-        if(thrown!=null) {
-            System.err.println(ANTHOME_PROPERTY+": "+antHome.getAbsolutePath());
+        if (thrown != null) {
+            System.err.println(ANTHOME_PROPERTY + ": " + antHome.getAbsolutePath());
             System.err.println("Classpath: " + baseClassPath.toString());
             System.err.println("Launcher JAR: " + sourceJar.getAbsolutePath());
             System.err.println("Launcher Directory: " + jarDir.getAbsolutePath());
@@ -318,7 +316,7 @@ public class Launcher {
      */
     private URL[] getLibPathURLs(final String cpString, final List<String> libPaths)
         throws MalformedURLException {
-        final List<URL> libPathURLs = new ArrayList<URL>();
+        final List<URL> libPathURLs = new ArrayList<>();
 
         if (cpString != null) {
             addPath(cpString, false, libPathURLs);
@@ -373,8 +371,8 @@ public class Launcher {
      * @return a combined array
      * @throws MalformedURLException if there is a problem.
      */
-    private URL[] getJarArray (
-        final URL[] libJars, final URL[] userJars, final URL[] systemJars, final File toolsJar)
+    private URL[] getJarArray(final URL[] libJars, final URL[] userJars,
+        final URL[] systemJars, final File toolsJar)
         throws MalformedURLException {
         int numJars = libJars.length + userJars.length + systemJars.length;
         if (toolsJar != null) {
@@ -387,7 +385,7 @@ public class Launcher {
             systemJars.length);
 
         if (toolsJar != null) {
-            jars[jars.length - 1] = Locator.fileToURL(toolsJar);
+            jars[jars.length - 1] = new URL(toolsJar.toURI().toASCIIString());
         }
         return jars;
     }
@@ -404,9 +402,9 @@ public class Launcher {
         System.setProperty(name, value);
     }
 
-    private void logPath(final String name,final File path) {
-        if(launchDiag) {
-            System.out.println(name+"= \""+path+"\"");
+    private void logPath(final String name, final File path) {
+        if (launchDiag) {
+            System.out.println(name + "= \"" + path + "\"");
         }
     }
 }

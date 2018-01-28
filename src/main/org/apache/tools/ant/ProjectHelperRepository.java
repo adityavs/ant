@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.apache.tools.ant.helper.ProjectHelper2;
 import org.apache.tools.ant.types.Resource;
@@ -46,14 +47,14 @@ public class ProjectHelperRepository {
         "ant.project-helper-repo.debug";
 
     // The message log level is not accessible here because everything
-    // is instanciated statically
+    // is instantiated statically
     private static final boolean DEBUG =
         "true".equals(System.getProperty(DEBUG_PROJECT_HELPER_REPOSITORY));
 
     private static ProjectHelperRepository instance =
         new ProjectHelperRepository();
 
-    private List<Constructor<? extends ProjectHelper>> helpers = new ArrayList<Constructor<? extends ProjectHelper>>();
+    private List<Constructor<? extends ProjectHelper>> helpers = new ArrayList<>();
 
     private static Constructor<ProjectHelper2> PROJECTHELPER2_CONSTRUCTOR;
 
@@ -62,7 +63,7 @@ public class ProjectHelperRepository {
             PROJECTHELPER2_CONSTRUCTOR = ProjectHelper2.class.getConstructor();
         } catch (Exception e) {
             // ProjectHelper2 must be available
-            throw new RuntimeException(e);
+            throw new BuildException(e);
         }
     }
 
@@ -79,7 +80,7 @@ public class ProjectHelperRepository {
         Constructor<? extends ProjectHelper> projectHelper = getProjectHelperBySystemProperty();
         registerProjectHelper(projectHelper);
 
-        // A JDK1.3 'service' ( like in JAXP ). That will plug a helper
+        // A JDK1.3 'service' (like in JAXP). That will plug a helper
         // automatically if in CLASSPATH, with the right META-INF/services.
         try {
             ClassLoader classLoader = LoaderUtils.getContextClassLoader();
@@ -108,7 +109,7 @@ public class ProjectHelperRepository {
                                + e.getClass().getName()
                                + ": " + e.getMessage() + ")");
             if (DEBUG) {
-                e.printStackTrace(System.err);
+                e.printStackTrace(System.err); //NOSONAR
             }
         }
     }
@@ -175,7 +176,7 @@ public class ProjectHelperRepository {
                                + ProjectHelper.HELPER_PROPERTY + " ("
                                + e.getMessage() + ")");
             if (DEBUG) {
-                e.printStackTrace(System.err);
+                e.printStackTrace(System.err); //NOSONAR
             }
         }
         return null;
@@ -203,7 +204,7 @@ public class ProjectHelperRepository {
             System.out.println("Unable to load ProjectHelper from service "
                     + ProjectHelper.SERVICE_ID + " (" + e.getMessage() + ")");
             if (DEBUG) {
-                e.printStackTrace(System.err);
+                e.printStackTrace(System.err); //NOSONAR
             }
         }
         return null;
@@ -248,6 +249,7 @@ public class ProjectHelperRepository {
      * Get the helper that will be able to parse the specified build file. The helper
      * will be chosen among the ones found in the classpath
      *
+     * @param buildFile Resource
      * @return the first ProjectHelper that fit the requirement (never <code>null</code>).
      */
     public ProjectHelper getProjectHelperForBuildFile(Resource buildFile) throws BuildException {
@@ -263,7 +265,7 @@ public class ProjectHelperRepository {
                 return helper;
             }
         }
-        throw new RuntimeException("BUG: at least the ProjectHelper2 should "
+        throw new BuildException("BUG: at least the ProjectHelper2 should "
                                    + "have supported the file " + buildFile);
     }
 
@@ -271,6 +273,7 @@ public class ProjectHelperRepository {
      * Get the helper that will be able to parse the specified antlib. The helper
      * will be chosen among the ones found in the classpath
      *
+     * @param antlib Resource
      * @return the first ProjectHelper that fit the requirement (never <code>null</code>).
      */
     public ProjectHelper getProjectHelperForAntlib(Resource antlib) throws BuildException {
@@ -286,7 +289,7 @@ public class ProjectHelperRepository {
                 return helper;
             }
         }
-        throw new RuntimeException("BUG: at least the ProjectHelper2 should "
+        throw new BuildException("BUG: at least the ProjectHelper2 should "
                                    + "have supported the file " + antlib);
     }
 
@@ -298,40 +301,15 @@ public class ProjectHelperRepository {
      * @return an iterator of {@link ProjectHelper}
      */
     public Iterator<ProjectHelper> getHelpers() {
-        return new ConstructingIterator(helpers.iterator());
-    }
-
-    private static class ConstructingIterator implements Iterator<ProjectHelper> {
-        private final Iterator<Constructor<? extends ProjectHelper>> nested;
-        private boolean empty = false;
-
-        ConstructingIterator(Iterator<Constructor<? extends ProjectHelper>> nested) {
-            this.nested = nested;
-        }
-
-        public boolean hasNext() {
-            return nested.hasNext() || !empty;
-        }
-
-        public ProjectHelper next() {
-            Constructor<? extends ProjectHelper> c;
-            if (nested.hasNext()) {
-                c = nested.next();
-            } else {
-                // last but not least, ant default project helper
-                empty = true;
-                c = PROJECTHELPER2_CONSTRUCTOR;
-            }
+        Stream.Builder<Constructor<? extends ProjectHelper>> b = Stream.builder();
+        helpers.forEach(b::add);
+        return b.add(PROJECTHELPER2_CONSTRUCTOR).build().map(c -> {
             try {
                 return c.newInstance();
             } catch (Exception e) {
                 throw new BuildException("Failed to invoke no-arg constructor"
-                                         + " on " + c.getName());
+                        + " on " + c.getName());
             }
-        }
-
-        public void remove() {
-            throw new UnsupportedOperationException("remove is not supported");
-        }
+        }).map(ProjectHelper.class::cast).iterator();
     }
 }

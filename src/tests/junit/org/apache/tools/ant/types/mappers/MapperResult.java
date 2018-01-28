@@ -45,7 +45,7 @@ public class MapperResult extends Task {
     public void setFailMessage(String failMessage) {
         this.failMessage = failMessage;
     }
-    
+
     public void setInput(String input) {
         this.input = input;
     }
@@ -64,7 +64,7 @@ public class MapperResult extends Task {
         }
         this.fileNameMapper = fileNameMapper;
     }
-        
+
     public void execute() {
         if (input == null) {
             throw new BuildException("Missing attribute 'input'");
@@ -80,7 +80,7 @@ public class MapperResult extends Task {
         if (result == null) {
             flattened = NULL_MAPPER_RESULT;
         } else {
-            StringBuffer b = new StringBuffer();
+            StringBuilder b = new StringBuilder();
             for (int i = 0; i < result.length; ++i) {
                 if (i != 0) {
                     b.append("|");
@@ -90,14 +90,7 @@ public class MapperResult extends Task {
             flattened = b.toString();
         }
         if (!flattened.equals(output)) {
-            throw new BuildException(
-                failMessage
-                + " "
-                + "got "
-                + flattened
-                + " "
-                + "expected "
-                + output);
+            throw new BuildException(failMessage + " got " + flattened + " expected " + output);
         }
     }
 }

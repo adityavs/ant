@@ -41,7 +41,7 @@ public abstract class SOS extends Task implements SOSCmd {
 
     private String sosCmdDir = null;
     private String sosUsername = null;
-    private String sosPassword = "";
+    private String sosPassword = null;
     private String projectPath = null;
     private String vssServerPath = null;
     private String sosServerPath = null;
@@ -269,7 +269,7 @@ public abstract class SOS extends Task implements SOSCmd {
      * @return empty string if it wasn't set.
      */
     protected String getPassword() {
-        return sosPassword;
+        return sosPassword == null ? "" : sosPassword;
     }
 
     /**
@@ -388,6 +388,7 @@ public abstract class SOS extends Task implements SOSCmd {
      *
      * @throws BuildException on error.
      */
+    @Override
     public void execute()
         throws BuildException {
         int result = 0;
@@ -402,9 +403,9 @@ public abstract class SOS extends Task implements SOSCmd {
     /**
      * Execute the created command line.
      *
-     * @param  cmd              The command line to run.
-     * @return                  int the exit code.
-     * @throws  BuildException
+     * @param  cmd            The command line to run.
+     * @return                int the exit code.
+     * @throws BuildException if something goes wrong
      */
     protected int run(Commandline cmd) {
         try {
@@ -439,7 +440,7 @@ public abstract class SOS extends Task implements SOSCmd {
         commandLine.createArgument().setValue(FLAG_USERNAME);
         commandLine.createArgument().setValue(getUsername());
         // The SOS class knows that the SOS server needs the password flag,
-        // even if there is no password ,so we send a " "
+        // even if there is no password, so we send a " "
         commandLine.createArgument().setValue(FLAG_PASSWORD);
         commandLine.createArgument().setValue(getPassword());
         // VSS Info is required

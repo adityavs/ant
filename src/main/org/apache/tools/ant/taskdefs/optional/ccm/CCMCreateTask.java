@@ -30,7 +30,7 @@ import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.Execute;
 import org.apache.tools.ant.taskdefs.ExecuteStreamHandler;
 import org.apache.tools.ant.types.Commandline;
-
+import org.apache.tools.ant.util.StringUtils;
 
 /**
  * Creates new Continuus ccm task and sets it as the default.
@@ -38,6 +38,35 @@ import org.apache.tools.ant.types.Commandline;
  * @ant.task name="ccmcreatetask" category="scm"
  */
 public class CCMCreateTask extends Continuus implements ExecuteStreamHandler {
+    /**
+     * /comment -- comments associated to the task
+     */
+    public static final String FLAG_COMMENT = "/synopsis";
+
+    /**
+     *  /platform flag -- target platform
+     */
+    public static final String FLAG_PLATFORM = "/plat";
+
+    /**
+     * /resolver flag
+     */
+    public static final String FLAG_RESOLVER = "/resolver";
+
+    /**
+     * /release flag
+     */
+    public static final String FLAG_RELEASE = "/release";
+
+    /**
+     * /release flag
+     */
+    public static final String FLAG_SUBSYSTEM = "/subsystem";
+
+    /**
+     *  -task flag -- associate checkout task with task
+     */
+    public static final String FLAG_TASK = "/task";
 
     private String comment = null;
     private String platform = null;
@@ -63,9 +92,9 @@ public class CCMCreateTask extends Continuus implements ExecuteStreamHandler {
      * </p>
      * @throws BuildException on error
      */
+    @Override
     public void execute() throws BuildException {
         Commandline commandLine = new Commandline();
-        int result = 0;
 
         // build the command line from what we got the format
         // as specified in the CCM.EXE help
@@ -74,10 +103,9 @@ public class CCMCreateTask extends Continuus implements ExecuteStreamHandler {
 
         checkOptions(commandLine);
 
-        result = run(commandLine, this);
-        if (Execute.isFailure(result)) {
-            String msg = "Failed executing: " + commandLine.toString();
-            throw new BuildException(msg, getLocation());
+        if (Execute.isFailure(run(commandLine, this))) {
+            throw new BuildException("Failed executing: " + commandLine,
+                getLocation());
         }
 
         //create task ok, set this task as the default one
@@ -88,14 +116,11 @@ public class CCMCreateTask extends Continuus implements ExecuteStreamHandler {
 
         log(commandLine.describeCommand(), Project.MSG_DEBUG);
 
-        result = run(commandLine2);
-        if (result != 0) {
-            String msg = "Failed executing: " + commandLine2.toString();
-            throw new BuildException(msg, getLocation());
+        if (run(commandLine2) != 0) {
+            throw new BuildException("Failed executing: " + commandLine2,
+                getLocation());
         }
-
     }
-
 
     /**
      * Check the command line options.
@@ -109,24 +134,23 @@ public class CCMCreateTask extends Continuus implements ExecuteStreamHandler {
         if (getPlatform() != null) {
             cmd.createArgument().setValue(FLAG_PLATFORM);
             cmd.createArgument().setValue(getPlatform());
-        } // end of if ()
+        }
 
         if (getResolver() != null) {
             cmd.createArgument().setValue(FLAG_RESOLVER);
             cmd.createArgument().setValue(getResolver());
-        } // end of if ()
+        }
 
         if (getSubSystem() != null) {
             cmd.createArgument().setValue(FLAG_SUBSYSTEM);
             cmd.createArgument().setValue("\"" + getSubSystem() + "\"");
-        } // end of if ()
+        }
 
         if (getRelease() != null) {
             cmd.createArgument().setValue(FLAG_RELEASE);
             cmd.createArgument().setValue(getRelease());
-        } // end of if ()
+        }
     }
-
 
     /**
      * Get the value of comment.
@@ -145,7 +169,6 @@ public class CCMCreateTask extends Continuus implements ExecuteStreamHandler {
         this.comment = v;
     }
 
-
     /**
      * Get the value of platform.
      * @return value of platform.
@@ -163,7 +186,6 @@ public class CCMCreateTask extends Continuus implements ExecuteStreamHandler {
         this.platform = v;
     }
 
-
     /**
      * Get the value of resolver.
      * @return value of resolver.
@@ -180,7 +202,6 @@ public class CCMCreateTask extends Continuus implements ExecuteStreamHandler {
     public void setResolver(String v) {
         this.resolver = v;
     }
-
 
     /**
      * Get the value of release.
@@ -216,7 +237,6 @@ public class CCMCreateTask extends Continuus implements ExecuteStreamHandler {
         this.subSystem = v;
     }
 
-
     /**
      * Get the value of task.
      * @return value of task.
@@ -235,71 +255,45 @@ public class CCMCreateTask extends Continuus implements ExecuteStreamHandler {
         this.task = v;
     }
 
-    /**
-     * /comment -- comments associated to the task
-     */
-    public static final String FLAG_COMMENT = "/synopsis";
-
-    /**
-     *  /platform flag -- target platform
-     */
-    public static final String FLAG_PLATFORM = "/plat";
-
-    /**
-     * /resolver flag
-     */
-    public static final String FLAG_RESOLVER = "/resolver";
-
-    /**
-     * /release flag
-     */
-    public static final String FLAG_RELEASE = "/release";
-
-    /**
-     * /release flag
-     */
-    public static final String FLAG_SUBSYSTEM = "/subsystem";
-
-    /**
-     *  -task flag -- associate checkout task with task
-     */
-    public static final String FLAG_TASK = "/task";
-
-
     // implementation of org.apache.tools.ant.taskdefs.ExecuteStreamHandler interface
 
     /**
      *
      * @throws IOException on error
      */
+    @Override
     public void start() throws IOException {
     }
 
     /**
      *
      */
+    @Override
     public void stop() {
     }
 
     /**
      *
      * @param param1 the output stream
-     * @exception java.io.IOException on error
+     * @exception IOException on error
      */
+    @Override
     public void setProcessInputStream(OutputStream param1) throws IOException {
     }
 
     /**
      *
      * @param is the input stream
-     * @exception java.io.IOException on error
+     * @exception IOException on error
      */
+    @Override
     public void setProcessErrorStream(InputStream is) throws IOException {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-        String s = reader.readLine();
-        if (s != null) {
-            log("err " + s, Project.MSG_DEBUG);
-        } // end of if ()
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
+            String s = reader.readLine();
+            if (s != null) {
+                log("err " + s, Project.MSG_DEBUG);
+            }
+        }
     }
 
     /**
@@ -307,29 +301,27 @@ public class CCMCreateTask extends Continuus implements ExecuteStreamHandler {
      * @param is InputStream
      * @throws IOException on error
      */
+    @Override
     public void setProcessOutputStream(InputStream is) throws IOException {
-
-        String buffer = "";
-        try {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-            buffer = reader.readLine();
+        try (BufferedReader reader =
+            new BufferedReader(new InputStreamReader(is))) {
+            String buffer = reader.readLine();
             if (buffer != null) {
                 log("buffer:" + buffer, Project.MSG_DEBUG);
                 String taskstring = buffer.substring(buffer.indexOf(' ')).trim();
                 taskstring = taskstring.substring(0, taskstring.lastIndexOf(' ')).trim();
                 setTask(taskstring);
                 log("task is " + getTask(), Project.MSG_DEBUG);
-            } // end of if ()
+            }
         } catch (NullPointerException npe) {
-            log("error procession stream , null pointer exception", Project.MSG_ERR);
-            npe.printStackTrace();
-            throw new BuildException(npe.getClass().getName());
+            log("error procession stream, null pointer exception", Project.MSG_ERR);
+            log(StringUtils.getStackTrace(npe), Project.MSG_ERR);
+            throw new BuildException(npe);
         } catch (Exception e) {
             log("error procession stream " + e.getMessage(), Project.MSG_ERR);
             throw new BuildException(e.getMessage());
-        } // end of try-catch
+        }
 
     }
 
 }
-

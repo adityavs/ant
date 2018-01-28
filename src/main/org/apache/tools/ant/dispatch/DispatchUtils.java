@@ -64,7 +64,7 @@ public class DispatchUtils {
                             final Object o = actionM.invoke(dispatchable, (Object[]) null);
                             if (o != null) {
                                 final String s = o.toString();
-                                if (s != null && s.trim().length() > 0) {
+                                if (s.trim().length() > 0) {
                                     methodName = s.trim();
                                     Method executeM = null;
                                     executeM = dispatchable.getClass().getMethod(
@@ -98,12 +98,12 @@ public class DispatchUtils {
                 }
             } else {
                 Method executeM = null;
-                executeM = task.getClass().getMethod(methodName, new Class[0]);
+                executeM = task.getClass().getMethod(methodName);
                 if (executeM == null) {
                     throw new BuildException("No public " + methodName + "() in "
                         + task.getClass());
                 }
-                executeM.invoke(task, (Object[]) null);
+                executeM.invoke(task);
                 if (task instanceof UnknownElement) {
                     ((UnknownElement) task).setRealThing(null);
                 }

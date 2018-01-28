@@ -25,12 +25,11 @@ import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map.Entry;
+import java.util.Map;
 
 import org.apache.tools.ant.attribute.EnableAttribute;
 import org.apache.tools.ant.taskdefs.MacroDef.Attribute;
 import org.apache.tools.ant.taskdefs.MacroInstance;
-import org.apache.tools.ant.util.CollectionUtils;
 import org.xml.sax.AttributeList;
 import org.xml.sax.helpers.AttributeListImpl;
 
@@ -46,12 +45,13 @@ public class RuntimeConfigurable implements Serializable {
 
     /** Empty Hashtable. */
     private static final Hashtable<String, Object> EMPTY_HASHTABLE =
-            new Hashtable<String, Object>(0);
+            new Hashtable<>(0);
 
     /** Name of the element to configure. */
     private String elementTag = null;
 
     /** List of child element wrappers. */
+    // picking ArrayList rather than List as arrayList is Serializable
     private List<RuntimeConfigurable> children = null;
 
     /** The element to configure. It is only used during
@@ -69,7 +69,7 @@ public class RuntimeConfigurable implements Serializable {
     private transient boolean namespacedAttribute = false;
 
     /** Attribute names and values. While the XML spec doesn't require
-     *  preserving the order ( AFAIK ), some ant tests do rely on the
+     *  preserving the order (AFAIK), some ant tests do rely on the
      *  exact order.
      * The only exception to this order is the treatment of
      * refid. A number of datatypes check if refid is set
@@ -171,7 +171,7 @@ public class RuntimeConfigurable implements Serializable {
      * are any Ant attributes, and if so, the method calls the
      * isEnabled() method on them.
      * @param owner the UE that owns this RC.
-     * @return true if enabled, false if any of the ant attribures return
+     * @return true if enabled, false if any of the ant attributes return
      *              false.
      * @since 1.9.1
      */
@@ -266,10 +266,11 @@ public class RuntimeConfigurable implements Serializable {
     /**
      * Sets the attributes for the wrapped element.
      *
-     * @deprecated since 1.6.x.
      * @param attributes List of attributes defined in the XML for this
      *                   element. May be <code>null</code>.
+     * @deprecated since 1.6.x.
      */
+    @Deprecated
     public synchronized void setAttributes(AttributeList attributes) {
         this.attributes = new AttributeListImpl(attributes);
         for (int i = 0; i < attributes.getLength(); i++) {
@@ -302,17 +303,17 @@ public class RuntimeConfigurable implements Serializable {
             this.polyType = value == null ? null : value.toString();
         } else {
             if (attributeMap == null) {
-                attributeMap = new LinkedHashMap<String, Object>();
+                attributeMap = new LinkedHashMap<>();
             }
-            if (name.equalsIgnoreCase("refid") && !attributeMap.isEmpty()) {
-                LinkedHashMap<String, Object> newAttributeMap = new LinkedHashMap<String, Object>();
+            if ("refid".equalsIgnoreCase(name) && !attributeMap.isEmpty()) {
+                LinkedHashMap<String, Object> newAttributeMap = new LinkedHashMap<>();
                 newAttributeMap.put(name, value);
                 newAttributeMap.putAll(attributeMap);
                 attributeMap = newAttributeMap;
             } else {
                 attributeMap.put(name, value);
             }
-            if (name.equals("id")) {
+            if ("id".equals(name)) {
                 this.id = value == null ? null : value.toString();
             }
         }
@@ -334,16 +335,17 @@ public class RuntimeConfigurable implements Serializable {
      */
     public synchronized Hashtable<String, Object> getAttributeMap() {
         return (attributeMap == null)
-            ? EMPTY_HASHTABLE : new Hashtable<String, Object>(attributeMap);
+            ? EMPTY_HASHTABLE : new Hashtable<>(attributeMap);
     }
 
     /**
      * Returns the list of attributes for the wrapped element.
      *
-     * @deprecated Deprecated since Ant 1.6 in favor of {@link #getAttributeMap}.
      * @return An AttributeList representing the attributes defined in the
      *         XML for this element. May be <code>null</code>.
+     * @deprecated Deprecated since Ant 1.6 in favor of {@link #getAttributeMap}.
      */
+    @Deprecated
     public synchronized AttributeList getAttributes() {
         return attributes;
     }
@@ -355,7 +357,7 @@ public class RuntimeConfigurable implements Serializable {
      *              Must not be <code>null</code>.
      */
     public synchronized void addChild(RuntimeConfigurable child) {
-        children = (children == null) ? new ArrayList<RuntimeConfigurable>() : children;
+        children = (children == null) ? new ArrayList<>() : children;
         children.add(child);
     }
 
@@ -377,7 +379,7 @@ public class RuntimeConfigurable implements Serializable {
      * @since Ant 1.6
      */
     public synchronized Enumeration<RuntimeConfigurable> getChildren() {
-        return (children == null) ? new CollectionUtils.EmptyEnumeration<RuntimeConfigurable>()
+        return (children == null) ? Collections.emptyEnumeration()
             : Collections.enumeration(children);
     }
 
@@ -414,7 +416,7 @@ public class RuntimeConfigurable implements Serializable {
 
     /**
      * Get the text content of this element. Various text chunks are
-     * concatenated, there is no way ( currently ) of keeping track of
+     * concatenated, there is no way (currently) of keeping track of
      * multiple fragments.
      *
      * @return the text content of this element.
@@ -448,9 +450,10 @@ public class RuntimeConfigurable implements Serializable {
      * and then each child is configured and added. Each time the
      * wrapper is configured, the attributes and text for it are
      * reset.
-     *
+     * <p>
      * If the element has an <code>id</code> attribute, a reference
      * is added to the project as well.
+     * </p>
      *
      * @param p The project containing the wrapped element.
      *          Must not be <code>null</code>.
@@ -467,18 +470,18 @@ public class RuntimeConfigurable implements Serializable {
      * Configures the wrapped element.  The attributes and text for
      * the wrapped element are configured.  Each time the wrapper is
      * configured, the attributes and text for it are reset.
-     *
+     * <p>
      * If the element has an <code>id</code> attribute, a reference
      * is added to the project as well.
+     * </p>
      *
      * @param p The project containing the wrapped element.
      *          Must not be <code>null</code>.
      *
      * @param configureChildren ignored.
-
      *
      * @exception BuildException if the configuration fails, for instance due
-     *            to invalid attributes , or text being added to
+     *            to invalid attributes, or text being added to
      *            an element which doesn't accept it.
      */
     public synchronized void maybeConfigure(Project p, boolean configureChildren)
@@ -496,7 +499,7 @@ public class RuntimeConfigurable implements Serializable {
             IntrospectionHelper.getHelper(p, target.getClass());
          ComponentHelper componentHelper = ComponentHelper.getComponentHelper(p);
         if (attributeMap != null) {
-            for (Entry<String, Object> entry : attributeMap.entrySet()) {
+            for (Map.Entry<String, Object> entry : attributeMap.entrySet()) {
                 String name = entry.getKey();
                 // skip restricted attributes such as if:set
                 AttributeComponentInformation attributeComponentInformation = isRestrictedAttribute(name, componentHelper);
@@ -508,8 +511,8 @@ public class RuntimeConfigurable implements Serializable {
                 // MacroInstance where properties are expanded for the
                 // nested sequential
                 Object attrValue;
-                if (value instanceof Evaluable) {
-                    attrValue = ((Evaluable) value).eval();
+                if (value instanceof Evaluable<?>) {
+                    attrValue = ((Evaluable<?>) value).eval();
                 } else {
                     attrValue = PropertyHelper.getPropertyHelper(p).parseProperties(value.toString());
                 }
@@ -527,7 +530,7 @@ public class RuntimeConfigurable implements Serializable {
                     ih.setAttribute(p, target, name, attrValue);
                 } catch (UnsupportedAttributeException be) {
                     // id attribute must be set externally
-                    if (name.equals("id")) {
+                    if ("id".equals(name)) {
                         // Do nothing
                     } else if (getElementTag() == null) {
                         throw be;
@@ -537,9 +540,9 @@ public class RuntimeConfigurable implements Serializable {
                             + be.getAttribute() + "\" attribute", be);
                     }
                 } catch (BuildException be) {
-                    if (name.equals("id")) {
+                    if ("id".equals(name)) {
                         // Assume that this is an not supported attribute type
-                        // thrown for example by a dymanic attribute task
+                        // thrown for example by a dynamic attribute task
                         // Do nothing
                     } else {
                         throw be;
@@ -589,8 +592,7 @@ public class RuntimeConfigurable implements Serializable {
 
         // Children (this is a shadow of UnknownElement#children)
         if (r.children != null) {
-            List<RuntimeConfigurable> newChildren = new ArrayList<RuntimeConfigurable>();
-            newChildren.addAll(r.children);
+            List<RuntimeConfigurable> newChildren = new ArrayList<>(r.children);
             if (children != null) {
                 newChildren.addAll(children);
             }
@@ -600,7 +602,7 @@ public class RuntimeConfigurable implements Serializable {
         // Text
         if (r.characters != null) {
             if (characters == null
-                || characters.toString().trim().length() == 0) {
+                || characters.toString().trim().isEmpty()) {
                 characters = new StringBuffer(r.characters.toString());
             }
         }

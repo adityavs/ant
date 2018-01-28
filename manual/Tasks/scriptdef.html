@@ -24,11 +24,11 @@
 
 <body>
 
-<h2><a name="script">Scriptdef</a></h2>
+<h2 id="script">Scriptdef</h2>
 <h3>Description</h3>
 <p>Scriptdef can be used to define an Apache Ant task using a scripting language. Ant
 scripting languages supported by
-<a href="http://jakarta.apache.org/bsf" target="_top">Apache BSF</a> 
+<a href="http://jakarta.apache.org/bsf" target="_top">Apache BSF</a>
 or
   <a href="https://scripting.dev.java.net">JSR 223</a>
 may be
@@ -41,7 +41,7 @@ of the script increases it would be better to migrate the task definition
 into a Java based custom task.
 </p>
 
-<p><b>Note:</b> This task depends on external libraries not included in the
+<p><strong>Note</strong>: This task depends on external libraries not included in the
 Ant distribution. See
 <a href="../install.html#librarydependencies">Library Dependencies</a>
 for more information.</p>
@@ -58,21 +58,21 @@ element name. This will return a list of all instances of the nested element.
 The instances in this list may be accessed by an integer index.
 </p>
 
-<p><b>Note:</b> Ant will turn all attribute and element names into all
+<p><strong>Note</strong>: Ant will turn all attribute and element names into all
 lowercase names, so even if you use name="SomeAttribute", you'll have
 to use "someattribute" to retrieve the attribute's value from the
 <code>attributes</code> collection.</p>
 
-<p>The name "self" (<i>since Ant 1.6.3</i>) is a pre-defined reference to the
+<p>The name "self" (<em>since Ant 1.6.3</em>) is a pre-defined reference to the
     script def task instance.
     It can be used for logging, or for integration with the rest of
-    ant. the <code>self.text attribute</code> contains
+    Ant. the <code>self.text attribute</code> contains
     any nested text passed to the script</p>
 
-<p>If an attribute or element is not passed in, 
-then <code>attributes.get()</code> or <code>elements.get()</code> will 
-return null. It is up to the script to perform any checks and validation. 
-<code>self.fail(String message)</code>can be used to raise a 
+<p>If an attribute or element is not passed in,
+then <code>attributes.get()</code> or <code>elements.get()</code> will
+return null. It is up to the script to perform any checks and validation.
+<code>self.fail(String message)</code>can be used to raise a
 <code>BuildException</code>.
 </p>
 
@@ -84,7 +84,7 @@ more information on writing scripts, please refer to the
 
 
 <h3>Parameters</h3>
-<table border="1" cellpadding="2" cellspacing="0">
+<table>
   <tr>
     <td valign="top"><b>Attribute</b></td>
     <td valign="top"><b>Description</b></td>
@@ -116,6 +116,20 @@ more information on writing scripts, please refer to the
     <td valign="top" align="center">No</td>
   </tr>
   <tr>
+    <td valign="top">encoding</td>
+    <td valign="top">The encoding of the script as a file. <em>since Ant 1.10.2</em>.</td>
+    <td valign="top" align="center">No - defaults to default JVM encoding</td>
+  </tr>
+  <tr>
+    <td valign="top">compiled</td>
+    <td valign="top">If true, the script is compiled before the first
+    evaluation for faster multiple executions, on the condition that the <em>manager</em> is "javax" and the
+    target engine implements <code>javax.script.Compilable</code>.
+    Note that the <code>bsf</code> manager may automatically compiles the script.
+    <em>since Ant 1.10.2</em>.</td>
+    <td valign="top" align="center">No - defaults to false</td>
+  </tr>
+  <tr>
     <td valign="top">uri</td>
     <td valign="top">
       The XML namespace uri that this definition should live in.
@@ -138,7 +152,7 @@ more information on writing scripts, please refer to the
     <tr>
       <td valign="top">loaderRef</td>
       <td valign="top">the name of the loader that is
-        used to load the script, constructed from the specified 
+        used to load the script, constructed from the specified
         classpath. This allows multiple script definitions
         to reuse the same class loader.
       </td>
@@ -148,7 +162,7 @@ more information on writing scripts, please refer to the
 
 <h3>Nested elements</h3>
 <h4>attribute</h4>
-<table border="1" cellpadding="2" cellspacing="0">
+<table>
   <tr>
     <td valign="top"><b>Attribute</b></td>
     <td valign="top"><b>Description</b></td>
@@ -162,7 +176,7 @@ more information on writing scripts, please refer to the
 </table>
 
 <h4>element</h4>
-<table border="1" cellpadding="2" cellspacing="0">
+<table>
   <tr>
     <td valign="top"><b>Attribute</b></td>
     <td valign="top"><b>Description</b></td>
@@ -192,8 +206,8 @@ more information on writing scripts, please refer to the
   </tr>
   <tr>
     <td valign="top">any resource or resource collection</td>
-    <td valign="top">Since Ant1.7.1, this task can load scripts
-    from any resource supplied as a nested element. when </td>
+    <td valign="top"><em>Since Ant 1.7.1</em>, this task can load scripts
+    from any resource supplied as a nested element.</td>
     <td valign="top" align="center">No</td>
   </tr>
 
@@ -275,10 +289,10 @@ statement (scriptdef <code>&lt;scripttest2&gt;</code>; line 10)</code></p>
 Script errors are only detected when a script task is actually executed.
 </p>
 <p>
-    The next example does uses nested text in Jython. It also declares 
-    the script in a new xml namespace, which must be used to refer to 
-    the task. Declaring scripts in a new namespace guarantees that Ant will 
-    not create a task of the same (namespace,localname) name pair. 
+    The next example does uses nested text in Jython. It also declares
+    the script in a new xml namespace, which must be used to refer to
+    the task. Declaring scripts in a new namespace guarantees that Ant will
+    not create a task of the same (namespace,localname) name pair.
 </p>
 
 <pre>
@@ -321,12 +335,9 @@ The next example shows the use of &lt;classpath&gt; and
 <h3>Testing Scripts</h3>
 
 <p>
-The easiest way to test scripts is to use the 
+The easiest way to test scripts is to use the
 <a href="http://ant.apache.org/antlibs/antunit/">AntUnit</a> ant library.
-This will run all targets in a script that begin with "test" (and their dependencies). </p>
-
-
-
+This will run all targets in a script that begin with "test" (and their dependencies).</p>
 
 </body>
 </html>

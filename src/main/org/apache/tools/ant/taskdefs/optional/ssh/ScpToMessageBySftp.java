@@ -38,7 +38,8 @@ public class ScpToMessageBySftp extends ScpToMessage/*AbstractSshMessage*/ {
 
     private File localFile;
     private final String remotePath;
-    private List directoryList;
+    private List<Directory> directoryList;
+    private final boolean preserveLastModified;
 
     /**
      * Constructor for a local file to remote.
@@ -52,10 +53,30 @@ public class ScpToMessageBySftp extends ScpToMessage/*AbstractSshMessage*/ {
                               final Session session,
                               final File aLocalFile,
                               final String aRemotePath) {
-        this(verbose, session, aRemotePath);
+        this(verbose, session, aLocalFile, aRemotePath, false);
+
+    }
+
+    /**
+     * Constructor for a local file to remote.
+     * @param verbose if true do verbose logging
+     * @param session the scp session to use
+     * @param aLocalFile the local file
+     * @param aRemotePath the remote path
+     * @param preserveLastModified True if the last modified time needs to be preserved
+     *                             on the transferred files. False otherwise.
+     * @since Ant 1.9.10
+     */
+    public ScpToMessageBySftp(final boolean verbose,
+                              final Session session,
+                              final File aLocalFile,
+                              final String aRemotePath,
+                              final boolean preserveLastModified) {
+        this(verbose, session, aRemotePath, preserveLastModified);
 
         this.localFile = aLocalFile;
     }
+
 
     /**
      * Constructor for a local directories to remote.
@@ -67,25 +88,47 @@ public class ScpToMessageBySftp extends ScpToMessage/*AbstractSshMessage*/ {
      */
     public ScpToMessageBySftp(final boolean verbose,
                               final Session session,
-                              final List aDirectoryList,
+                              final List<Directory> aDirectoryList,
                               final String aRemotePath) {
-        this(verbose, session, aRemotePath);
+        this(verbose, session, aDirectoryList, aRemotePath, false);
+    }
+
+    /**
+     * Constructor for a local directories to remote.
+     * @param verbose if true do verbose logging
+     * @param session the scp session to use
+     * @param aDirectoryList a list of directories
+     * @param aRemotePath the remote path
+     * @param preserveLastModified  True if the last modified time needs to be preserved
+     *                             on the transferred files. False otherwise.
+     * @since Ant 1.9.10
+     */
+    public ScpToMessageBySftp(final boolean verbose,
+                              final Session session,
+                              final List<Directory> aDirectoryList,
+                              final String aRemotePath,
+                              final boolean preserveLastModified) {
+        this(verbose, session, aRemotePath, preserveLastModified);
 
         this.directoryList = aDirectoryList;
     }
+
 
     /**
      * Constructor for ScpToMessage.
      * @param verbose if true do verbose logging
      * @param session the scp session to use
      * @param aRemotePath the remote path
-     * @since Ant 1.6.2
+     * @param preserveLastModified True if the last modified time needs to be preserved
+     *                             on the transferred files. False otherwise.
      */
     private ScpToMessageBySftp(final boolean verbose,
                                final Session session,
-                               final String aRemotePath) {
+                               final String aRemotePath,
+                               final boolean preserveLastModified) {
         super(verbose, session);
         this.remotePath = aRemotePath;
+        this.preserveLastModified = preserveLastModified;
     }
 
     /**
@@ -107,7 +150,7 @@ public class ScpToMessageBySftp extends ScpToMessage/*AbstractSshMessage*/ {
      * @param aRemotePath the remote path
      */
     public ScpToMessageBySftp(final Session session,
-                              final List aDirectoryList,
+                              final List<Directory> aDirectoryList,
                               final String aRemotePath) {
         this(false, session, aDirectoryList, aRemotePath);
     }
@@ -135,11 +178,9 @@ public class ScpToMessageBySftp extends ScpToMessage/*AbstractSshMessage*/ {
             try {
                 sendFileToRemote(channel, localFile, remotePath);
             } catch (final SftpException e) {
-                final JSchException schException = new JSchException("Could not send '" + localFile
+                throw new JSchException("Could not send '" + localFile
                         + "' to '" + remotePath + "' - "
-                        + e.toString());
-                schException.initCause(e);
-                throw schException;
+                        + e.toString(), e);
             }
         } finally {
             if (channel != null) {
@@ -171,21 +212,19 @@ public class ScpToMessageBySftp extends ScpToMessage/*AbstractSshMessage*/ {
                 throw new JSchException("Could not CD to '" + remotePath
                                         + "' - " + e.toString(), e);
             }
-            Directory current = null;
-            try {
-                for (final Iterator i = directoryList.iterator(); i.hasNext();) {
-                    current = (Directory) i.next();
+            for (Directory current : directoryList) {
+                try {
                     if (getVerbose()) {
                         log("Sending directory " + current);
                     }
                     sendDirectory(channel, current);
+                } catch (final SftpException e) {
+                    String msg = "Error sending directory";
+                    if (current != null && current.getDirectory() != null) {
+                        msg += " '" + current.getDirectory().getName() + "'";
+                    }
+                    throw new JSchException(msg, e);
                 }
-            } catch (final SftpException e) {
-                String msg = "Error sending directory";
-                if (current != null && current.getDirectory() != null) {
-                    msg += " '" + current.getDirectory().getName() + "'";
-                }
-                throw new JSchException(msg, e);
             }
         } finally {
             if (channel != null) {
@@ -197,12 +236,11 @@ public class ScpToMessageBySftp extends ScpToMessage/*AbstractSshMessage*/ {
     private void sendDirectory(final ChannelSftp channel,
                                final Directory current)
         throws IOException, SftpException {
-        for (final Iterator fileIt = current.filesIterator(); fileIt.hasNext();) {
-            sendFileToRemote(channel, (File) fileIt.next(), null);
+        for (final Iterator<File> fileIt = current.filesIterator(); fileIt.hasNext();) {
+            sendFileToRemote(channel, fileIt.next(), null);
         }
-        for (final Iterator dirIt = current.directoryIterator(); dirIt.hasNext();) {
-            final Directory dir = (Directory) dirIt.next();
-            sendDirectoryToRemote(channel, dir);
+        for (final Iterator<Directory> dirIt = current.directoryIterator(); dirIt.hasNext();) {
+            sendDirectoryToRemote(channel, dirIt.next());
         }
     }
 
@@ -250,7 +288,32 @@ public class ScpToMessageBySftp extends ScpToMessage/*AbstractSshMessage*/ {
                 log("Sending: " + localFile.getName() + " : " + filesize);
             }
             channel.put(localFile.getAbsolutePath(), remotePath, monitor);
-            channel.chmod(getFileMode(), remotePath);
+            // set the fileMode on the transferred file. The "remotePath" can potentially be a directory
+            // into which the file got transferred, so we can't/shouldn't go ahead and try to change that directory's
+            // permissions. Instead we determine the path of the transferred file on remote.
+            final String transferredFileRemotePath;
+            if (channel.stat(remotePath).isDir()) {
+                // Note: It's correct to use "/" as the file separator without worrying about what the remote
+                // server's file separator is, since the SFTP spec expects "/" to be considered as file path
+                // separator. See section 6.2 "File Names" of the spec, which states:
+                // "This protocol represents file names as strings.  File names are
+                // assumed to use the slash ('/') character as a directory separator."
+                transferredFileRemotePath = remotePath + "/" + localFile.getName();
+            } else {
+                transferredFileRemotePath = remotePath;
+            }
+            if (this.getVerbose()) {
+                log("Setting file mode '" + Integer.toOctalString(getFileMode()) + "' on remote path " + transferredFileRemotePath);
+            }
+            channel.chmod(getFileMode(), transferredFileRemotePath);
+            if (getPreserveLastModified()) {
+                // set the last modified time (seconds since epoch) on the transferred file
+                final int lastModifiedTime = (int) (localFile.lastModified() / 1000L);
+                if (this.getVerbose()) {
+                    log("Setting last modified time on remote path " + transferredFileRemotePath + " to " + lastModifiedTime);
+                }
+                channel.setMtime(transferredFileRemotePath, lastModifiedTime);
+            }
         } finally {
             if (this.getVerbose()) {
                 final long endTime = System.currentTimeMillis();
@@ -263,6 +326,7 @@ public class ScpToMessageBySftp extends ScpToMessage/*AbstractSshMessage*/ {
      * Get the local file.
      * @return the local file.
      */
+    @Override
     public File getLocalFile() {
         return localFile;
     }
@@ -271,7 +335,18 @@ public class ScpToMessageBySftp extends ScpToMessage/*AbstractSshMessage*/ {
      * Get the remote path.
      * @return the remote path.
      */
+    @Override
     public String getRemotePath() {
         return remotePath;
+    }
+
+    /**
+     * Returns true if the last modified time needs to be preserved on the
+     * file(s) that get transferred. Returns false otherwise.
+     *
+     * @return boolean
+     */
+    public boolean getPreserveLastModified() {
+        return this.preserveLastModified;
     }
 }

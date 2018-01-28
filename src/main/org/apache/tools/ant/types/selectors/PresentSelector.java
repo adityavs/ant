@@ -42,13 +42,6 @@ public class PresentSelector extends BaseSelector {
     private boolean destmustexist = true;
 
     /**
-     * Creates a new <code>PresentSelector</code> instance.
-     *
-     */
-    public PresentSelector() {
-    }
-
-    /**
      * @return a string describing this object
      */
     @Override
@@ -119,7 +112,7 @@ public class PresentSelector extends BaseSelector {
      * that already exist in the source directory, hence the lack of
      * a <code>destonly</code> option.
      *
-     * @param fp An attribute set to either <code>srconly</code or
+     * @param fp An attribute set to either <code>srconly</code> or
      *           <code>both</code>.
      */
     public void setPresent(final FilePresence fp) {

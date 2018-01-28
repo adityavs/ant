@@ -94,6 +94,7 @@ public class TarOutputStream extends FilterOutputStream {
 
     /**
      * Constructor for TarInputStream.
+     *
      * @param os the output stream to use
      */
     public TarOutputStream(OutputStream os) {
@@ -102,6 +103,7 @@ public class TarOutputStream extends FilterOutputStream {
 
     /**
      * Constructor for TarInputStream.
+     *
      * @param os the output stream to use
      * @param encoding name of the encoding to use for file names
      */
@@ -111,6 +113,7 @@ public class TarOutputStream extends FilterOutputStream {
 
     /**
      * Constructor for TarInputStream.
+     *
      * @param os the output stream to use
      * @param blockSize the block size to use
      */
@@ -120,6 +123,7 @@ public class TarOutputStream extends FilterOutputStream {
 
     /**
      * Constructor for TarInputStream.
+     *
      * @param os the output stream to use
      * @param blockSize the block size to use
      * @param encoding name of the encoding to use for file names
@@ -130,6 +134,7 @@ public class TarOutputStream extends FilterOutputStream {
 
     /**
      * Constructor for TarInputStream.
+     *
      * @param os the output stream to use
      * @param blockSize the block size to use
      * @param recordSize the record size to use
@@ -140,6 +145,7 @@ public class TarOutputStream extends FilterOutputStream {
 
     /**
      * Constructor for TarInputStream.
+     *
      * @param os the output stream to use
      * @param blockSize the block size to use
      * @param recordSize the record size to use
@@ -163,6 +169,7 @@ public class TarOutputStream extends FilterOutputStream {
      * This can be LONGFILE_ERROR(0), LONGFILE_TRUNCATE(1) or LONGFILE_GNU(2).
      * This specifies the treatment of long file names (names &gt;= TarConstants.NAMELEN).
      * Default is LONGFILE_ERROR.
+     *
      * @param longFileMode the mode to use
      */
     public void setLongFileMode(int longFileMode) {
@@ -174,6 +181,7 @@ public class TarOutputStream extends FilterOutputStream {
      * This can be BIGNUMBER_ERROR(0), BIGNUMBER_POSIX(1) or BIGNUMBER_STAR(2).
      * This specifies the treatment of big files (sizes &gt; TarConstants.MAXSIZE) and other numeric values to big to fit into a traditional tar header.
      * Default is BIGNUMBER_ERROR.
+     *
      * @param bigNumberMode the mode to use
      */
     public void setBigNumberMode(int bigNumberMode) {
@@ -182,6 +190,8 @@ public class TarOutputStream extends FilterOutputStream {
 
     /**
      * Whether to add a PAX extension header for non-ASCII file names.
+     *
+     * @param b boolean
      */
     public void setAddPaxHeadersForNonAsciiNames(boolean b) {
         addPaxHeadersForNonAsciiNames = b;
@@ -236,7 +246,7 @@ public class TarOutputStream extends FilterOutputStream {
      */
     @Override
     public void close() throws IOException {
-        if(!finished) {
+        if (!finished) {
             finish();
         }
 
@@ -269,7 +279,7 @@ public class TarOutputStream extends FilterOutputStream {
      * @throws IOException on error
      */
     public void putNextEntry(TarEntry entry) throws IOException {
-        if(finished) {
+        if (finished) {
             throw new IOException("Stream has already been finished");
         }
         Map<String, String> paxHeaders = new HashMap<String, String>();
@@ -332,7 +342,7 @@ public class TarOutputStream extends FilterOutputStream {
         if (finished) {
             throw new IOException("Stream has already been finished");
         }
-        if (!haveUnclosedEntry){
+        if (!haveUnclosedEntry) {
             throw new IOException("No current entry to close");
         }
         if (assemLen > 0) {
@@ -358,7 +368,7 @@ public class TarOutputStream extends FilterOutputStream {
     /**
      * Writes a byte to the current tar archive entry.
      *
-     * This method simply calls read( byte[], int, int ).
+     * This method simply calls read(byte[], int, int).
      *
      * @param b The byte written.
      * @throws IOException on error
@@ -373,7 +383,7 @@ public class TarOutputStream extends FilterOutputStream {
     /**
      * Writes bytes to the current tar archive entry.
      *
-     * This method simply calls write( byte[], int, int ).
+     * This method simply calls write(byte[], int, int).
      *
      * @param wBuf The buffer to write to the archive.
      * @throws IOException on error
@@ -586,7 +596,7 @@ public class TarOutputStream extends FilterOutputStream {
 
     private void failForBigNumber(String field, long value, long maxValue, String additionalMsg) {
         if (value < 0 || value > maxValue) {
-            throw new RuntimeException(field + " '" + value
+            throw new RuntimeException(field + " '" + value //NOSONAR
                                        + "' is too big ( > "
                                        + maxValue + " )");
         }
@@ -614,7 +624,7 @@ public class TarOutputStream extends FilterOutputStream {
      * @param fieldName the name of the field
      * @return whether a pax header has been written.
      */
-    private boolean handleLongName(TarEntry entry , String name,
+    private boolean handleLongName(TarEntry entry, String name,
                                    Map<String, String> paxHeaders,
                                    String paxHeaderName, byte linkType, String fieldName)
         throws IOException {
@@ -638,7 +648,7 @@ public class TarOutputStream extends FilterOutputStream {
                 write(0); // NUL terminator
                 closeEntry();
             } else if (longFileMode != LONGFILE_TRUNCATE) {
-                throw new RuntimeException(fieldName + " '" + name
+                throw new RuntimeException(fieldName + " '" + name //NOSONAR
                                            + "' is too long ( > "
                                            + TarConstants.NAMELEN + " bytes)");
             }

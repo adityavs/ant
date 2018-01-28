@@ -146,7 +146,7 @@ public abstract class ProjectComponent implements Cloneable {
             getProject().log(msg, msgLevel);
         } else {
             // 'reasonable' default, if the component is used without
-            // a Project ( for example as a standalone Bean ).
+            // a Project (for example as a standalone Bean).
             // Most ant components can be used this way.
             if (msgLevel <= Project.MSG_INFO) {
                 System.err.println(msg);
@@ -160,6 +160,7 @@ public abstract class ProjectComponent implements Cloneable {
      * @throws CloneNotSupportedException does not happen,
      *                                    but is declared to allow subclasses to do so.
      */
+    @Override
     public Object clone() throws CloneNotSupportedException {
         ProjectComponent pc = (ProjectComponent) super.clone();
         pc.setLocation(getLocation());

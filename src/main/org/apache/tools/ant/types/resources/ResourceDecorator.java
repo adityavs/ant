@@ -59,12 +59,12 @@ public abstract class ResourceDecorator extends Resource {
     public final void addConfigured(ResourceCollection a) {
         checkChildrenAllowed();
         if (resource != null) {
-            throw new BuildException("you must not specify more than one"
-                                     + " resource");
+            throw new BuildException(
+                "you must not specify more than one resource");
         }
         if (a.size() != 1) {
-            throw new BuildException("only single argument resource collections"
-                                     + " are supported");
+            throw new BuildException(
+                "only single argument resource collections are supported");
         }
         setChecked(false);
         resource = a.iterator().next();
@@ -74,6 +74,7 @@ public abstract class ResourceDecorator extends Resource {
      * Get the name of the resource.
      * @return the name of the wrapped resource.
      */
+    @Override
     public String getName() {
         return getResource().getName();
     }
@@ -82,6 +83,7 @@ public abstract class ResourceDecorator extends Resource {
      * The exists attribute tells whether a file exists.
      * @return true if this resource exists.
      */
+    @Override
     public boolean isExists() {
         return getResource().isExists();
     }
@@ -92,6 +94,7 @@ public abstract class ResourceDecorator extends Resource {
      * @return 0 if the resource does not exist to mirror the behavior
      * of {@link java.io.File File}.
      */
+    @Override
     public long getLastModified() {
         return getResource().getLastModified();
     }
@@ -100,6 +103,7 @@ public abstract class ResourceDecorator extends Resource {
      * Tells if the resource is a directory.
      * @return boolean flag indicating if the resource is a directory.
      */
+    @Override
     public boolean isDirectory() {
         return getResource().isDirectory();
     }
@@ -109,6 +113,7 @@ public abstract class ResourceDecorator extends Resource {
      * @return the size, as a long, 0 if the Resource does not exist (for
      *         compatibility with java.io.File), or UNKNOWN_SIZE if not known.
      */
+    @Override
     public long getSize() {
         return getResource().getSize();
     }
@@ -121,6 +126,7 @@ public abstract class ResourceDecorator extends Resource {
      * @throws UnsupportedOperationException if InputStreams are not
      *         supported for this Resource type.
      */
+    @Override
     public InputStream getInputStream() throws IOException {
         return getResource().getInputStream();
     }
@@ -133,6 +139,7 @@ public abstract class ResourceDecorator extends Resource {
      * @throws UnsupportedOperationException if OutputStreams are not
      *         supported for this Resource type.
      */
+    @Override
     public OutputStream getOutputStream() throws IOException {
         return getResource().getOutputStream();
     }
@@ -141,6 +148,7 @@ public abstract class ResourceDecorator extends Resource {
      * Fulfill the ResourceCollection contract.
      * @return whether this Resource is a FileProvider.
      */
+    @Override
     public boolean isFilesystemOnly() {
         return as(FileProvider.class) != null;
     }
@@ -149,6 +157,7 @@ public abstract class ResourceDecorator extends Resource {
      * Overrides the base version.
      * @param r the Reference to set.
      */
+    @Override
     public void setRefid(Reference r) {
         if (resource != null) {
             throw noChildrenAllowed();
@@ -159,6 +168,7 @@ public abstract class ResourceDecorator extends Resource {
     /**
      * {@inheritDoc}
      */
+    @Override
     public <T> T as(Class<T> clazz) {
         return getResource().as(clazz);
     }
@@ -166,6 +176,7 @@ public abstract class ResourceDecorator extends Resource {
     /**
      * {@inheritDoc}
      */
+    @Override
     public int compareTo(Resource other) {
         if (other == this) {
             return 0;
@@ -181,13 +192,16 @@ public abstract class ResourceDecorator extends Resource {
      * Get the hash code for this Resource.
      * @return hash code as int.
      */
-    public int hashCode() {
+    @Override
+    public int hashCode() { // NOSONAR
+        // super.equals + compareTo are consistent with this implementation
         return (getClass().hashCode() << 4) | getResource().hashCode();
     }
 
     /**
      * De-references refids if any, ensures a wrapped resource has
      * been specified.
+     * @return Resource
      */
     protected final Resource getResource() {
         if (isReference()) {
@@ -224,6 +238,7 @@ public abstract class ResourceDecorator extends Resource {
      * @param name not used.
      * @throws BuildException always.
      */
+    @Override
     public void setName(String name) throws BuildException {
         throw new BuildException("you can't change the name of a "
                                  + getDataTypeName());
@@ -233,6 +248,7 @@ public abstract class ResourceDecorator extends Resource {
      * Set the exists attribute.
      * @param exists if true, this resource exists.
      */
+    @Override
     public void setExists(boolean exists) {
         throw new BuildException("you can't change the exists state of a "
                                  + getDataTypeName());
@@ -243,6 +259,7 @@ public abstract class ResourceDecorator extends Resource {
      * @param lastmodified not used.
      * @throws BuildException always.
      */
+    @Override
     public void setLastModified(long lastmodified) throws BuildException {
         throw new BuildException("you can't change the timestamp of a "
                                  + getDataTypeName());
@@ -253,6 +270,7 @@ public abstract class ResourceDecorator extends Resource {
      * @param directory not used.
      * @throws BuildException always.
      */
+    @Override
     public void setDirectory(boolean directory) throws BuildException {
         throw new BuildException("you can't change the directory state of a "
                                  + getDataTypeName());
@@ -263,8 +281,10 @@ public abstract class ResourceDecorator extends Resource {
      * @param size not used.
      * @throws BuildException always.
      */
+    @Override
     public void setSize(long size) throws BuildException {
         throw new BuildException("you can't change the size of a "
                                  + getDataTypeName());
     }
+
 }

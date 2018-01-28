@@ -31,9 +31,11 @@ public class MergingMapper implements FileNameMapper {
     protected String[] mergedFile = null;
     // CheckStyle:VisibilityModifier ON
 
-    public MergingMapper() {}
+    public MergingMapper() {
+    }
 
     /**
+     * @param to String
      * @since Ant 1.8.0
      */
     public MergingMapper(String to) {
@@ -44,6 +46,7 @@ public class MergingMapper implements FileNameMapper {
      * Ignored.
      * @param from ignored.
      */
+    @Override
     public void setFrom(String from) {
     }
 
@@ -51,6 +54,7 @@ public class MergingMapper implements FileNameMapper {
      * Sets the name of the merged file.
      * @param to the name of the merged file.
      */
+    @Override
     public void setTo(String to) {
         mergedFile = new String[] {to};
     }
@@ -60,6 +64,7 @@ public class MergingMapper implements FileNameMapper {
      * @param sourceFileName ignored.
      * @return a one-element array containing the merged filename.
      */
+    @Override
     public String[] mapFileName(String sourceFileName) {
         return mergedFile;
     }

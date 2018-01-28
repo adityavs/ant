@@ -19,19 +19,24 @@
 package org.apache.tools.ant.taskdefs;
 
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.StringTokenizer;
 import java.util.TimeZone;
 import java.util.Vector;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Location;
+import org.apache.tools.ant.MagicNames;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
 import org.apache.tools.ant.types.EnumeratedAttribute;
@@ -45,7 +50,7 @@ import org.apache.tools.ant.types.EnumeratedAttribute;
  */
 public class Tstamp extends Task {
 
-    private Vector customFormats = new Vector();
+    private List<CustomFormat> customFormats = new Vector<>();
     private String prefix = "";
 
     /**
@@ -66,24 +71,21 @@ public class Tstamp extends Task {
      * the standard ones, to get their retaliation in early.
      * @throws BuildException on error.
      */
+    @Override
     public void execute() throws BuildException {
         try {
-            Date d = new Date();
+            Date d = getNow();
 
-            Enumeration i = customFormats.elements();
-            while (i.hasMoreElements()) {
-                CustomFormat cts = (CustomFormat) i.nextElement();
-                cts.execute(getProject(), d, getLocation());
-            }
+            customFormats.forEach(cts -> cts.execute(getProject(), d, getLocation()));
 
-            SimpleDateFormat dstamp = new SimpleDateFormat ("yyyyMMdd");
+            SimpleDateFormat dstamp = new SimpleDateFormat("yyyyMMdd");
             setProperty("DSTAMP", dstamp.format(d));
 
-            SimpleDateFormat tstamp = new SimpleDateFormat ("HHmm");
+            SimpleDateFormat tstamp = new SimpleDateFormat("HHmm");
             setProperty("TSTAMP", tstamp.format(d));
 
             SimpleDateFormat today
-                = new SimpleDateFormat ("MMMM d yyyy", Locale.US);
+                = new SimpleDateFormat("MMMM d yyyy", Locale.US);
             setProperty("TODAY", today.format(d));
 
         } catch (Exception e) {
@@ -97,7 +99,7 @@ public class Tstamp extends Task {
      */
     public CustomFormat createFormat() {
         CustomFormat cts = new CustomFormat();
-        customFormats.addElement(cts);
+        customFormats.add(cts);
         return cts;
     }
 
@@ -107,6 +109,49 @@ public class Tstamp extends Task {
      */
     private void setProperty(String name, String value) {
         getProject().setNewProperty(prefix + name, value);
+    }
+
+    /**
+     * Return the {@link Date} instance to use as base for DSTAMP, TSTAMP and TODAY.
+     *
+     * @return Date
+     */
+    protected Date getNow() {
+        Optional<Date> now = getNow(
+            MagicNames.TSTAMP_NOW_ISO,
+            s -> Date.from(Instant.parse(s)),
+            (k, v) -> "magic property " + k + " ignored as '" + v + "' is not in valid ISO pattern"
+        );
+        if (now.isPresent()) {
+            return now.get();
+        }
+
+        now = getNow(
+            MagicNames.TSTAMP_NOW,
+            s -> new Date(1000 * Long.parseLong(s)),
+            (k, v) -> "magic property " + k + " ignored as " + v + " is not a valid number"
+        );
+        return now.orElseGet(Date::new);
+    }
+
+    /**
+     * Checks and returns a Date if the specified property is set.
+     * @param propertyName name of the property to check
+     * @param map conversion of the property value as string to Date
+     * @param log supplier of the log message containing the property name and value if
+     *     the conversion fails
+     * @return Optional containing the Date or null
+     */
+    protected Optional<Date> getNow(String propertyName, Function<String, Date> map, BiFunction<String, String, String> log) {
+        String property = getProject().getProperty(propertyName);
+        if (property != null && property.length() > 0) {
+            try {
+                return Optional.ofNullable(map.apply(property));
+            } catch (Exception e) {
+                log(log.apply(propertyName, property));
+            }
+        }
+        return Optional.empty();
     }
 
     /**
@@ -127,12 +172,6 @@ public class Tstamp extends Task {
         private String variant;
         private int offset = 0;
         private int field = Calendar.DATE;
-
-        /**
-         * Create a format
-         */
-        public CustomFormat() {
-        }
 
         /**
          *  The property to receive the date/time string in the given pattern
@@ -170,16 +209,14 @@ public class Tstamp extends Task {
                     if (st.hasMoreElements()) {
                         variant = st.nextToken();
                         if (st.hasMoreElements()) {
-                            throw new BuildException("bad locale format",
-                                                      getLocation());
+                            throw new BuildException("bad locale format", getLocation());
                         }
                     }
                 } else {
                     country = "";
                 }
             } catch (NoSuchElementException e) {
-                throw new BuildException("bad locale format", e,
-                                         getLocation());
+                throw new BuildException("bad locale format", e, getLocation());
             }
         }
 
@@ -211,9 +248,9 @@ public class Tstamp extends Task {
          *             encapsulate operations on the unit in its own
          *             class.
          */
+        @Deprecated
         public void setUnit(String unit) {
-            log("DEPRECATED - The setUnit(String) method has been deprecated."
-                + " Use setUnit(Tstamp.Unit) instead.");
+            log("DEPRECATED - The setUnit(String) method has been deprecated. Use setUnit(Tstamp.Unit) instead.");
             Unit u = new Unit();
             u.setValue(unit);
             field = u.getCalendarField();
@@ -247,25 +284,20 @@ public class Tstamp extends Task {
          */
         public void execute(Project project, Date date, Location location) {
             if (propertyName == null) {
-                throw new BuildException("property attribute must be provided",
-                                         location);
+                throw new BuildException("property attribute must be provided", location);
             }
 
             if (pattern == null) {
-                throw new BuildException("pattern attribute must be provided",
-                                         location);
+                throw new BuildException("pattern attribute must be provided", location);
             }
 
             SimpleDateFormat sdf;
             if (language == null) {
                 sdf = new SimpleDateFormat(pattern);
             } else if (variant == null) {
-                sdf = new SimpleDateFormat(pattern,
-                                           new Locale(language, country));
+                sdf = new SimpleDateFormat(pattern, new Locale(language, country));
             } else {
-                sdf = new SimpleDateFormat(pattern,
-                                           new Locale(language, country,
-                                                      variant));
+                sdf = new SimpleDateFormat(pattern, new Locale(language, country, variant));
             }
             if (offset != 0) {
                 Calendar calendar = Calendar.getInstance();
@@ -305,19 +337,19 @@ public class Tstamp extends Task {
                                                 YEAR
                                               };
 
-        private Map calendarFields = new HashMap();
+        private Map<String, Integer> calendarFields = new HashMap<>();
 
         /** Constructor for Unit enumerated type. */
         public Unit() {
             calendarFields.put(MILLISECOND,
-                               new Integer(Calendar.MILLISECOND));
-            calendarFields.put(SECOND, new Integer(Calendar.SECOND));
-            calendarFields.put(MINUTE, new Integer(Calendar.MINUTE));
-            calendarFields.put(HOUR, new Integer(Calendar.HOUR_OF_DAY));
-            calendarFields.put(DAY, new Integer(Calendar.DATE));
-            calendarFields.put(WEEK, new Integer(Calendar.WEEK_OF_YEAR));
-            calendarFields.put(MONTH, new Integer(Calendar.MONTH));
-            calendarFields.put(YEAR, new Integer(Calendar.YEAR));
+                               Integer.valueOf(Calendar.MILLISECOND));
+            calendarFields.put(SECOND, Integer.valueOf(Calendar.SECOND));
+            calendarFields.put(MINUTE, Integer.valueOf(Calendar.MINUTE));
+            calendarFields.put(HOUR, Integer.valueOf(Calendar.HOUR_OF_DAY));
+            calendarFields.put(DAY, Integer.valueOf(Calendar.DATE));
+            calendarFields.put(WEEK, Integer.valueOf(Calendar.WEEK_OF_YEAR));
+            calendarFields.put(MONTH, Integer.valueOf(Calendar.MONTH));
+            calendarFields.put(YEAR, Integer.valueOf(Calendar.YEAR));
         }
 
         /**
@@ -326,14 +358,14 @@ public class Tstamp extends Task {
          */
         public int getCalendarField() {
             String key = getValue().toLowerCase(Locale.ENGLISH);
-            Integer i = (Integer) calendarFields.get(key);
-            return i.intValue();
+            return calendarFields.get(key).intValue();
         }
 
         /**
          * Get the valid values.
          * @return the value values.
          */
+        @Override
         public String[] getValues() {
             return UNITS;
         }

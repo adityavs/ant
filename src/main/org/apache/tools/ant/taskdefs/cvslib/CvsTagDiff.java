@@ -19,18 +19,15 @@ package org.apache.tools.ant.taskdefs.cvslib;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.StringTokenizer;
-import java.util.Vector;
-
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.AbstractCvsTask;
@@ -45,9 +42,9 @@ import org.w3c.dom.Element;
  * Examines the output of cvs rdiff between two tags.
  *
  * It produces an XML output representing the list of changes.
- * <PRE>
+ * <pre>
  * &lt;!-- Root element --&gt;
- * &lt;!ELEMENT tagdiff ( entry+ ) &gt;
+ * &lt;!ELEMENT tagdiff (entry+) &gt;
  * &lt;!-- Start tag of the report --&gt;
  * &lt;!ATTLIST tagdiff startTag NMTOKEN #IMPLIED &gt;
  * &lt;!-- End tag of the report --&gt;
@@ -58,16 +55,16 @@ import org.w3c.dom.Element;
  * &lt;!ATTLIST tagdiff endDate NMTOKEN #IMPLIED &gt;
  *
  * &lt;!-- CVS tag entry --&gt;
- * &lt;!ELEMENT entry ( file ) &gt;
+ * &lt;!ELEMENT entry (file) &gt;
  * &lt;!-- File added, changed or removed --&gt;
- * &lt;!ELEMENT file ( name, revision?, prevrevision? ) &gt;
+ * &lt;!ELEMENT file (name, revision?, prevrevision?) &gt;
  * &lt;!-- Name of the file --&gt;
- * &lt;!ELEMENT name ( #PCDATA ) &gt;
+ * &lt;!ELEMENT name (#PCDATA) &gt;
  * &lt;!-- Revision number --&gt;
- * &lt;!ELEMENT revision ( #PCDATA ) &gt;
+ * &lt;!ELEMENT revision (#PCDATA) &gt;
  * &lt;!-- Previous revision number --&gt;
- * &lt;!ELEMENT prevrevision ( #PCDATA ) &gt;
- * </PRE>
+ * &lt;!ELEMENT prevrevision (#PCDATA) &gt;
+ * </pre>
  *
  * @since Ant 1.5
  * @ant.task name="cvstagdiff"
@@ -151,7 +148,7 @@ public class CvsTagDiff extends AbstractCvsTask {
     /**
      * temporary list of package names.
      */
-    private List packageNames = new ArrayList();
+    private List<String> packageNames = new ArrayList<>();
 
     /**
      * temporary list of "File:" + package name + "/" for all packages.
@@ -228,7 +225,6 @@ public class CvsTagDiff extends AbstractCvsTask {
         ignoreRemoved = b;
     }
 
-
     /**
      * Execute task.
      *
@@ -296,10 +292,9 @@ public class CvsTagDiff extends AbstractCvsTask {
      */
     private CvsTagEntry[] parseRDiff(File tmpFile) throws BuildException {
         // parse the output of the command
-        BufferedReader reader = null;
 
-        try {
-            reader = new BufferedReader(new FileReader(tmpFile));
+        try (BufferedReader reader =
+            new BufferedReader(new FileReader(tmpFile))) {
 
             // entries are of the form:
             //CVS 1.11
@@ -315,7 +310,7 @@ public class CvsTagDiff extends AbstractCvsTask {
             // File testantoine/antoine.bat is removed; TESTANTOINE_1 revision 1.1.1.1
             //
             // get rid of 'File module/"
-            Vector entries = new Vector();
+            List<CvsTagEntry> entries = new ArrayList<>();
 
             String line = reader.readLine();
 
@@ -324,6 +319,7 @@ public class CvsTagDiff extends AbstractCvsTask {
                                          packageNamePrefixLengths);
                 if (line != null) {
                     // use || in a perl like fashion
+                    @SuppressWarnings("unused")
                     boolean processed
                         =  doFileIsNew(entries, line)
                         || doFileHasChanged(entries, line)
@@ -332,24 +328,13 @@ public class CvsTagDiff extends AbstractCvsTask {
                 line = reader.readLine();
             }
 
-            CvsTagEntry[] array = new CvsTagEntry[entries.size()];
-            entries.copyInto(array);
-
-            return array;
+            return entries.toArray(new CvsTagEntry[entries.size()]);
         } catch (IOException e) {
             throw new BuildException("Error in parsing", e);
-        } finally {
-            if (reader != null) {
-                try {
-                    reader.close();
-                } catch (IOException e) {
-                    log(e.toString(), Project.MSG_ERR);
-                }
-            }
         }
     }
 
-    private boolean doFileIsNew(Vector entries, String line) {
+    private boolean doFileIsNew(List<CvsTagEntry> entries, String line) {
         int index = line.indexOf(FILE_IS_NEW);
         if (index == -1) {
             return false;
@@ -363,12 +348,12 @@ public class CvsTagDiff extends AbstractCvsTask {
             rev = line.substring(indexrev + REVISION.length());
         }
         CvsTagEntry entry = new CvsTagEntry(filename, rev);
-        entries.addElement(entry);
+        entries.add(entry);
         log(entry.toString(), Project.MSG_VERBOSE);
         return true;
     }
 
-    private boolean doFileHasChanged(Vector entries, String line) {
+    private boolean doFileHasChanged(List<CvsTagEntry> entries, String line) {
         int index = line.indexOf(FILE_HAS_CHANGED);
         if (index == -1) {
             return false;
@@ -384,12 +369,12 @@ public class CvsTagDiff extends AbstractCvsTask {
         CvsTagEntry entry = new CvsTagEntry(filename,
                                             revision,
                                             prevRevision);
-        entries.addElement(entry);
+        entries.add(entry);
         log(entry.toString(), Project.MSG_VERBOSE);
         return true;
     }
 
-    private boolean doFileWasRemoved(Vector entries, String line) {
+    private boolean doFileWasRemoved(List<CvsTagEntry> entries, String line) {
         if (ignoreRemoved) {
             return false;
         }
@@ -405,7 +390,7 @@ public class CvsTagDiff extends AbstractCvsTask {
             rev = line.substring(indexrev + REVISION.length());
         }
         CvsTagEntry entry = new CvsTagEntry(filename, null, rev);
-        entries.addElement(entry);
+        entries.add(entry);
         log(entry.toString(), Project.MSG_VERBOSE);
         return true;
     }
@@ -417,11 +402,8 @@ public class CvsTagDiff extends AbstractCvsTask {
      * @exception BuildException if an error occurs
      */
     private void writeTagDiff(CvsTagEntry[] entries) throws BuildException {
-        FileOutputStream output = null;
-        try {
-            output = new FileOutputStream(mydestfile);
-            PrintWriter writer = new PrintWriter(
-                                     new OutputStreamWriter(output, "UTF-8"));
+        try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(
+            Files.newOutputStream(mydestfile.toPath()), "UTF-8"))) {
             writer.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
             Document doc = DOMUtils.newDocument();
             Element root = doc.createElement("tagdiff");
@@ -454,14 +436,6 @@ public class CvsTagDiff extends AbstractCvsTask {
             log(uee.toString(), Project.MSG_ERR);
         } catch (IOException ioe) {
             throw new BuildException(ioe.toString(), ioe);
-        } finally {
-            if (null != output) {
-                try {
-                    output.close();
-                } catch (IOException ioe) {
-                    log(ioe.toString(), Project.MSG_ERR);
-                }
-            }
         }
     }
 
@@ -507,8 +481,8 @@ public class CvsTagDiff extends AbstractCvsTask {
         }
 
         if (null != mystartTag && null != mystartDate) {
-            throw new BuildException("Only one of start tag and start date "
-                                     + "must be set.");
+            throw new BuildException(
+                "Only one of start tag and start date must be set.");
         }
 
         if (null == myendTag && null == myendDate) {
@@ -516,8 +490,8 @@ public class CvsTagDiff extends AbstractCvsTask {
         }
 
         if (null != myendTag && null != myendDate) {
-            throw new BuildException("Only one of end tag and end date must "
-                                     + "be set.");
+            throw new BuildException(
+                "Only one of end tag and end date must be set.");
         }
     }
 
@@ -535,8 +509,7 @@ public class CvsTagDiff extends AbstractCvsTask {
                 addCommandArgument(pack);
             }
         }
-        for (Iterator iter = getModules().iterator(); iter.hasNext();) {
-            AbstractCvsTask.Module m = (AbstractCvsTask.Module) iter.next();
+        for (Module m : getModules()) {
             packageNames.add(m.getName());
             // will be added to command line in super.execute()
         }
@@ -547,7 +520,6 @@ public class CvsTagDiff extends AbstractCvsTask {
             packageNamePrefixLengths[i] = packageNamePrefixes[i].length();
         }
     }
-
 
     /**
      * removes a "File: module/" prefix if present.
@@ -560,17 +532,11 @@ public class CvsTagDiff extends AbstractCvsTask {
         if (line.length() < FILE_STRING_LENGTH) {
             return null;
         }
-        boolean matched = false;
         for (int i = 0; i < packagePrefixes.length; i++) {
             if (line.startsWith(packagePrefixes[i])) {
-                matched = true;
-                line = line.substring(prefixLengths[i]);
-                break;
+                return line.substring(prefixLengths[i]);
             }
         }
-        if (!matched) {
-            line = line.substring(FILE_STRING_LENGTH);
-        }
-        return line;
+        return line.substring(FILE_STRING_LENGTH);
     }
 }

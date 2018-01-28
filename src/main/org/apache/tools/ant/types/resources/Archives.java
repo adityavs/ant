@@ -21,6 +21,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Stack;
+import java.util.stream.Stream;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
@@ -31,7 +32,6 @@ import org.apache.tools.ant.types.Resource;
 import org.apache.tools.ant.types.ResourceCollection;
 import org.apache.tools.ant.types.TarFileSet;
 import org.apache.tools.ant.types.ZipFileSet;
-import org.apache.tools.ant.util.CollectionUtils;
 
 /**
  * A resource collection that treats all nested resources as archives
@@ -48,6 +48,8 @@ public class Archives extends DataType
     /**
      * Wrapper to identify nested resource collections as ZIP
      * archives.
+     *
+     * @return Union
      */
     public Union createZips() {
         if (isReference()) {
@@ -60,6 +62,8 @@ public class Archives extends DataType
     /**
      * Wrapper to identify nested resource collections as ZIP
      * archives.
+     *
+     * @return Union
      */
     public Union createTars() {
         if (isReference()) {
@@ -71,33 +75,30 @@ public class Archives extends DataType
 
     /**
      * Sums the sizes of nested archives.
+     *
+     * @return int
      */
+    @Override
     public int size() {
         if (isReference()) {
-            return ((Archives) getCheckedRef()).size();
+            return getCheckedRef().size();
         }
         dieOnCircularReference();
-        int total = 0;
-        for (final Iterator<ArchiveFileSet> i = grabArchives(); i.hasNext();) {
-            total += i.next().size();
-        }
-        return total;
+        return streamArchives().mapToInt(ArchiveFileSet::size).sum();
     }
 
     /**
      * Merges the nested collections.
+     *
+     * @return Iterator&lt;Resource&gt;
      */
     public Iterator<Resource> iterator() {
         if (isReference()) {
-            return ((Archives) getCheckedRef()).iterator();
+            return getCheckedRef().iterator();
         }
         dieOnCircularReference();
-        final List<Resource> l = new LinkedList<Resource>();
-        for (final Iterator<ArchiveFileSet> i = grabArchives(); i.hasNext();) {
-            l.addAll(CollectionUtils
-                     .asCollection(i.next().iterator()));
-        }
-        return l.iterator();
+        return streamArchives().flatMap(ResourceCollection::stream)
+            .map(Resource.class::cast).iterator();
     }
 
     /**
@@ -105,20 +106,22 @@ public class Archives extends DataType
      */
     public boolean isFilesystemOnly() {
         if (isReference()) {
-            return ((Archives) getCheckedRef()).isFilesystemOnly();
+            return getCheckedRef().isFilesystemOnly();
         }
         dieOnCircularReference();
+        // TODO check each archive in turn?
         return false;
     }
 
     /**
      * Overrides the base version.
+     *
      * @param r the Reference to set.
      */
     @Override
     public void setRefid(final Reference r) {
-        if (zips.getResourceCollections().size() > 0
-            || tars.getResourceCollections().size() > 0) {
+        if (!(zips.getResourceCollections().isEmpty()
+            && tars.getResourceCollections().isEmpty())) {
             throw tooManyAttributes();
         }
         super.setRefid(r);
@@ -127,10 +130,11 @@ public class Archives extends DataType
     /**
      * Implement clone.  The nested resource collections are cloned as
      * well.
+     *
      * @return a cloned instance.
      */
     @Override
-    public Object clone() {
+    public Archives clone() {
         try {
             final Archives a = (Archives) super.clone();
             a.zips = (Union) zips.clone();
@@ -146,21 +150,33 @@ public class Archives extends DataType
     /**
      * Turns all nested resources into corresponding ArchiveFileSets
      * and returns an iterator over the collected archives.
+     *
+     * @return Iterator&lt;ArchiveFileSet&gt;
      */
     protected Iterator<ArchiveFileSet> grabArchives() {
-        final List<ArchiveFileSet> l = new LinkedList<ArchiveFileSet>();
+        return streamArchives().iterator();
+    }
+
+    // TODO this is a pretty expensive operation and so the result
+    // should be cached.
+    private Stream<ArchiveFileSet> streamArchives() {
+        final List<ArchiveFileSet> l = new LinkedList<>();
         for (final Resource r : zips) {
             l.add(configureArchive(new ZipFileSet(), r));
         }
         for (final Resource r : tars) {
             l.add(configureArchive(new TarFileSet(), r));
         }
-        return l.iterator();
+        return l.stream();
     }
 
     /**
      * Configures the archivefileset based on this type's settings,
      * set the source.
+     *
+     * @param afs ArchiveFileSet
+     * @param src Resource
+     * @return ArchiveFileSet
      */
     protected ArchiveFileSet configureArchive(final ArchiveFileSet afs,
                                               final Resource src) {
@@ -172,6 +188,7 @@ public class Archives extends DataType
     /**
      * Overrides the version of DataType to recurse on all DataType
      * child elements that may have been added.
+     *
      * @param stk the stack of data types to use (recursively).
      * @param p   the project to use to dereference the references.
      * @throws BuildException on error.
@@ -189,6 +206,11 @@ public class Archives extends DataType
             pushAndInvokeCircularReferenceCheck(tars, stk, p);
             setChecked(true);
         }
+    }
+
+    @Override
+    protected Archives getCheckedRef() {
+        return (Archives) super.getCheckedRef();
     }
 
 }

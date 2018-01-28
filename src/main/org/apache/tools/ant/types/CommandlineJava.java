@@ -52,6 +52,8 @@ public class CommandlineJava implements Cloneable {
     private SysProperties sysProperties = new SysProperties();
     private Path classpath = null;
     private Path bootclasspath = null;
+    private Path modulepath = null;
+    private Path upgrademodulepath = null;
     private String vmVersion;
     private String maxMemory = null;
     /**
@@ -60,10 +62,11 @@ public class CommandlineJava implements Cloneable {
     private Assertions assertions = null;
 
     /**
-     * Indicate whether it will execute a jar file or not, in this case
-     * the first vm option must be a -jar and the 'executable' is a jar file.
+     * Indicate whether it will execute a jar file, module or main class.
+     * In this case of jar the first vm option must be a -jar and the 'executable' is a jar file.
+     * In case of module the first vm option is -m and the 'executable' is 'module/mainClass'.
      */
-     private boolean executeJar = false;
+     private ExecutableType executableType;
 
     /**
      * Whether system properties and bootclasspath shall be cloned.
@@ -79,7 +82,7 @@ public class CommandlineJava implements Cloneable {
         /** the system properties. */
         Properties sys = null;
         // CheckStyle:VisibilityModifier ON
-        private Vector<PropertySet> propertySets = new Vector<PropertySet>();
+        private Vector<PropertySet> propertySets = new Vector<>();
 
         /**
          * Get the properties as an array; this is an override of the
@@ -87,15 +90,15 @@ public class CommandlineJava implements Cloneable {
          * @return the array of definitions; may be null.
          * @throws BuildException on error.
          */
+        @Override
         public String[] getVariables() throws BuildException {
 
-            List<String> definitions = new LinkedList<String>();
+            List<String> definitions = new LinkedList<>();
             addDefinitionsToList(definitions.listIterator());
-            if (definitions.size() == 0) {
+            if (definitions.isEmpty()) {
                 return null;
-            } else {
-                return definitions.toArray(new String[definitions.size()]);
             }
+            return definitions.toArray(new String[definitions.size()]);
         }
 
         /**
@@ -179,6 +182,7 @@ public class CommandlineJava implements Cloneable {
          * @exception CloneNotSupportedException for signature.
          */
         @SuppressWarnings("unchecked")
+        @Override
         public Object clone() throws CloneNotSupportedException {
             try {
                 SysProperties c = (SysProperties) super.clone();
@@ -320,7 +324,7 @@ public class CommandlineJava implements Cloneable {
      */
     public void setJar(String jarpathname) {
         javaCommand.setExecutable(jarpathname);
-        executeJar = true;
+        executableType = ExecutableType.JAR;
     }
 
     /**
@@ -330,7 +334,7 @@ public class CommandlineJava implements Cloneable {
      * @see #getClassname()
      */
     public String getJar() {
-        if (executeJar) {
+        if (executableType == ExecutableType.JAR) {
             return javaCommand.getExecutable();
         }
         return null;
@@ -341,8 +345,14 @@ public class CommandlineJava implements Cloneable {
      * @param classname the fully qualified classname.
      */
     public void setClassname(String classname) {
-        javaCommand.setExecutable(classname);
-        executeJar = false;
+        if (executableType == ExecutableType.MODULE) {
+            javaCommand.setExecutable(createModuleClassPair(
+                    parseModuleFromModuleClassPair(javaCommand.getExecutable()),
+                    classname), false);
+        } else {
+            javaCommand.setExecutable(classname);
+            executableType = ExecutableType.CLASS;
+        }
     }
 
     /**
@@ -351,8 +361,55 @@ public class CommandlineJava implements Cloneable {
      * @see #getJar()
      */
     public String getClassname() {
-        if (!executeJar) {
-            return javaCommand.getExecutable();
+        if (executableType != null) {
+            switch (executableType) {
+                case CLASS:
+                    return javaCommand.getExecutable();
+                case MODULE:
+                    return parseClassFromModuleClassPair(javaCommand.getExecutable());
+                default:
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Set the module to execute.
+     * @param module  the module name.
+     * @since 1.9.7
+     */
+    public void setModule(final String module) {
+        if (executableType == null) {
+            javaCommand.setExecutable(module);
+        } else {
+            switch (executableType) {
+                case JAR:
+                    javaCommand.setExecutable(module, false);
+                    break;
+                case CLASS:
+                    javaCommand.setExecutable(createModuleClassPair(module,
+                            javaCommand.getExecutable()), false);
+                    break;
+                case MODULE:
+                    javaCommand.setExecutable(createModuleClassPair(module,
+                            parseClassFromModuleClassPair(javaCommand.getExecutable())), false);
+                    break;
+                default:
+            }
+        }
+        executableType = ExecutableType.MODULE;
+    }
+
+    /**
+     * Get the name of the module to be run.
+     * @return the name of the module to run or <tt>null</tt> if there is no module.
+     * @see #getJar()
+     * @see #getClassname()
+     * @since 1.9.7
+     */
+    public String getModule() {
+        if (executableType == ExecutableType.MODULE) {
+            return parseModuleFromModuleClassPair(javaCommand.getExecutable());
         }
         return null;
     }
@@ -383,6 +440,32 @@ public class CommandlineJava implements Cloneable {
     }
 
     /**
+     * Create a modulepath.
+     * @param p the project to use to create the path.
+     * @return a path to be configured.
+     * @since 1.9.7
+     */
+    public Path createModulepath(Project p) {
+        if (modulepath == null) {
+            modulepath = new Path(p);
+        }
+        return modulepath;
+    }
+
+    /**
+     * Create an upgrademodulepath.
+     * @param p the project to use to create the path.
+     * @return a path to be configured.
+     * @since 1.9.7
+     */
+    public Path createUpgrademodulepath(Project p) {
+        if (upgrademodulepath == null) {
+            upgrademodulepath = new Path(p);
+        }
+        return upgrademodulepath;
+    }
+
+    /**
      * Get the vm version.
      * @return the vm version.
      */
@@ -396,7 +479,7 @@ public class CommandlineJava implements Cloneable {
      */
     public String[] getCommandline() {
         //create the list
-        List<String> commands = new LinkedList<String>();
+        List<String> commands = new LinkedList<>();
         //fill it
         addCommandsToList(commands.listIterator());
         //convert to an array
@@ -417,8 +500,7 @@ public class CommandlineJava implements Cloneable {
         if (isCloneVm()) {
             SysProperties clonedSysProperties = new SysProperties();
             PropertySet ps = new PropertySet();
-            PropertySet.BuiltinPropertySetName sys =
-                new PropertySet.BuiltinPropertySetName();
+            PropertySet.BuiltinPropertySetName sys = new PropertySet.BuiltinPropertySetName();
             sys.setValue("system");
             ps.appendBuiltin(sys);
             clonedSysProperties.addSyspropertyset(ps);
@@ -432,8 +514,17 @@ public class CommandlineJava implements Cloneable {
         //main classpath
         if (haveClasspath()) {
             listIterator.add("-classpath");
-            listIterator.add(
-                    classpath.concatSystemClasspath("ignore").toString());
+            listIterator.add(classpath.concatSystemClasspath("ignore").toString());
+        }
+        //module path
+        if (haveModulepath()) {
+            listIterator.add("--module-path");
+            listIterator.add(modulepath.concatSystemClasspath("ignore").toString());
+        }
+        //upgrade module path
+        if (haveUpgrademodulepath()) {
+            listIterator.add("--upgrade-module-path");
+            listIterator.add(upgrademodulepath.concatSystemClasspath("ignore").toString());
         }
         //now any assertions are added
         if (getAssertions() != null) {
@@ -443,11 +534,14 @@ public class CommandlineJava implements Cloneable {
         // a bug in JDK < 1.4 that forces the jvm type to be specified as the first
         // option, it is appended here as specified in the docs even though there is
         // in fact no order.
-        if (executeJar) {
+        if (executableType == ExecutableType.JAR) {
             listIterator.add("-jar");
+        } else if (executableType == ExecutableType.MODULE) {
+            listIterator.add("-m");
         }
         // this is the classname to run as well as its arguments.
-        // in case of 'executeJar', the executable is a jar file.
+        // in case of ExecutableType.JAR, the executable is a jar file,
+        // in case of ExecutableType.MODULE, the executable is a module name, portentially including a class name.
         javaCommand.addCommandToList(listIterator);
     }
 
@@ -464,13 +558,14 @@ public class CommandlineJava implements Cloneable {
      * Get a string description.
      * @return the command line as a string.
      */
+    @Override
     public String toString() {
         return Commandline.toString(getCommandline());
     }
 
     /**
      * Return a String that describes the command and arguments suitable for
-     * verbose output before a call to <code>Runtime.exec(String[])<code>.
+     * verbose output before a call to <code>Runtime.exec(String[])</code>.
      * @return the description string.
      * @since Ant 1.5
      */
@@ -515,6 +610,7 @@ public class CommandlineJava implements Cloneable {
      *             Please dont use this, it effectively creates the
      *             entire command.
      */
+    @Deprecated
     public int size() {
         int size = getActualVMCommand().size() + javaCommand.size()
             + sysProperties.size();
@@ -531,7 +627,7 @@ public class CommandlineJava implements Cloneable {
             size++;
         }
         // jar execution requires an additional -jar option
-        if (executeJar) {
+        if (executableType == ExecutableType.JAR || executableType == ExecutableType.MODULE) {
             size++;
         }
         //assertions take up space too
@@ -574,6 +670,24 @@ public class CommandlineJava implements Cloneable {
     }
 
     /**
+     * Get the modulepath.
+     * @return modulepath or null.
+     * @since 1.9.7
+     */
+    public Path getModulepath() {
+        return modulepath;
+    }
+
+    /**
+     * Get the upgrademodulepath.
+     * @return upgrademodulepath or null.
+     * @since 1.9.7
+     */
+    public Path getUpgrademodulepath() {
+        return upgrademodulepath;
+    }
+
+    /**
      * Cache current system properties and set them to those in this
      * Java command.
      * @throws BuildException  if Security prevented this operation.
@@ -605,7 +719,8 @@ public class CommandlineJava implements Cloneable {
      * @throws BuildException if anything went wrong.
      * @throws CloneNotSupportedException never.
      */
-    public Object clone() throws CloneNotSupportedException {
+    @Override
+    public CommandlineJava clone() throws CloneNotSupportedException {
         try {
             CommandlineJava c = (CommandlineJava) super.clone();
             c.vmCommand = (Commandline) vmCommand.clone();
@@ -616,6 +731,12 @@ public class CommandlineJava implements Cloneable {
             }
             if (bootclasspath != null) {
                 c.bootclasspath = (Path) bootclasspath.clone();
+            }
+            if (modulepath != null) {
+                c.modulepath = (Path) modulepath.clone();
+            }
+            if (upgrademodulepath != null) {
+                c.upgrademodulepath = (Path) upgrademodulepath.clone();
             }
             if (assertions != null) {
                 c.assertions = (Assertions) assertions.clone();
@@ -640,10 +761,8 @@ public class CommandlineJava implements Cloneable {
      * @since Ant 1.6
      */
     public boolean haveClasspath() {
-        Path fullClasspath = classpath != null
-            ? classpath.concatSystemClasspath("ignore") : null;
-        return fullClasspath != null
-            && fullClasspath.toString().trim().length() > 0;
+        Path fullClasspath = classpath != null ? classpath.concatSystemClasspath("ignore") : null;
+        return fullClasspath != null && fullClasspath.toString().trim().length() > 0;
     }
 
     /**
@@ -661,6 +780,29 @@ public class CommandlineJava implements Cloneable {
     }
 
     /**
+     * Determine whether the modulepath has been specified.
+     * @return true if the modulepath is to be used.
+     * @since 1.9.7
+     */
+    public boolean haveModulepath() {
+        Path fullClasspath = modulepath != null
+                ? modulepath.concatSystemClasspath("ignore") : null;
+        return fullClasspath != null
+            && !fullClasspath.toString().trim().isEmpty();
+    }
+
+    /**
+     * Determine whether the upgrademodulepath has been specified.
+     * @return true if the upgrademodulepath is to be used.
+     * @since 1.9.7
+     */
+    public boolean haveUpgrademodulepath() {
+        Path fullClasspath = upgrademodulepath != null
+                ? upgrademodulepath.concatSystemClasspath("ignore") : null;
+        return fullClasspath != null && !fullClasspath.toString().trim().isEmpty();
+    }
+
+    /**
      * Calculate the bootclasspath based on the bootclasspath
      * specified, the build.sysclasspath and ant.build.clonevm magic
      * properties as well as the cloneVm attribute.
@@ -670,8 +812,7 @@ public class CommandlineJava implements Cloneable {
     private Path calculateBootclasspath(boolean log) {
         if (vmVersion.startsWith("1.1")) {
             if (bootclasspath != null && log) {
-                bootclasspath.log("Ignoring bootclasspath as "
-                                  + "the target VM doesn't support it.");
+                bootclasspath.log("Ignoring bootclasspath as the target VM doesn't support it.");
             }
         } else {
             Path b = bootclasspath;
@@ -693,7 +834,64 @@ public class CommandlineJava implements Cloneable {
      * @since 1.7
      */
     private boolean isCloneVm() {
-        return cloneVm
-            || "true".equals(System.getProperty("ant.build.clonevm"));
+        return cloneVm || Boolean.parseBoolean(System.getProperty("ant.build.clonevm"));
+    }
+
+    /**
+     * Creates JDK 9 main module command line argument.
+     * @param module the module name.
+     * @param classname the classname or <code>null</code>.
+     * @return the main module with optional classname command line argument.
+     * @since 1.9.7
+     */
+    private static String createModuleClassPair(final String module, final String classname) {
+        return classname == null ? module : String.format("%s/%s", module, classname);   //NOI18N
+    }
+
+    /**
+     * Parses a module name from JDK 9 main module command line argument.
+     * @param moduleClassPair a module with optional classname or <code>null</code>.
+     * @return the module name or <code>null</code>.
+     * @since 1.9.7
+     */
+    private static String parseModuleFromModuleClassPair(final String moduleClassPair) {
+        if (moduleClassPair == null) {
+            return null;
+        }
+        final String[] moduleAndClass = moduleClassPair.split("/");  //NOI18N
+        return moduleAndClass[0];
+    }
+
+    /**
+     * Parses a classname from JDK 9 main module command line argument.
+     * @param moduleClassPair a module with optional classname or <code>null</code>.
+     * @return the classname or <code>null</code>.
+     * @since 1.9.7
+     */
+    private static String parseClassFromModuleClassPair(final String moduleClassPair) {
+        if (moduleClassPair == null) {
+            return null;
+        }
+        final String[] moduleAndClass = moduleClassPair.split("/");  //NOI18N
+        return moduleAndClass.length == 2 ? moduleAndClass[1] : null;
+    }
+
+    /**
+     * Type of execution.
+     * @since 1.9.7
+     */
+    private enum ExecutableType {
+        /**
+         * Main class execution.
+         */
+        CLASS,
+        /**
+         * Jar file execution.
+         */
+        JAR,
+        /**
+         * Module execution.
+         */
+        MODULE
     }
 }

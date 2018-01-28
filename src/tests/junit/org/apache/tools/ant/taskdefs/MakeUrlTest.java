@@ -46,41 +46,41 @@ public class MakeUrlTest {
     @Test
     public void testEmpty() {
         try {
-			buildRule.executeTarget("testEmpty");
-			fail("BuildException expected: missing property");
-		} catch (BuildException ex) {
-			assertContains("property", ex.getMessage());
-		}
+            buildRule.executeTarget("testEmpty");
+            fail("BuildException expected: missing property");
+        } catch (BuildException ex) {
+            assertContains("property", ex.getMessage());
+        }
     }
 
     @Test
     public void testNoProperty() {
         try {
-			buildRule.executeTarget("testNoProperty");
-			fail("BuildException expected: missing property");
-		} catch (BuildException ex) {
-			assertContains("property", ex.getMessage());
-		}
+            buildRule.executeTarget("testNoProperty");
+            fail("BuildException expected: missing property");
+        } catch (BuildException ex) {
+            assertContains("property", ex.getMessage());
+        }
     }
 
     @Test
     public void testNoFile() {
         try {
-			buildRule.executeTarget("testNoFile");
-			fail("BuildException expected: missing file");
-		} catch (BuildException ex) {
-			assertContains("file", ex.getMessage());
-		}
+            buildRule.executeTarget("testNoFile");
+            fail("BuildException expected: missing file");
+        } catch (BuildException ex) {
+            assertContains("file", ex.getMessage());
+        }
     }
 
     @Test
     public void testValidation() {
         try {
-			buildRule.executeTarget("testValidation");
-			fail("BuildException expected: " + MakeUrl.ERROR_MISSING_FILE);
-		} catch (BuildException ex) {
-			assertContains("file", ex.getMessage());
-		}
+            buildRule.executeTarget("testValidation");
+            fail("BuildException expected: " + MakeUrl.ERROR_MISSING_FILE);
+        } catch (BuildException ex) {
+            assertContains("file", ex.getMessage());
+        }
     }
 
     @Test
@@ -100,7 +100,7 @@ public class MakeUrlTest {
     /**
      * test that we can round trip by opening a url that exists
      *
-     * @throws IOException
+     * @throws IOException if something goes wrong
      */
     @Test
     public void testRoundTrip() throws IOException {
@@ -142,8 +142,8 @@ public class MakeUrlTest {
     /**
      * assert that a property ends with
      *
-     * @param property
-     * @param ending
+     * @param property String
+     * @param ending String
      */
     private void assertPropertyEndsWith(String property, String ending) {
         String result = getProperty(property);
@@ -167,8 +167,8 @@ public class MakeUrlTest {
     /**
      * get a property from the project
      *
-     * @param property
-     * @return
+     * @param property String
+     * @return String
      */
     protected String getProperty(String property) {
         return buildRule.getProject().getProperty(property);

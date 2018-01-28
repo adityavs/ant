@@ -40,7 +40,7 @@ import java.io.InputStream;
  * source stream via the single byte {@link java.io.InputStream#read()
  * read()} method exclusively. Thus you should consider to use a
  * buffered source stream.</p>
- * 
+ *
  * <p>Instances of this class are not threadsafe.</p>
  */
 public class CBZip2InputStream extends InputStream implements BZip2Constants {
@@ -108,7 +108,7 @@ public class CBZip2InputStream extends InputStream implements BZip2Constants {
 
     /**
      * Constructs a new CBZip2InputStream which decompresses bytes read from
-     * the specified stream. This doesn't suppprt decompressing
+     * the specified stream. This doesn't support decompressing
      * concatenated .bz2 files.
      *
      * <p>Although BZip2 headers are marked with the magic
@@ -117,6 +117,7 @@ public class CBZip2InputStream extends InputStream implements BZip2Constants {
      * to skip the first two bytes. Otherwise this constructor will
      * throw an exception. </p>
      *
+     * @param in InputStream
      * @throws IOException
      *  if the stream content is malformed or an I/O error occurs.
      * @throws NullPointerException
@@ -173,7 +174,7 @@ public class CBZip2InputStream extends InputStream implements BZip2Constants {
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see java.io.InputStream#read(byte[], int, int)
      */
     @Override
@@ -261,7 +262,7 @@ public class CBZip2InputStream extends InputStream implements BZip2Constants {
         if (null == in) {
             throw new IOException("No InputStream");
         }
-        
+
         if (isFirstStream) {
             if (in.available() == 0) {
                 throw new IOException("Empty InputStream");
@@ -691,7 +692,6 @@ public class CBZip2InputStream extends InputStream implements BZip2Constants {
                         if (thech >= 0) {
                             bsBuffShadow = (bsBuffShadow << 8) | thech;
                             bsLiveShadow += 8;
-                            continue;
                         } else {
                             throw new IOException("unexpected end of stream");
                         }
@@ -706,7 +706,6 @@ public class CBZip2InputStream extends InputStream implements BZip2Constants {
                             if (thech >= 0) {
                                 bsBuffShadow = (bsBuffShadow << 8) | thech;
                                 bsLiveShadow += 8;
-                                continue;
                             } else {
                                 throw new IOException("unexpected end of stream");
                             }
@@ -771,7 +770,6 @@ public class CBZip2InputStream extends InputStream implements BZip2Constants {
                     if (thech >= 0) {
                         bsBuffShadow = (bsBuffShadow << 8) | thech;
                         bsLiveShadow += 8;
-                        continue;
                     } else {
                         throw new IOException("unexpected end of stream");
                     }
@@ -786,7 +784,6 @@ public class CBZip2InputStream extends InputStream implements BZip2Constants {
                         if (thech >= 0) {
                             bsBuffShadow = (bsBuffShadow << 8) | thech;
                             bsLiveShadow += 8;
-                            continue;
                         } else {
                             throw new IOException("unexpected end of stream");
                         }
@@ -822,7 +819,6 @@ public class CBZip2InputStream extends InputStream implements BZip2Constants {
                 if (thech >= 0) {
                     bsBuffShadow = (bsBuffShadow << 8) | thech;
                     bsLiveShadow += 8;
-                    continue;
                 } else {
                     throw new IOException("unexpected end of stream");
                 }
@@ -1059,4 +1055,3 @@ public class CBZip2InputStream extends InputStream implements BZip2Constants {
     }
 
 }
-

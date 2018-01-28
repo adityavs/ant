@@ -23,12 +23,11 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.Vector;
-
 import junit.framework.AssertionFailedError;
 import junit.framework.Test;
 
@@ -38,6 +37,7 @@ import org.apache.tools.ant.BuildListener;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.ProjectComponent;
 import org.apache.tools.ant.util.FileUtils;
+import org.apache.tools.ant.util.StringUtils;
 
 /**
  * <p>Collects all failing test <i>cases</i> and creates a new JUnit test class containing
@@ -53,15 +53,15 @@ import org.apache.tools.ant.util.FileUtils;
  *     }
  *     public static Test suite() {
  *         TestSuite suite = new TestSuite();
- *         suite.addTest( new B("test04") );
- *         suite.addTest( new org.D("test10") );
+ *         suite.addTest(new B("test04"));
+ *         suite.addTest(new org.D("test10"));
  *         return suite;
  *     }
  * }
  * </pre>
  *
  * Because each running test case gets its own formatter, we collect
- * the failing test cases in a static list. Because we dont have a finalizer
+ * the failing test cases in a static list. Because we don't have a finalizer
  * method in the formatters "lifecycle", we register this formatter as
  * BuildListener and generate the new java source on taskFinished event.
  *
@@ -88,7 +88,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
     private static final String LOG_PREFIX = "    [junit]";
 
     /** Class names of failed tests without duplicates. */
-    private static SortedSet/*<TestInfos>*/ failedTests = new TreeSet();
+    private static SortedSet<TestInfos> failedTests = new TreeSet<>();
 
     /** A writer for writing the generated source to. */
     private BufferedWriter writer;
@@ -97,7 +97,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
      * Location and name of the generated JUnit class.
      * Lazy instantiated via getLocationName().
      */
-    private static String locationName;
+    private String locationName;
 
     /**
      * Returns the (lazy evaluated) location for the collector class.
@@ -145,20 +145,13 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
      * @param project
      *            project reference
      */
+    @Override
     public void setProject(Project project) {
         // store project reference for logging
         super.setProject(project);
         // check if already registered
-        boolean alreadyRegistered = false;
-        Vector allListeners = project.getBuildListeners();
-        final int size = allListeners.size();
-        for (int i = 0; i < size; i++) {
-            Object listener = allListeners.get(i);
-            if (listener instanceof FailureRecorder) {
-                alreadyRegistered = true;
-                break;
-            }
-        }
+        boolean alreadyRegistered = project.getBuildListeners().stream()
+            .anyMatch(FailureRecorder.class::isInstance);
         // register if needed
         if (!alreadyRegistered) {
             verbose("Register FailureRecorder (@" + this.hashCode() + ") as BuildListener");
@@ -172,15 +165,17 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
      * Not used
      * {@inheritDoc}
      */
+    @Override
     public void endTestSuite(JUnitTest suite) throws BuildException {
     }
 
     /**
      * Add the failed test to the list.
-     * @param test the test that errored.
-     * @param throwable the reason it errored.
+     * @param test the test that erred.
+     * @param throwable the reason it erred.
      * @see junit.framework.TestListener#addError(junit.framework.Test, java.lang.Throwable)
      */
+    @Override
     public void addError(Test test, Throwable throwable) {
         failedTests.add(new TestInfos(test));
     }
@@ -193,6 +188,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
      * @see junit.framework.TestListener#addFailure(junit.framework.Test, junit.framework.AssertionFailedError)
      */
     // CheckStyle:LineLengthCheck ON
+    @Override
     public void addFailure(Test test, AssertionFailedError error) {
         failedTests.add(new TestInfos(test));
     }
@@ -201,6 +197,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
      * Not used
      * {@inheritDoc}
      */
+    @Override
     public void setOutput(OutputStream out) {
         // unused, close output file so it can be deleted before the VM exits
         if (out != System.out) {
@@ -212,6 +209,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
      * Not used
      * {@inheritDoc}
      */
+    @Override
     public void setSystemError(String err) {
     }
 
@@ -219,6 +217,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
      * Not used
      * {@inheritDoc}
      */
+    @Override
     public void setSystemOutput(String out) {
     }
 
@@ -226,6 +225,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
      * Not used
      * {@inheritDoc}
      */
+    @Override
     public void startTestSuite(JUnitTest suite) throws BuildException {
     }
 
@@ -233,6 +233,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
      * Not used
      * {@inheritDoc}
      */
+    @Override
     public void endTest(Test test) {
     }
 
@@ -240,6 +241,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
      * Not used
      * {@inheritDoc}
      */
+    @Override
     public void startTest(Test test) {
     }
 
@@ -247,7 +249,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
 
     private void writeJavaClass() {
         try {
-            File sourceFile = new File((getLocationName() + ".java"));
+            File sourceFile = new File(getLocationName() + ".java");
             verbose("Write collector class to '" + sourceFile.getAbsolutePath() + "'");
 
             if (sourceFile.exists() && !sourceFile.delete()) {
@@ -260,7 +262,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
             createClassFooter();
 
         } catch (IOException e) {
-            e.printStackTrace();
+            log(StringUtils.getStackTrace(e));
         } finally {
             FileUtils.close(writer);
         }
@@ -298,8 +300,8 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
         writer.newLine();
         writer.write("        TestSuite suite = new TestSuite();");
         writer.newLine();
-        for (Iterator iter = failedTests.iterator(); iter.hasNext();) {
-            TestInfos testInfos = (TestInfos) iter.next();
+        for (Iterator<TestInfos> iter = failedTests.iterator(); iter.hasNext();) {
+            TestInfos testInfos = iter.next();
             writer.write("        suite.addTest(");
             writer.write(String.valueOf(testInfos));
             writer.write(");");
@@ -322,6 +324,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
      * Logging facade in INFO-mode.
      * @param message Log-message
      */
+    @Override
     public void log(String message) {
         getProject().log(LOG_PREFIX + " " + message, Project.MSG_INFO);
     }
@@ -337,7 +340,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
     /**
      * TestInfos holds information about a given test for later use.
      */
-    public static class TestInfos implements Comparable {
+    public static class TestInfos implements Comparable<TestInfos> {
 
         /** The class name of the test. */
         private final String className;
@@ -362,6 +365,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
          * @see java.lang.Object#toString()
          * @see FailureRecorder#createSuiteMethod()
          */
+        @Override
         public String toString() {
             return "new " + className + "(\"" + methodName + "\")";
         }
@@ -373,17 +377,18 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
          * @see java.lang.Comparable#compareTo
          * @see SortedSet#comparator()
          */
-        public int compareTo(Object other) {
-            if (other instanceof TestInfos) {
-                TestInfos otherInfos = (TestInfos) other;
-                return toString().compareTo(otherInfos.toString());
-            } else {
-                return -1;
-            }
+        @Override
+        public int compareTo(TestInfos other) {
+            return Comparator.comparing(Object::toString).compare(this, other);
         }
+
+        @Override
         public boolean equals(Object obj) {
-            return obj instanceof TestInfos && toString().equals(obj.toString());
+            return obj == this || obj instanceof TestInfos
+                && toString().equals(obj.toString());
         }
+
+        @Override
         public int hashCode() {
             return toString().hashCode();
         }
@@ -395,6 +400,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
      * Not used
      * {@inheritDoc}
      */
+    @Override
     public void buildFinished(BuildEvent event) {
     }
 
@@ -402,6 +408,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
      * Not used
      * {@inheritDoc}
      */
+    @Override
     public void buildStarted(BuildEvent event) {
     }
 
@@ -409,6 +416,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
      * Not used
      * {@inheritDoc}
      */
+    @Override
     public void messageLogged(BuildEvent event) {
     }
 
@@ -416,6 +424,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
      * Not used
      * {@inheritDoc}
      */
+    @Override
     public void targetFinished(BuildEvent event) {
     }
 
@@ -423,15 +432,17 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
      * Not used
      * {@inheritDoc}
      */
+    @Override
     public void targetStarted(BuildEvent event) {
     }
 
     /**
-     * The task outside of this JUnitResultFormatter is the <junit> task. So all tests passed
+     * The task outside of this JUnitResultFormatter is the &lt;junit&gt; task. So all tests passed
      * and we could create the new java class.
      * @param event  not used
      * @see org.apache.tools.ant.BuildListener#taskFinished(org.apache.tools.ant.BuildEvent)
      */
+    @Override
     public void taskFinished(BuildEvent event) {
         if (!failedTests.isEmpty()) {
             writeJavaClass();
@@ -442,6 +453,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
      * Not used
      * {@inheritDoc}
      */
+    @Override
     public void taskStarted(BuildEvent event) {
     }
 

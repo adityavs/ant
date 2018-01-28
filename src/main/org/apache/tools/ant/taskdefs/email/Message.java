@@ -20,13 +20,14 @@ package org.apache.tools.ant.taskdefs.email;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.io.Reader;
+import java.nio.file.Files;
 
 import org.apache.tools.ant.ProjectComponent;
 
@@ -47,7 +48,6 @@ public class Message extends ProjectComponent {
     public Message() {
     }
 
-
     /**
      * Creates a new message based on the given string
      *
@@ -56,7 +56,6 @@ public class Message extends ProjectComponent {
     public Message(String text) {
         addText(text);
     }
-
 
     /**
      * Creates a new message using the contents of the given file.
@@ -67,7 +66,6 @@ public class Message extends ProjectComponent {
         messageSource = file;
     }
 
-
     /**
      * Adds a textual part of the message
      *
@@ -77,7 +75,6 @@ public class Message extends ProjectComponent {
         buffer.append(text);
     }
 
-
     /**
      * Sets the source file of the message
      *
@@ -86,7 +83,6 @@ public class Message extends ProjectComponent {
     public void setSrc(File src) {
         this.messageSource = src;
     }
-
 
     /**
      * Sets the content type for the message
@@ -98,7 +94,6 @@ public class Message extends ProjectComponent {
         specified = true;
     }
 
-
     /**
      * Returns the content type
      *
@@ -107,7 +102,6 @@ public class Message extends ProjectComponent {
     public String getMimeType() {
         return mimeType;
     }
-
 
     /**
      * Prints the message onto an output stream
@@ -126,17 +120,13 @@ public class Message extends ProjectComponent {
                 : new BufferedWriter(new OutputStreamWriter(ps));
             if (messageSource != null) {
                 // Read message from a file
-                Reader freader = getReader(messageSource);
-
-                try {
-                    BufferedReader in = new BufferedReader(freader);
-                    String line = null;
+                try (Reader freader = getReader(messageSource);
+                     BufferedReader in = new BufferedReader(freader)) {
+                    String line;
                     while ((line = in.readLine()) != null) {
                         out.write(getProject().replaceProperties(line));
                         out.newLine();
                     }
-                } finally {
-                    freader.close();
                 }
             } else {
                 out.write(getProject().replaceProperties(buffer.substring(0)));
@@ -147,7 +137,6 @@ public class Message extends ProjectComponent {
             //do not close the out writer as it is reused afterwards by the mail task
         }
     }
-
 
     /**
      * Returns true if the mimeType has been set.
@@ -165,8 +154,9 @@ public class Message extends ProjectComponent {
      * @since Ant 1.6
      */
     public void setCharset(String charset) {
-      this.charset = charset;
+        this.charset = charset;
     }
+
     /**
      * Returns the charset of mail message.
      *
@@ -174,7 +164,7 @@ public class Message extends ProjectComponent {
      * @since Ant 1.6
      */
     public String getCharset() {
-      return charset;
+        return charset;
     }
 
     /**
@@ -189,7 +179,7 @@ public class Message extends ProjectComponent {
 
     private Reader getReader(File f) throws IOException {
         if (inputEncoding != null) {
-            FileInputStream fis = new FileInputStream(f);
+            InputStream fis = Files.newInputStream(f.toPath());
             try {
                 return new InputStreamReader(fis, inputEncoding);
             } catch (IOException ex) {
@@ -200,4 +190,3 @@ public class Message extends ProjectComponent {
         return new FileReader(f);
     }
 }
-

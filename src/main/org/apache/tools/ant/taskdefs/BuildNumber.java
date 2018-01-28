@@ -18,13 +18,13 @@
 package org.apache.tools.ant.taskdefs;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
 import java.util.Properties;
 
 import org.apache.tools.ant.BuildException;
-import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
 import org.apache.tools.ant.util.FileUtils;
 
@@ -39,8 +39,7 @@ import org.apache.tools.ant.util.FileUtils;
  * @since Ant 1.5
  * @ant.task name="buildnumber"
  */
-public class BuildNumber
-     extends Task {
+public class BuildNumber extends Task {
     /**
      * The name of the property in which the build number is stored.
      */
@@ -54,7 +53,6 @@ public class BuildNumber
     /** The File in which the build number is stored.  */
     private File myFile;
 
-
     /**
      * The file in which the build number is stored. Defaults to
      * "build.number" if not specified.
@@ -65,14 +63,13 @@ public class BuildNumber
         myFile = file;
     }
 
-
     /**
      * Run task.
      *
      * @exception BuildException if an error occurs
      */
-    public void execute()
-         throws BuildException {
+    @Override
+    public void execute() throws BuildException {
         File savedFile = myFile; // may be altered in validate
 
         validate();
@@ -84,26 +81,12 @@ public class BuildNumber
             String.valueOf(buildNumber + 1));
 
         // Write the properties file back out
-        FileOutputStream output = null;
 
-        try {
-            output = new FileOutputStream(myFile);
-
-            final String header = "Build Number for ANT. Do not edit!";
-
-            properties.store(output, header);
+        try (OutputStream output = Files.newOutputStream(myFile.toPath())) {
+            properties.store(output, "Build Number for ANT. Do not edit!");
         } catch (final IOException ioe) {
-            final String message = "Error while writing " + myFile;
-
-            throw new BuildException(message, ioe);
+            throw new BuildException("Error while writing " + myFile, ioe);
         } finally {
-            if (null != output) {
-                try {
-                    output.close();
-                } catch (final IOException ioe) {
-                    log("error closing output stream " + ioe, Project.MSG_ERR);
-                }
-            }
             myFile = savedFile;
         }
 
@@ -111,7 +94,6 @@ public class BuildNumber
         getProject().setNewProperty(DEFAULT_PROPERTY_NAME,
             String.valueOf(buildNumber));
     }
-
 
     /**
      * Utility method to retrieve build number from properties object.
@@ -129,42 +111,27 @@ public class BuildNumber
         try {
             return Integer.parseInt(buildNumber);
         } catch (final NumberFormatException nfe) {
-            final String message =
-                myFile + " contains a non integer build number: " + buildNumber;
-            throw new BuildException(message, nfe);
+            throw new BuildException(
+                myFile + " contains a non integer build number: " + buildNumber,
+                nfe);
         }
     }
-
 
     /**
      * Utility method to load properties from file.
      *
      * @return the loaded properties
-     * @throws BuildException
+     * @throws BuildException if something goes wrong
      */
-    private Properties loadProperties()
-         throws BuildException {
-        FileInputStream input = null;
-
-        try {
+    private Properties loadProperties() throws BuildException {
+        try (InputStream input = Files.newInputStream(myFile.toPath())) {
             final Properties properties = new Properties();
-
-            input = new FileInputStream(myFile);
             properties.load(input);
             return properties;
         } catch (final IOException ioe) {
             throw new BuildException(ioe);
-        } finally {
-            if (null != input) {
-                try {
-                    input.close();
-                } catch (final IOException ioe) {
-                    log("error closing input stream " + ioe, Project.MSG_ERR);
-                }
-            }
         }
     }
-
 
     /**
      * Validate that the task parameters are valid.
@@ -181,21 +148,18 @@ public class BuildNumber
             try {
                 FILE_UTILS.createNewFile(myFile);
             } catch (final IOException ioe) {
-                final String message =
-                    myFile + " doesn't exist and new file can't be created.";
-                throw new BuildException(message, ioe);
+                throw new BuildException(
+                    myFile + " doesn't exist and new file can't be created.",
+                    ioe);
             }
         }
 
         if (!myFile.canRead()) {
-            final String message = "Unable to read from " + myFile + ".";
-            throw new BuildException(message);
+            throw new BuildException("Unable to read from " + myFile + ".");
         }
 
         if (!myFile.canWrite()) {
-            final String message = "Unable to write to " + myFile + ".";
-            throw new BuildException(message);
+            throw new BuildException("Unable to write to " + myFile + ".");
         }
     }
 }
-

@@ -20,7 +20,6 @@ package org.apache.tools.ant.taskdefs.optional.splash;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
@@ -53,6 +52,7 @@ public class SplashTask extends Task {
     private String progressRegExp = null;
     private String displayText = null;
 
+    // class instance so we'll never show two splash screens at the same time
     private static SplashScreen splash = null;
 
     /**
@@ -163,7 +163,7 @@ public class SplashTask extends Task {
             splash.setVisible(false);
             getProject().removeBuildListener(splash);
             splash.dispose();
-            splash = null;
+            splash = null; //NOSONAR
         }
 
         log("Creating new SplashScreen", Project.MSG_VERBOSE);
@@ -236,9 +236,9 @@ public class SplashTask extends Task {
 
         boolean success = false;
         if (in != null) {
-            DataInputStream din = new DataInputStream(in);
-            try {
-                ByteArrayOutputStream bout = new ByteArrayOutputStream();
+            try (
+                DataInputStream din = new DataInputStream(in);
+                ByteArrayOutputStream bout = new ByteArrayOutputStream()){
                 int data;
                 while ((data = din.read()) != -1) {
                     bout.write((byte) data);
@@ -248,7 +248,7 @@ public class SplashTask extends Task {
 
                 try {
                     ImageIcon img = new ImageIcon(bout.toByteArray());
-                    splash = new SplashScreen(img, progressRegExp, displayText);
+                    splash = new SplashScreen(img, progressRegExp, displayText); //NOSONAR
                     success = true;
                 } catch (Throwable e) {
                     logHeadless(e);
@@ -256,19 +256,10 @@ public class SplashTask extends Task {
             } catch (Exception e) {
                 throw new BuildException(e);
             } finally {
-                try {
-                    din.close();
-                } catch (IOException ioe) {
-                    // swallow if there was an error before so that
-                    // original error will be passed up
-                    if (success) {
-                        throw new BuildException(ioe);
-                    }
-                }
             }
         } else {
             try {
-                splash = new SplashScreen("Image Unavailable.", progressRegExp,
+                splash = new SplashScreen("Image Unavailable.", progressRegExp, //NOSONAR
                                           displayText);
                 success = true;
             } catch (Throwable e) {

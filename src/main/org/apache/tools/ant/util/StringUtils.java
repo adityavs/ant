@@ -19,7 +19,11 @@ package org.apache.tools.ant.util;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Vector;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import org.apache.tools.ant.BuildException;
 
@@ -93,7 +97,7 @@ public final class StringUtils {
     public static String getStackTrace(Throwable t) {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw, true);
-        t.printStackTrace(pw);
+        t.printStackTrace(pw); //NOSONAR
         pw.flush();
         pw.close();
         return sw.toString();
@@ -148,7 +152,7 @@ public final class StringUtils {
      * @since Ant 1.7
      */
     public static String resolveBackSlash(String input) {
-        StringBuffer b = new StringBuffer();
+        StringBuilder b = new StringBuilder();
         boolean backSlashSeen = false;
         for (int i = 0; i < input.length(); ++i) {
             char c = input.charAt(i);
@@ -195,7 +199,7 @@ public final class StringUtils {
      * @throws Exception if there is a problem.
      * @since Ant 1.7
      */
-    public static long parseHumanSizes(String humanSize) throws Exception {
+    public static long parseHumanSizes(String humanSize) throws Exception { //NOSONAR
         long factor = 1L;
         char s = humanSize.charAt(0);
         switch (s) {
@@ -251,9 +255,8 @@ public final class StringUtils {
     public static String removeSuffix(String string, String suffix) {
         if (string.endsWith(suffix)) {
             return string.substring(0, string.length() - suffix.length());
-        } else {
-            return string;
         }
+        return string;
     }
 
     /**
@@ -266,8 +269,55 @@ public final class StringUtils {
     public static String removePrefix(String string, String prefix) {
         if (string.startsWith(prefix)) {
             return string.substring(prefix.length());
-        } else {
-            return string;
         }
+        return string;
     }
+
+    /**
+     * Joins the string representation of the elements of a collection to
+     * a joined string with a given separator.
+     * @param collection Collection of the data to be joined (may be null)
+     * @param separator Separator between elements (may be null)
+     * @return the joined string
+     */
+    public static String join(Collection<?> collection, CharSequence separator) {
+        if (collection == null) {
+            return "";
+        }
+        return collection.stream().map(String::valueOf)
+            .collect(joining(separator));
+    }
+
+    /**
+     * Joins the string representation of the elements of an array to
+     * a joined string with a given separator.
+     * @param array Array of the data to be joined (may be null)
+     * @param separator Separator between elements (may be null)
+     * @return the joined string
+     */
+    public static String join(Object[] array, CharSequence separator) {
+        if (array == null) {
+            return "";
+        }
+        return join(Arrays.asList(array), separator);
+    }
+
+    private static Collector<CharSequence, ?, String> joining(CharSequence separator) {
+        return separator == null ? Collectors.joining() : Collectors.joining(separator);
+    }
+
+    /**
+     * @param inputString String to trim
+     * @return null if the input string is null or empty or contain only empty spaces.
+     * It returns the input string without leading and trailing spaces otherwise.
+     *
+     */
+    public static String trimToNull(String inputString) {
+        if (inputString == null) {
+            return null;
+        }
+        String tmpString = inputString.trim();
+        return tmpString.isEmpty() ? null : tmpString;
+    }
+
 }

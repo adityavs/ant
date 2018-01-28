@@ -17,14 +17,16 @@
  */
 package org.apache.tools.ant.listener;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Properties;
 
 import org.apache.tools.ant.DefaultLogger;
 import org.apache.tools.ant.Project;
+import org.apache.tools.ant.util.FileUtils;
 
 /**
  * Uses ANSI Color Code Sequences to colorize messages
@@ -161,7 +163,7 @@ public class AnsiColorLogger extends DefaultLogger {
             Properties prop = new Properties();
 
             if (userColorFile != null) {
-                in = new FileInputStream(userColorFile);
+                in = Files.newInputStream(Paths.get(userColorFile));
             } else {
                 in = getClass().getResourceAsStream(systemColorFile);
             }
@@ -193,20 +195,14 @@ public class AnsiColorLogger extends DefaultLogger {
         } catch (IOException ioe) {
             //Ignore - we will use the defaults.
         } finally {
-            if (in != null) {
-                try {
-                    in.close();
-                } catch (IOException e) {
-                    //Ignore - We do not want this to stop the build.
-                }
-            }
+            FileUtils.close(in);
         }
     }
 
     /**
      * @see DefaultLogger#printMessage
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
     @Override
     protected void printMessage(final String message,
                                 final PrintStream stream,
@@ -217,7 +213,7 @@ public class AnsiColorLogger extends DefaultLogger {
                 colorsSet = true;
             }
 
-            final StringBuffer msg = new StringBuffer(message);
+            final StringBuilder msg = new StringBuilder(message);
             switch (priority) {
                 case Project.MSG_ERR:
                     msg.insert(0, errColor);

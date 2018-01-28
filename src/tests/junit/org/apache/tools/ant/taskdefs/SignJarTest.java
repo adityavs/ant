@@ -22,7 +22,6 @@ import java.io.File;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.BuildFileRule;
-import org.apache.tools.ant.util.JavaEnvUtils;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Rule;
@@ -106,7 +105,6 @@ public class SignJarTest {
 
     @Test
     public void testTsaLocalhost() {
-        Assume.assumeTrue("Only runs on Java 1.5+", JavaEnvUtils.getJavaVersionNumber()>=15);
         try {
             buildRule.executeTarget("testTsaLocalhost");
             fail("Should have thrown exception - no TSA at localhost:0");

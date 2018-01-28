@@ -29,6 +29,7 @@ import org.apache.tools.ant.types.Commandline;
  * <p>
  * The following attributes are interpreted:
  * <table border="1">
+ *   <caption>Task attributes</caption>
  *   <tr>
  *     <th>Attribute</th>
  *     <th>Values</th>
@@ -83,6 +84,31 @@ import org.apache.tools.ant.types.Commandline;
  *
  */
 public class CCMkattr extends ClearCase {
+    /**
+     * -replace flag -- replace the existing value of the attribute
+     */
+    public static final String FLAG_REPLACE = "-replace";
+    /**
+     * -recurse flag -- process all subdirectories
+     */
+    public static final String FLAG_RECURSE = "-recurse";
+    /**
+     * -version flag -- attach attribute to specified version
+     */
+    public static final String FLAG_VERSION = "-version";
+    /**
+     * -c flag -- comment to attach to the element
+     */
+    public static final String FLAG_COMMENT = "-c";
+    /**
+     * -cfile flag -- file containing a comment to attach to the file
+     */
+    public static final String FLAG_COMMENTFILE = "-cfile";
+    /**
+     * -nc flag -- no comment is specified
+     */
+    public static final String FLAG_NOCOMMENT = "-nc";
+
     private boolean mReplace = false;
     private boolean mRecurse = false;
     private String mVersion = null;
@@ -98,10 +124,10 @@ public class CCMkattr extends ClearCase {
      * to execute the command line.
      * @throws BuildException if the command fails and failonerr is set to true
      */
+    @Override
     public void execute() throws BuildException {
         Commandline commandLine = new Commandline();
         Project aProj = getProject();
-        int result = 0;
 
         // Check for required attributes
         if (getTypeName() == null) {
@@ -131,10 +157,10 @@ public class CCMkattr extends ClearCase {
         // For debugging
         // System.out.println(commandLine.toString());
 
-        result = run(commandLine);
+        int result = run(commandLine);
         if (Execute.isFailure(result) && getFailOnErr()) {
-            String msg = "Failed executing: " + commandLine.toString();
-            throw new BuildException(msg, getLocation());
+            throw new BuildException("Failed executing: " + commandLine,
+                getLocation());
         }
     }
 
@@ -161,13 +187,11 @@ public class CCMkattr extends ClearCase {
         if (getComment() != null) {
             // -c
             getCommentCommand(cmd);
+        } else if (getCommentFile() != null) {
+            // -cfile
+            getCommentFileCommand(cmd);
         } else {
-            if (getCommentFile() != null) {
-                // -cfile
-                getCommentFileCommand(cmd);
-            } else {
-                cmd.createArgument().setValue(FLAG_NOCOMMENT);
-            }
+            cmd.createArgument().setValue(FLAG_NOCOMMENT);
         }
 
         if (getTypeName() != null) {
@@ -181,7 +205,6 @@ public class CCMkattr extends ClearCase {
         // viewpath
         cmd.createArgument().setValue(getViewPath());
     }
-
 
     /**
      * Set the replace flag
@@ -309,7 +332,6 @@ public class CCMkattr extends ClearCase {
         return mTypeValue;
     }
 
-
     /**
      * Get the 'version' command
      *
@@ -397,29 +419,4 @@ public class CCMkattr extends ClearCase {
         }
     }
 
-    /**
-     * -replace flag -- replace the existing value of the attribute
-     */
-    public static final String FLAG_REPLACE = "-replace";
-    /**
-     * -recurse flag -- process all subdirectories
-     */
-    public static final String FLAG_RECURSE = "-recurse";
-    /**
-     * -version flag -- attach attribute to specified version
-     */
-    public static final String FLAG_VERSION = "-version";
-    /**
-     * -c flag -- comment to attach to the element
-     */
-    public static final String FLAG_COMMENT = "-c";
-    /**
-     * -cfile flag -- file containing a comment to attach to the file
-     */
-    public static final String FLAG_COMMENTFILE = "-cfile";
-    /**
-     * -nc flag -- no comment is specified
-     */
-    public static final String FLAG_NOCOMMENT = "-nc";
 }
-

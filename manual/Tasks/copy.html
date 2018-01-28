@@ -24,7 +24,7 @@
 
 <body>
 
-<h2><a name="copy">Copy</a></h2>
+<h2 id="copy">Copy</h2>
 <h3>Description</h3>
 <p>Copies a file or resource collection to a new file or directory.  By default, files are
 only copied if the source file is newer than the destination file,
@@ -41,7 +41,7 @@ using a nested mapper (or the flatten attribute) may not be what you
 expect.</p>
 
 <p>
-<strong>Note: </strong>If you employ filters in your copy operation,
+<strong>Note</strong>: If you employ filters in your copy operation,
 you should limit the copy to text files. Binary files will be corrupted
 by the copy operation.
 This applies whether the filters are implicitly defined by the
@@ -50,7 +50,7 @@ operation as <a href="../Types/filterset.html">filtersets</a>.
   <em>See <a href="#encoding">encoding note</a></em>.
 </p>
 <h3>Parameters</h3>
-<table border="1" cellpadding="2" cellspacing="0">
+<table>
   <tr>
     <td valign="top"><b>Attribute</b></td>
     <td valign="top"><b>Description</b></td>
@@ -80,8 +80,8 @@ operation as <a href="../Types/filterset.html">filtersets</a>.
       specified in the <code>&lt;fileset&gt;</code>, or if the
       <code>file</code> attribute is also specified, then only
       <code>todir</code> is allowed.<br/>
-      <em>Prior to Apache Ant 1.8.2</em> the <code>tofile</code> attribute
-      only supported filesystem resources top copy from.</td>
+      Prior to Apache Ant 1.8.2, the <code>tofile</code> attribute
+      only supported <a href="../Types/resources.html#file">file resources</a> to copy from.</td>
   </tr>
   <tr>
     <td valign="top">todir</td>
@@ -103,7 +103,7 @@ operation as <a href="../Types/filterset.html">filtersets</a>.
     <td valign="top">filtering</td>
     <td valign="top">Indicates whether token filtering using the <a href="../using.html#filters">global
         build-file filters</a> should take place during the copy.
-      <em>Note</em>: Nested <code>&lt;filterset&gt;</code> elements will
+      <strong>Note</strong>: Nested <code>&lt;filterset&gt;</code> elements will
       always be used, even if this attribute is not specified, or its value is
       <code>false</code> (<code>no</code>, or <code>off</code>).</td>
     <td valign="top" align="center">No; defaults to false.</td>
@@ -186,7 +186,7 @@ operation as <a href="../Types/filterset.html">filtersets</a>.
 <p><a href="../Types/resources.html#collection">Resource
 Collection</a>s are used to select groups of files to copy.  To use a
 resource collection, the <code>todir</code> attribute must be set.</p>
-<p>Prior to Ant 1.7 only <code>&lt;fileset&gt;</code> has been
+<p>Prior to Ant 1.7, only <code>&lt;fileset&gt;</code> has been
 supported as a nested element.</p>
 
 <h4>mapper</h4>
@@ -317,7 +317,7 @@ destination directory, flattening the directory structure.</b></p>
 <p>The paragraph following the previous example applies to this
   example as well.</p>
 
-<p><strong>Unix Note:</strong> File permissions are not retained when files
+<p><strong>Unix Note</strong>: File permissions are not retained when files
 are copied; they end up with the default <code>UMASK</code> permissions
 instead. This
 is caused by the lack of any means to query or set file permissions in the
@@ -325,14 +325,14 @@ current Java runtimes. If you need a permission-preserving copy function,
 use <code>&lt;exec executable="cp" ... &gt;</code> instead.
 </p>
 
-<p><strong>Windows Note:</strong> If you copy a file to a directory
+<p><strong>Windows Note</strong>: If you copy a file to a directory
 where that file already exists, but with different casing,
 the copied file takes on the case of the original. The workaround is to
 <a href="delete.html">delete</a>
 the file in the destination directory before you copy it.
 </p>
-  <p>
-    <strong><a name="encoding">Important Encoding Note:</a></strong>
+  <p id="encoding">
+    <strong>Important Encoding Note</strong>:
     The reason that binary files when filtered get corrupted is that
     filtering involves reading in the file using a Reader class. This
     has an encoding specifying how files are encoded. There are a number
@@ -360,7 +360,7 @@ the file in the destination directory before you copy it.
     There is not much that Ant can do. It cannot figure out which
     files are binary - a UTF-8 version of Korean will have lots of
     bytes with the top bit set. It is not informed about illegal
-    character sequences by current Sun Java implementions.
+    character sequences by current Sun Java implementations.
   </p>
   <p>
     One trick for filtering containing only US-ASCII is to
@@ -369,8 +369,6 @@ the file in the destination directory before you copy it.
     Another trick is to change the LANG environment variable from
     something like "us.utf8" to "us".
   </p>
-    
 
-
-
-</body></html>
+</body>
+</html>

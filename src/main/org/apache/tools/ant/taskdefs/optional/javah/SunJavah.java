@@ -44,10 +44,11 @@ public class SunJavah implements JavahAdapter {
      * @throws BuildException if there is an error.
      * @since Ant 1.6.3
      */
+    @Override
     public boolean compile(Javah javah) throws BuildException {
         Commandline cmd = setupJavahCommand(javah);
         ExecuteJava ej = new ExecuteJava();
-        Class c = null;
+        Class<?> c;
         try {
             try {
                 // first search for the "old" javah class in 1.4.2 tools.jar
@@ -69,7 +70,7 @@ public class SunJavah implements JavahAdapter {
         return ej.fork(javah) == 0;
     }
 
-    private Commandline setupJavahCommand(Javah javah) {
+    static Commandline setupJavahCommand(Javah javah) {
         Commandline cmd = new Commandline();
 
         if (javah.getDestdir() != null) {

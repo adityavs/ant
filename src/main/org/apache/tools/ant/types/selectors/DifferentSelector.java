@@ -40,12 +40,13 @@ import org.apache.tools.ant.util.FileUtils;
  * output files, followup tasks can be driven off copies made with a different
  * selector, so their dependencies are driven on the absolute state of the
  * files, not a timestamp.
+ * </p>
  * <p>
  * Clearly, however, bulk file comparisons is inefficient; anything that can
  * use timestamps is to be preferred. If this selector must be used, use it
- * over as few files as possible, perhaps following it with an &lt;uptodate;&gt
+ * over as few files as possible, perhaps following it with an &lt;uptodate&gt;
  * to keep the descendant routines conditional.
- *
+ * </p>
  */
 public class DifferentSelector extends MappingSelector {
 
@@ -54,7 +55,6 @@ public class DifferentSelector extends MappingSelector {
     private boolean ignoreFileTimes = true;
     private boolean ignoreContents = false;
 
-
     /**
      * This flag tells the selector to ignore file times in the comparison
      * @param ignoreFileTimes if true ignore file times
@@ -62,6 +62,7 @@ public class DifferentSelector extends MappingSelector {
     public void setIgnoreFileTimes(boolean ignoreFileTimes) {
         this.ignoreFileTimes = ignoreFileTimes;
     }
+
     /**
      * This flag tells the selector to ignore contents
      * @param ignoreContents if true ignore contents
@@ -70,6 +71,7 @@ public class DifferentSelector extends MappingSelector {
     public void setIgnoreContents(boolean ignoreContents) {
         this.ignoreContents = ignoreContents;
     }
+
     /**
      * this test is our selection test that compared the file with the destfile
      * @param srcfile the source file
@@ -99,16 +101,15 @@ public class DifferentSelector extends MappingSelector {
                 return true;
             }
         }
-        if (!ignoreContents) {
-            //here do a bulk comparison
-            try {
-                return !FILE_UTILS.contentEquals(srcfile, destfile);
-            } catch (IOException e) {
-                throw new BuildException("while comparing " + srcfile + " and "
-                        + destfile, e);
-            }
-        } else {
+        if (ignoreContents) {
             return false;
+        }
+        //here do a bulk comparison
+        try {
+            return !FILE_UTILS.contentEquals(srcfile, destfile);
+        } catch (IOException e) {
+            throw new BuildException(
+                "while comparing " + srcfile + " and " + destfile, e);
         }
     }
 }

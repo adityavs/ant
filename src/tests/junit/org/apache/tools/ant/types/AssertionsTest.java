@@ -43,14 +43,14 @@ public class AssertionsTest {
 
     /**
      * runs a test and expects an assertion thrown in forked code
-     * @param target
+     * @param target String
      */
     private void expectAssertion(String target) {
         try {
             buildRule.executeTarget(target);
             fail("BuildException should have been thrown by assertion fail in task");
         } catch (BuildException ex) {
-            assertContains("assertion not thrown in "+target, "Java returned: 1", ex.getMessage());
+            assertContains("assertion not thrown in " + target, "Java returned: 1", ex.getMessage());
         }
     }
 
@@ -121,5 +121,3 @@ public class AssertionsTest {
         buildRule.executeTarget("test-junit");
     }
 }
-
-

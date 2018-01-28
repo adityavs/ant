@@ -65,7 +65,7 @@ public class MSVSSTest implements MSVSSConstants {
     private Project project;
 
     @Before
-    public void setUp(){
+    public void setUp() {
         project = new Project();
         project.setBasedir(".");
         project.init();
@@ -82,8 +82,7 @@ public class MSVSSTest implements MSVSSConstants {
     @Test
     public void testGetCommandLine() {
         String[] sTestCmdLine = {MSVSS.SS_EXE, MSVSS.COMMAND_GET, DS_VSS_PROJECT_PATH,
-                MSVSS.FLAG_OVERRIDE_WORKING_DIR + project.getBaseDir()
-                        .getAbsolutePath()
+                MSVSS.FLAG_OVERRIDE_WORKING_DIR + project.getBaseDir().getAbsolutePath()
                  + File.separator + LOCAL_PATH, MSVSS.FLAG_AUTORESPONSE_DEF,
                 MSVSS.FLAG_RECURSION, MSVSS.FLAG_VERSION + VERSION, MSVSS.FLAG_LOGIN
                  + VSS_USERNAME + "," + VSS_PASSWORD, FLAG_FILETIME_UPDATED, FLAG_SKIP_WRITABLE};
@@ -238,7 +237,7 @@ public class MSVSSTest implements MSVSSConstants {
 
         // Get today's date
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss z");
-        sdf.setTimeZone( TimeZone.getTimeZone("GMT") );
+        sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
         String expected = sdf.format(date);
 
         // Set up a VSSHistory task
@@ -270,7 +269,7 @@ public class MSVSSTest implements MSVSSConstants {
         try {
             buildRule.executeTarget(target);
             fail(failMessage);
-        } catch(BuildException ex) {
+        } catch (BuildException ex) {
             assertEquals(exceptionMessage, ex.getMessage());
         }
     }
@@ -378,8 +377,8 @@ public class MSVSSTest implements MSVSSConstants {
     @Test
     public void testCpCommandLine() {
         String[] sTestCmdLine = {MSVSS.SS_EXE, MSVSS.COMMAND_CP,
-                DS_VSS_PROJECT_PATH, MSVSS.FLAG_AUTORESPONSE_DEF, MSVSS.FLAG_LOGIN +
-                VSS_USERNAME};
+                DS_VSS_PROJECT_PATH, MSVSS.FLAG_AUTORESPONSE_DEF,
+                MSVSS.FLAG_LOGIN + VSS_USERNAME};
 
         // Set up a VSSCp task
         MSVSSCP vssCp = new MSVSSCP();
@@ -404,7 +403,7 @@ public class MSVSSTest implements MSVSSConstants {
     /**  Tests Create commandline generation.  */
     @Test
     public void testCreateCommandLine() {
-        String[] sTestCmdLine = { MSVSS.SS_EXE, MSVSS.COMMAND_CREATE,
+        String[] sTestCmdLine = {MSVSS.SS_EXE, MSVSS.COMMAND_CREATE,
                 DS_VSS_PROJECT_PATH, MSVSS.FLAG_COMMENT + SRC_COMMENT, MSVSS.FLAG_AUTORESPONSE_NO,
                 MSVSS.FLAG_QUIET, MSVSS.FLAG_LOGIN + VSS_USERNAME};
 
@@ -462,8 +461,8 @@ public class MSVSSTest implements MSVSSConstants {
 
         // Count the number of empty strings
         int cnt = 0;
-        for (int i = 0; i < genLength; i++) {
-            if (sGeneratedCmdLine[i].equals("")) {
+        for (String argument : sGeneratedCmdLine) {
+            if (argument.equals("")) {
                 cnt++;
             }
         }

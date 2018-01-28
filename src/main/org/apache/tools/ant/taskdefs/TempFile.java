@@ -80,7 +80,6 @@ public class TempFile extends Task {
         this.property = property;
     }
 
-
     /**
      * Sets the destination directory. If not set,
      * the basedir directory is used instead.
@@ -91,7 +90,6 @@ public class TempFile extends Task {
         this.destDir = destDir;
     }
 
-
     /**
      * Sets the optional prefix string for the temp file.
      *
@@ -101,11 +99,10 @@ public class TempFile extends Task {
         this.prefix = prefix;
     }
 
-
     /**
      * Sets the optional suffix string for the temp file.
      *
-     * @param  suffix  suffix including any "." , e.g ".xml"
+     * @param  suffix  suffix including any ".", e.g ".xml"
      */
     public void setSuffix(String suffix) {
         this.suffix = suffix;
@@ -149,8 +146,9 @@ public class TempFile extends Task {
      *
      * @exception  BuildException  if something goes wrong with the build
      */
+    @Override
     public void execute() throws BuildException {
-        if (property == null || property.length() == 0) {
+        if (property == null || property.isEmpty()) {
             throw new BuildException("no property specified");
         }
         if (destDir == null) {

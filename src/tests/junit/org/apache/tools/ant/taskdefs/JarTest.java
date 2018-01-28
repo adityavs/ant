@@ -48,15 +48,16 @@ import static org.junit.Assert.fail;
 /**
  */
 public class JarTest {
-    
+
     @Rule
     public final BuildFileRule buildRule = new BuildFileRule();
 
     private static String tempJar = "tmp.jar";
     private static String tempDir = "jartmp/";
-    private Reader r1, r2;
+    private Reader r1;
+    private Reader r2;
 
-    
+
     @Before
     public void setUp() {
         buildRule.configureProject("src/etc/testcases/taskdefs/jar.xml");
@@ -82,31 +83,31 @@ public class JarTest {
     @Test
     public void test1() {
         try {
-			buildRule.executeTarget("test1");
-			fail("BuildException expected: required argument not specified");
-		} catch (BuildException ex) {
-			//TODO assert value
-		}
+            buildRule.executeTarget("test1");
+            fail("BuildException expected: required argument not specified");
+        } catch (BuildException ex) {
+            //TODO assert value
+        }
     }
 
     @Test
     public void test2() {
         try {
-			buildRule.executeTarget("test2");
-			fail("BuildException expected: manifest file does not exist");
-		} catch (BuildException ex) {
-			//TODO assert value
-		}
+            buildRule.executeTarget("test2");
+            fail("BuildException expected: manifest file does not exist");
+        } catch (BuildException ex) {
+            //TODO assert value
+        }
     }
 
     @Test
     public void test3() {
         try {
-			buildRule.executeTarget("test3");
-			fail("BuildException expected: Unrecognized whenempty attribute: format C: /y");
-		} catch (BuildException ex) {
-			//TODO assert value
-		}
+            buildRule.executeTarget("test3");
+            fail("BuildException expected: Unrecognized whenempty attribute: format C: /y");
+        } catch (BuildException ex) {
+            //TODO assert value
+        }
     }
 
     private File getOutputDir() {
@@ -137,7 +138,7 @@ public class JarTest {
 
         // move the modified date back a couple of seconds rather than delay the test on each run
         Assume.assumeTrue(jarFile.setLastModified(jarFile.lastModified()
-                - (FileUtils.getFileUtils().getFileTimestampGranularity() * 3)));
+                - FileUtils.getFileUtils().getFileTimestampGranularity() * 3));
         long jarModifiedDate = jarFile.lastModified();
 
         buildRule.executeTarget(secondTarget);
@@ -169,13 +170,13 @@ public class JarTest {
 
     private void testRecreate(String firstTarget, String secondTarget) {
         //Move the modified date on all input back a couple of seconds rather then delay the test to achieve a similar effect
-        FileUtilities.rollbackTimetamps(buildRule.getProject().getBaseDir(), 5);
+        FileUtilities.rollbackTimestamps(buildRule.getProject().getBaseDir(), 5);
 
         buildRule.executeTarget(firstTarget);
         File jarFile = new File(getOutputDir(), tempJar);
 
         //Move the modified date back a couple of seconds rather then delay the test to achieve a similar effect
-        FileUtilities.rollbackTimetamps(buildRule.getOutputDir(), 5);
+        FileUtilities.rollbackTimestamps(buildRule.getOutputDir(), 5);
 
         long jarModifiedDate = jarFile.lastModified();
         buildRule.executeTarget(secondTarget);
@@ -329,47 +330,47 @@ public class JarTest {
     public void testIndexJarsPlusJarMarker() {
         buildRule.executeTarget("testIndexJarsPlusJarMarker");
     }
-    
+
     @Test
     public void testNoVersionInfoFail() {
         try {
-			buildRule.executeTarget("testNoVersionInfoFail");
-			fail("BuildException expected: Manifest Implemention information missing.");
-		} catch (BuildException ex) {
-			assertContains("No Implementation-Title set.", ex.getMessage());
-		}
+            buildRule.executeTarget("testNoVersionInfoFail");
+            fail("BuildException expected: Manifest Implementation information missing.");
+        } catch (BuildException ex) {
+            assertContains("No Implementation-Title set.", ex.getMessage());
+        }
     }
-    
+
     @Test
     public void testNoVersionInfoIgnore() {
         buildRule.executeTarget("testNoVersionInfoIgnore");
-        assertTrue(buildRule.getFullLog().indexOf("No Implementation-Title set.") > -1 );
-        assertTrue(buildRule.getFullLog().indexOf("No Implementation-Version set.") > -1 );
-        assertTrue(buildRule.getFullLog().indexOf("No Implementation-Vendor set.") > -1 );
+        assertTrue(buildRule.getFullLog().indexOf("No Implementation-Title set.") > -1);
+        assertTrue(buildRule.getFullLog().indexOf("No Implementation-Version set.") > -1);
+        assertTrue(buildRule.getFullLog().indexOf("No Implementation-Vendor set.") > -1);
     }
 
     @Test
     public void testNoVersionInfoWarn() {
         buildRule.executeTarget("testNoVersionInfoWarn");
-        assertTrue(buildRule.getLog().indexOf("No Implementation-Title set.") > -1 );
-        assertTrue(buildRule.getLog().indexOf("No Implementation-Version set.") > -1 );
-        assertTrue(buildRule.getLog().indexOf("No Implementation-Vendor set.") > -1 );
+        assertTrue(buildRule.getLog().indexOf("No Implementation-Title set.") > -1);
+        assertTrue(buildRule.getLog().indexOf("No Implementation-Version set.") > -1);
+        assertTrue(buildRule.getLog().indexOf("No Implementation-Vendor set.") > -1);
     }
 
     @Test
     public void testNoVersionInfoNoStrict() {
         buildRule.executeTarget("testNoVersionInfoNoStrict");
-        assertFalse(buildRule.getLog().indexOf("No Implementation-Title set.") > -1 );
-        assertFalse(buildRule.getLog().indexOf("No Implementation-Version set.") > -1 );
-        assertFalse(buildRule.getLog().indexOf("No Implementation-Vendor set.") > -1 );
+        assertFalse(buildRule.getLog().indexOf("No Implementation-Title set.") > -1);
+        assertFalse(buildRule.getLog().indexOf("No Implementation-Version set.") > -1);
+        assertFalse(buildRule.getLog().indexOf("No Implementation-Vendor set.") > -1);
     }
-    
+
     @Test
     public void testHasVersionInfo() {
         buildRule.executeTarget("testHasVersionInfo");
-        assertFalse(buildRule.getLog().indexOf("No Implementation-Title set.") > -1 );
-        assertFalse(buildRule.getLog().indexOf("No Implementation-Version set.") > -1 );
-        assertFalse(buildRule.getLog().indexOf("No Implementation-Vendor set.") > -1 );
+        assertFalse(buildRule.getLog().indexOf("No Implementation-Title set.") > -1);
+        assertFalse(buildRule.getLog().indexOf("No Implementation-Version set.") > -1);
+        assertFalse(buildRule.getLog().indexOf("No Implementation-Vendor set.") > -1);
     }
-    
+
 }

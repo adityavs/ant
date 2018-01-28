@@ -17,11 +17,11 @@
  */
 
 /*
- * Since the initial version of this file was deveolped on the clock on
+ * Since the initial version of this file was developed on the clock on
  * an NSF grant I should say the following boilerplate:
  *
  * This material is based upon work supported by the National Science
- * Foundaton under Grant No. EIA-0196404. Any opinions, findings, and
+ * Foundation under Grant No. EIA-0196404. Any opinions, findings, and
  * conclusions or recommendations expressed in this material are those
  * of the author and do not necessarily reflect the views of the
  * National Science Foundation.
@@ -63,6 +63,7 @@ public class Chgrp extends AbstractAccessTask {
      * Ensure that all the required arguments and other conditions have
      * been set.
      */
+    @Override
     protected void checkConfiguration() {
         if (!haveGroup) {
             throw new BuildException("Required attribute group not set in "
@@ -76,6 +77,7 @@ public class Chgrp extends AbstractAccessTask {
      *
      * @param e User supplied executable that we won't accept.
      */
+    @Override
     public void setExecutable(String e) {
         throw new BuildException(getTaskType()
                                  + " doesn\'t support the executable"

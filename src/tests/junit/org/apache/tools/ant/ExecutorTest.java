@@ -31,34 +31,46 @@ import org.junit.Test;
  * Executor tests
  */
 public class ExecutorTest implements BuildListener  {
-    
-	private static final String SINGLE_CHECK
+
+    private static final String SINGLE_CHECK
         = "org.apache.tools.ant.helper.SingleCheckExecutor";
     private static final String IGNORE_DEPS
         = "org.apache.tools.ant.helper.IgnoreDependenciesExecutor";
-    
+
     private static final Vector<String> TARGET_NAMES;
     static {
         TARGET_NAMES = new Vector<String>();
         TARGET_NAMES.add("a");
         TARGET_NAMES.add("b");
     }
-    
+
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
-    
+
     private int targetCount;
 
     /* BuildListener stuff */
     public void targetStarted(BuildEvent event) {
         targetCount++;
     }
-    public void buildStarted(BuildEvent event) {}
-    public void buildFinished(BuildEvent event) {}
-    public void targetFinished(BuildEvent event) {}
-    public void taskStarted(BuildEvent event) {}
-    public void taskFinished(BuildEvent event) {}
-    public void messageLogged(BuildEvent event) {}
+
+    public void buildStarted(BuildEvent event) {
+    }
+
+    public void buildFinished(BuildEvent event) {
+    }
+
+    public void targetFinished(BuildEvent event) {
+    }
+
+    public void taskStarted(BuildEvent event) {
+    }
+
+    public void taskFinished(BuildEvent event) {
+    }
+
+    public void messageLogged(BuildEvent event) {
+    }
 
     @Before
     public void setUp() {
@@ -168,4 +180,3 @@ public class ExecutorTest implements BuildListener  {
     }
 
 }
-

@@ -18,8 +18,8 @@
 package org.apache.tools.ant.taskdefs.optional;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Vector;
 
 import org.apache.tools.ant.AntClassLoader;
@@ -145,10 +145,10 @@ public class XMLValidateTask extends Task {
      * Specify the class name of the SAX parser to be used. (optional)
      * @param className should be an implementation of SAX2
      * <code>org.xml.sax.XMLReader</code> or SAX2 <code>org.xml.sax.Parser</code>.
-     * <p> if className is an implementation of
+     * <p>If className is an implementation of
      * <code>org.xml.sax.Parser</code>, {@link #setLenient(boolean)},
-     * will be ignored.
-     * <p> if not set, the default will be used.
+     * will be ignored.</p>
+     * <p>If not set, the default will be used.</p>
      * @see org.xml.sax.XMLReader
      * @see org.xml.sax.Parser
      */
@@ -287,42 +287,40 @@ public class XMLValidateTask extends Task {
      */
     public void execute() throws BuildException {
         try {
-        int fileProcessed = 0;
-        if (file == null && (filesets.size() == 0)) {
-            throw new BuildException(
-                "Specify at least one source - " + "a file or a fileset.");
-        }
+            int fileProcessed = 0;
+            if (file == null && (filesets.size() == 0)) {
+                throw new BuildException(
+                    "Specify at least one source - " + "a file or a fileset.");
+            }
 
-
-
-        if (file != null) {
-            if (file.exists() && file.canRead() && file.isFile()) {
-                doValidate(file);
-                fileProcessed++;
-            } else {
-                String errorMsg = "File " + file + " cannot be read";
-                if (failOnError) {
-                    throw new BuildException(errorMsg);
+            if (file != null) {
+                if (file.exists() && file.canRead() && file.isFile()) {
+                    doValidate(file);
+                    fileProcessed++;
                 } else {
-                    log(errorMsg, Project.MSG_ERR);
+                    String errorMsg = "File " + file + " cannot be read";
+                    if (failOnError) {
+                        throw new BuildException(errorMsg);
+                    } else {
+                        log(errorMsg, Project.MSG_ERR);
+                    }
                 }
             }
-        }
 
-        final int size = filesets.size();
-        for (int i = 0; i < size; i++) {
+            final int size = filesets.size();
+            for (int i = 0; i < size; i++) {
 
-            FileSet fs = (FileSet) filesets.elementAt(i);
-            DirectoryScanner ds = fs.getDirectoryScanner(getProject());
-            String[] files = ds.getIncludedFiles();
+                FileSet fs = (FileSet) filesets.elementAt(i);
+                DirectoryScanner ds = fs.getDirectoryScanner(getProject());
+                String[] files = ds.getIncludedFiles();
 
-            for (int j = 0; j < files.length; j++) {
-                File srcFile = new File(fs.getDir(getProject()), files[j]);
-                doValidate(srcFile);
-                fileProcessed++;
+                for (int j = 0; j < files.length; j++) {
+                    File srcFile = new File(fs.getDir(getProject()), files[j]);
+                    doValidate(srcFile);
+                    fileProcessed++;
+                }
             }
-        }
-        onSuccessfulValidation(fileProcessed);
+            onSuccessfulValidation(fileProcessed);
         } finally {
             cleanup();
         }
@@ -552,7 +550,7 @@ public class XMLValidateTask extends Task {
         try {
             log("Validating " + afile.getName() + "... ", Project.MSG_VERBOSE);
             errorHandler.init(afile);
-            InputSource is = new InputSource(new FileInputStream(afile));
+            InputSource is = new InputSource(Files.newInputStream(afile.toPath()));
             String uri = FILE_UTILS.toURI(afile.getAbsolutePath());
             is.setSystemId(uri);
             xmlReader.parse(is);

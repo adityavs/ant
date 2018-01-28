@@ -18,15 +18,15 @@
 package org.apache.tools.ant;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.nio.file.Files;
 import java.util.Calendar;
 import java.util.Enumeration;
 import java.util.Properties;
@@ -42,6 +42,7 @@ import org.apache.tools.ant.util.FileUtils;
 import org.apache.tools.ant.util.JAXPUtils;
 import org.apache.tools.ant.util.JavaEnvUtils;
 import org.apache.tools.ant.util.ProxySetup;
+import org.apache.tools.ant.util.java15.ProxyDiagnostics;
 import org.xml.sax.XMLReader;
 
 /**
@@ -52,9 +53,6 @@ import org.xml.sax.XMLReader;
  * @since Ant 1.5
  */
 public final class Diagnostics {
-
-    /** the version number for java 1.5 returned from JavaEnvUtils */
-    private static final int JAVA_1_5_NUMBER = 15;
 
     /**
      * value for which a difference between clock and temp file time triggers
@@ -112,8 +110,7 @@ public final class Diagnostics {
         if (home == null) {
             return null;
         }
-        File libDir = new File(home, "lib");
-        return listJarFiles(libDir);
+        return listJarFiles(new File(home, "lib"));
 
     }
 
@@ -123,13 +120,8 @@ public final class Diagnostics {
      * @return array of files (or null for no such directory)
      */
     private static File[] listJarFiles(File libDir) {
-        FilenameFilter filter = new FilenameFilter() {
-            public boolean accept(File dir, String name) {
-                return name.endsWith(".jar");
-            }
-        };
-        File[] files  = libDir.listFiles(filter);
-        return files;
+        return libDir
+            .listFiles((FilenameFilter) (dir, name) -> name.endsWith(".jar"));
     }
 
     /**
@@ -172,8 +164,7 @@ public final class Diagnostics {
             return "Could not create an XML Parser";
         }
         // check to what is in the classname
-        String saxParserName = saxParser.getClass().getName();
-        return saxParserName;
+        return saxParser.getClass().getName();
     }
 
     /**
@@ -186,8 +177,7 @@ public final class Diagnostics {
             return "Could not create an XSLT Processor";
         }
         // check to what is in the classname
-        String processorName = transformer.getClass().getName();
-        return processorName;
+        return transformer.getClass().getName();
     }
 
     /**
@@ -195,8 +185,12 @@ public final class Diagnostics {
      * @return parser or null for trouble
      */
     private static SAXParser getSAXParser() {
-        SAXParserFactory saxParserFactory = SAXParserFactory.newInstance();
-        if (saxParserFactory == null) {
+        SAXParserFactory saxParserFactory = null;
+        try {
+            saxParserFactory = SAXParserFactory.newInstance();
+        } catch (Exception e) {
+            // ignore
+            ignoreThrowable(e);
             return null;
         }
         SAXParser saxParser = null;
@@ -215,17 +209,15 @@ public final class Diagnostics {
      */
     private static Transformer getXSLTProcessor() {
         TransformerFactory transformerFactory = TransformerFactory.newInstance();
-        if (transformerFactory == null) {
-            return null;
+        if (transformerFactory != null) {
+            try {
+                return transformerFactory.newTransformer();
+            } catch (Exception e) {
+                // ignore
+                ignoreThrowable(e);
+            }
         }
-        Transformer transformer = null;
-        try {
-            transformer = transformerFactory.newTransformer();
-        } catch (Exception e) {
-            // ignore
-            ignoreThrowable(e);
-        }
-        return transformer;
+        return null;
     }
 
     /**
@@ -280,7 +272,7 @@ public final class Diagnostics {
     /**
      * ignore exceptions. This is to allow future
      * implementations to log at a verbose level
-     * @param thrown
+     * @param thrown a Throwable to ignore
      */
     private static void ignoreThrowable(Throwable thrown) {
     }
@@ -376,7 +368,7 @@ public final class Diagnostics {
     /**
      * Get the value of a system property. If a security manager
      * blocks access to a property it fills the result in with an error
-     * @param key
+     * @param key a property key
      * @return the system property's value or error text
      * @see #ERROR_PROPERTY_ACCESS_BLOCKED
      */
@@ -471,7 +463,7 @@ public final class Diagnostics {
         // report error if something weird happens...this is diagnostic.
         if (error != null) {
             out.println("Error while running org.apache.env.Which");
-            error.printStackTrace();
+            error.printStackTrace(out); //NOSONAR
         }
     }
 
@@ -522,7 +514,7 @@ public final class Diagnostics {
 
     /**
      * tell the user about the XML parser
-     * @param out
+     * @param out a PrintStream
      */
     private static void doReportParserInfo(PrintStream out) {
         String parserName = getXMLParserName();
@@ -534,7 +526,7 @@ public final class Diagnostics {
 
     /**
      * tell the user about the XSLT processor
-     * @param out
+     * @param out a PrintStream
      */
     private static void doReportXSLTProcessorInfo(PrintStream out) {
         String processorName = getXSLTProcessorName();
@@ -558,7 +550,7 @@ public final class Diagnostics {
      * try and create a temp file in our temp dir; this
      * checks that it has space and access.
      * We also do some clock reporting.
-     * @param out
+     * @param out a PrintStream
      */
     private static void doReportTempDir(PrintStream out) {
         String tempdir = System.getProperty("java.io.tmpdir");
@@ -575,12 +567,12 @@ public final class Diagnostics {
         //create the file
         long now = System.currentTimeMillis();
         File tempFile = null;
-        FileOutputStream fileout = null;
-        FileInputStream filein = null;
+        OutputStream fileout = null;
+        InputStream filein = null;
         try {
             tempFile = File.createTempFile("diag", "txt", tempDirectory);
             //do some writing to it
-            fileout = new FileOutputStream(tempFile);
+            fileout = Files.newOutputStream(tempFile.toPath());
             byte[] buffer = new byte[KILOBYTE];
             for (int i = 0; i < TEST_FILE_SIZE; i++) {
                 fileout.write(buffer);
@@ -590,7 +582,7 @@ public final class Diagnostics {
 
             // read to make sure the file has been written completely
             Thread.sleep(1000);
-            filein = new FileInputStream(tempFile);
+            filein = Files.newInputStream(tempFile.toPath());
             int total = 0;
             int read = 0;
             while ((read = filein.read(buffer, 0, KILOBYTE)) > 0) {
@@ -691,25 +683,10 @@ public final class Diagnostics {
         printProperty(out, ProxySetup.SOCKS_PROXY_USERNAME);
         printProperty(out, ProxySetup.SOCKS_PROXY_PASSWORD);
 
-        if (JavaEnvUtils.getJavaVersionNumber() < JAVA_1_5_NUMBER) {
-            return;
-        }
         printProperty(out, ProxySetup.USE_SYSTEM_PROXIES);
-        final String proxyDiagClassname = "org.apache.tools.ant.util.java15.ProxyDiagnostics";
-        try {
-            Class<?> proxyDiagClass = Class.forName(proxyDiagClassname);
-            Object instance = proxyDiagClass.newInstance();
-            out.println("Java1.5+ proxy settings:");
-            out.println(instance.toString());
-        } catch (ClassNotFoundException e) {
-            //not included, do nothing
-        } catch (IllegalAccessException e) {
-            //not included, do nothing
-        } catch (InstantiationException e) {
-            //not included, do nothing
-        } catch (NoClassDefFoundError e) {
-            // not included, to nothing
-        }
+        ProxyDiagnostics proxyDiag = new ProxyDiagnostics();
+        out.println("Java1.5+ proxy settings:");
+        out.println(proxyDiag.toString());
     }
 
 }

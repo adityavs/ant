@@ -26,8 +26,7 @@ import static org.junit.Assert.fail;
 import static org.junit.Assert.assertNotNull;
 
 /**
- * JUnit 3 testcases for org.apache.tools.ant.CommandLine
- *
+ * JUnit 4 testcases for org.apache.tools.ant.CommandLine
  */
 public class CommandlineTest {
 
@@ -35,8 +34,8 @@ public class CommandlineTest {
     public void testTokenizer() {
         String[] s = Commandline.translateCommandline("1 2 3");
         assertEquals("Simple case", 3, s.length);
-        for (int i=0; i<3; i++) {
-            assertEquals(""+(i+1), s[i]);
+        for (int i = 0; i < 3; i++) {
+            assertEquals("" + (i + 1), s[i]);
         }
 
         s = Commandline.translateCommandline("");
@@ -59,8 +58,7 @@ public class CommandlineTest {
 
         s = Commandline.translateCommandline("1 \"2\'3\" 4");
         assertEquals("Case with double quotes around single quote", 3, s.length);
-        assertEquals("Double quotes stripped, single quote included", "2\'3",
-                     s[1]);
+        assertEquals("Double quotes stripped, single quote included", "2\'3", s[1]);
 
         s = Commandline.translateCommandline("1 \'2 3\' 4");
         assertEquals("Case with single quotes and whitespace", 3, s.length);
@@ -68,8 +66,7 @@ public class CommandlineTest {
 
         s = Commandline.translateCommandline("1 \'2\"3\' 4");
         assertEquals("Case with single quotes around double quote", 3, s.length);
-        assertEquals("Single quotes stripped, double quote included", "2\"3",
-                     s[1]);
+        assertEquals("Single quotes stripped, double quote included", "2\"3", s[1]);
 
         // \ doesn't have a special meaning anymore - this is different from
         // what the Unix sh does but causes a lot of problems on DOS

@@ -19,8 +19,7 @@
 package org.apache.tools.ant.taskdefs.optional.jsp;
 
 import java.io.File;
-import java.util.Date;
-import java.util.Enumeration;
+import java.time.Instant;
 import java.util.Vector;
 
 import org.apache.tools.ant.AntClassLoader;
@@ -36,22 +35,22 @@ import org.apache.tools.ant.types.Reference;
 /**
  * Runs a JSP compiler.
  *
- * <p> This task takes the given jsp files and compiles them into java
- * files. It is then up to the user to compile the java files into classes.
+ * <p>This task takes the given jsp files and compiles them into java
+ * files. It is then up to the user to compile the java files into classes.</p>
  *
- * <p> The task requires the srcdir and destdir attributes to be
+ * <p>The task requires the srcdir and destdir attributes to be
  * set. This Task is a MatchingTask, so the files to be compiled can be
  * specified using includes/excludes attributes or nested include/exclude
  * elements. Optional attributes are verbose (set the verbosity level passed
  * to jasper), package (name of the destination package for generated java
  * classes and classpath (the classpath to use when running the jsp
- * compiler).
- * <p> This task supports the nested elements classpath (A Path) and
- * classpathref (A Reference) which can be used in preference to the
+ * compiler).</p>
+ * <p>This task supports the nested elements classpath (a Path) and
+ * classpathref (a Reference) which can be used in preference to the
  * attribute classpath, if the jsp compiler is not already in the ant
- * classpath.
+ * classpath.</p>
  *
- * <p><h4>Usage</h4>
+ * <h2>Usage</h2>
  * <pre>
  * &lt;jspc srcdir="${basedir}/src/war"
  *       destdir="${basedir}/gensrc"
@@ -61,7 +60,7 @@ import org.apache.tools.ant.types.Reference;
  * &lt;/jspc&gt;
  * </pre>
  *
- * <p> Large Amount of cutting and pasting from the Javac task...
+ * <p>Large amount of cutting and pasting from the Javac task...</p>
  * @since 1.5
  */
 public class JspC extends MatchingTask {
@@ -80,8 +79,8 @@ public class JspC extends MatchingTask {
     private boolean mapped;
     private int verbose = 0;
     // CheckStyle:VisibilityModifier OFF - bc
-    protected Vector compileList = new Vector();
-    Vector javaFiles = new Vector();
+    protected Vector<String> compileList = new Vector<>();
+    Vector<File> javaFiles = new Vector<>();
 
     /**
      *  flag to control action on execution trouble
@@ -209,6 +208,7 @@ public class JspC extends MatchingTask {
     public String getIeplugin() {
         return iepluginid;
     }
+
     /**
      * Java Plugin CLASSID for Internet Explorer
      * @param iepluginid the id to use.
@@ -271,7 +271,6 @@ public class JspC extends MatchingTask {
     public File getUriroot() {
         return uriroot;
     }
-
 
     /**
      * Set the classpath to be used for this compilation.
@@ -413,7 +412,7 @@ public class JspC extends MatchingTask {
      * get the list of files to compile
      * @return the list of files.
      */
-    public Vector getCompileList() {
+    public Vector<String> getCompileList() {
         return compileList;
     }
 
@@ -422,6 +421,7 @@ public class JspC extends MatchingTask {
      * have changed and hand them off to a jsp compiler
      * @throws BuildException on error.
      */
+    @Override
     public void execute()
         throws BuildException {
 
@@ -439,13 +439,10 @@ public class JspC extends MatchingTask {
 
         File dest = getActualDestDir();
 
-        AntClassLoader al = null;
-        try {
+        try (AntClassLoader al = getProject().createClassLoader(compilerClasspath)) {
             //bind to a compiler
             JspCompilerAdapter compiler =
-                JspCompilerAdapterFactory
-                .getCompiler(compilerName, this,
-                             al = getProject().createClassLoader(compilerClasspath));
+                JspCompilerAdapterFactory.getCompiler(compilerName, this, al);
 
             //if we are a webapp, hand off to the compiler, which had
             //better handle it
@@ -459,7 +456,7 @@ public class JspC extends MatchingTask {
                 throw new BuildException("srcdir attribute must be set!",
                                          getLocation());
             }
-            String [] list = src.list();
+            String[] list = src.list();
             if (list.length == 0) {
                 throw new BuildException("srcdir attribute must be set!",
                                          getLocation());
@@ -499,7 +496,7 @@ public class JspC extends MatchingTask {
             log("compiling " + compileList.size() + " files",
                 Project.MSG_VERBOSE);
 
-            if (compileList.size() > 0) {
+            if (!compileList.isEmpty()) {
 
                 log("Compiling " + compileList.size() + " source file"
                     + (compileList.size() == 1 ? "" : "s")
@@ -507,16 +504,10 @@ public class JspC extends MatchingTask {
                     + dest);
                 doCompilation(compiler);
 
+            } else if (filecount == 0) {
+                log("there were no files to compile", Project.MSG_INFO);
             } else {
-                if (filecount == 0) {
-                    log("there were no files to compile", Project.MSG_INFO);
-                } else {
-                    log("all files are up to date", Project.MSG_VERBOSE);
-                }
-            }
-        } finally {
-            if (al != null) {
-                al.cleanup();
+                log("all files are up to date", Project.MSG_VERBOSE);
             }
         }
     }
@@ -526,15 +517,11 @@ public class JspC extends MatchingTask {
      * this is destDir or it id destDir + the package name
      */
     private File getActualDestDir() {
-        File dest = null;
         if (packageName == null) {
-            dest = destDir;
-        } else {
-            String path = destDir.getPath() + File.separatorChar
-                + packageName.replace('.', File.separatorChar);
-            dest = new File(path);
+            return destDir;
         }
-        return dest;
+        return new File(destDir.getPath() + File.separatorChar
+            + packageName.replace('.', File.separatorChar));
     }
 
     /**
@@ -549,9 +536,8 @@ public class JspC extends MatchingTask {
         if (!compiler.execute()) {
             if (failOnError) {
                 throw new BuildException(FAIL_MSG, getLocation());
-            } else {
-                log(FAIL_MSG, Project.MSG_ERR);
             }
+            log(FAIL_MSG, Project.MSG_ERR);
         }
     }
 
@@ -573,23 +559,19 @@ public class JspC extends MatchingTask {
     protected void scanDir(File srcDir, File dest, JspMangler mangler,
                            String[] files) {
 
-        long now = (new Date()).getTime();
+        long now = Instant.now().toEpochMilli();
 
-        for (int i = 0; i < files.length; i++) {
-            String filename = files[i];
+        for (String filename : files) {
             File srcFile = new File(srcDir, filename);
             File javaFile = mapToJavaFile(mangler, srcFile, srcDir, dest);
             if (javaFile == null) {
                 continue;
             }
-
             if (srcFile.lastModified() > now) {
                 log("Warning: file modified in the future: " + filename,
                     Project.MSG_WARN);
             }
-            boolean shouldCompile = false;
-            shouldCompile = isCompileNeeded(srcFile, javaFile);
-            if (shouldCompile) {
+            if (isCompileNeeded(srcFile, javaFile)) {
                 compileList.addElement(srcFile.getAbsolutePath());
                 javaFiles.addElement(javaFile);
             }
@@ -619,25 +601,20 @@ public class JspC extends MatchingTask {
             log("Compiling " + srcFile.getPath()
                 + " because java file " + javaFile.getPath()
                 + " does not exist", Project.MSG_VERBOSE);
-        } else {
-            if (srcFile.lastModified() > javaFile.lastModified()) {
-                shouldCompile = true;
-                log("Compiling " + srcFile.getPath()
-                    + " because it is out of date with respect to "
-                    + javaFile.getPath(),
-                    Project.MSG_VERBOSE);
-            } else {
-                if (javaFile.length() == 0) {
-                    shouldCompile = true;
-                    log("Compiling " + srcFile.getPath()
-                        + " because java file " + javaFile.getPath()
-                        + " is empty", Project.MSG_VERBOSE);
-                }
-            }
+        } else if (srcFile.lastModified() > javaFile.lastModified()) {
+            shouldCompile = true;
+            log("Compiling " + srcFile.getPath()
+                + " because it is out of date with respect to "
+                + javaFile.getPath(),
+                Project.MSG_VERBOSE);
+        } else if (javaFile.length() == 0) {
+            shouldCompile = true;
+            log("Compiling " + srcFile.getPath()
+                + " because java file " + javaFile.getPath()
+                + " is empty", Project.MSG_VERBOSE);
         }
         return shouldCompile;
     }
-
 
     /**
      * get a filename from our jsp file.
@@ -654,7 +631,6 @@ public class JspC extends MatchingTask {
             return null;
         }
         String javaFileName = mangler.mapJspToJavaName(srcFile);
-        //        String srcFileDir=srcFile.getParent();
         return new File(dest, javaFileName);
     }
 
@@ -665,9 +641,7 @@ public class JspC extends MatchingTask {
      */
     public void deleteEmptyJavaFiles() {
         if (javaFiles != null) {
-            Enumeration e = javaFiles.elements();
-            while (e.hasMoreElements()) {
-                File file = (File) e.nextElement();
+            for (File file : javaFiles) {
                 if (file.exists() && file.length() == 0) {
                     log("deleting empty output file " + file);
                     file.delete();
@@ -701,9 +675,6 @@ public class JspC extends MatchingTask {
         public void setBaseDir(File directory) {
             this.directory = directory;
         }
-        //end inner class
     }
 
-
-    //end class
 }

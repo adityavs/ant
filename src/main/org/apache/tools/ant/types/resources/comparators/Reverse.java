@@ -17,6 +17,8 @@
  */
 package org.apache.tools.ant.types.resources.comparators;
 
+import java.util.Comparator;
+import java.util.Optional;
 import java.util.Stack;
 
 import org.apache.tools.ant.BuildException;
@@ -69,8 +71,8 @@ public class Reverse extends ResourceComparator {
      *         argument is greater than, equal to, or less than the second.
      */
     protected int resourceCompare(Resource foo, Resource bar) {
-        return -1 * (nested == null
-            ? foo.compareTo(bar) : nested.compare(foo, bar));
+        return Optional.<Comparator<Resource>> ofNullable(nested)
+            .orElseGet(Comparator::naturalOrder).reversed().compare(foo, bar);
     }
 
     protected void dieOnCircularReference(Stack<Object> stk, Project p)
@@ -81,11 +83,12 @@ public class Reverse extends ResourceComparator {
         if (isReference()) {
             super.dieOnCircularReference(stk, p);
         } else {
-            if (nested instanceof DataType) {
+            if (nested != null) {
                 pushAndInvokeCircularReferenceCheck((DataType) nested, stk,
                                                     p);
             }
             setChecked(true);
         }
     }
+
 }

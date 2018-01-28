@@ -19,6 +19,7 @@
 package org.apache.tools.ant.types.selectors;
 
 import java.util.Locale;
+
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.types.Parameter;
 import org.junit.Rule;
@@ -32,7 +33,7 @@ import static org.junit.Assert.fail;
  *
  */
 public class SizeSelectorTest {
-    
+
     @Rule
     public final BaseSelectorRule selectorRule = new BaseSelectorRule();
 
@@ -130,8 +131,6 @@ public class SizeSelectorTest {
         SizeSelector.SizeComparisons more = new SizeSelector.SizeComparisons();
         more.setValue("more");
 
-
-    
         s = new SizeSelector();
         s.setValue(10);
         s.setWhen(less);
@@ -181,12 +180,10 @@ public class SizeSelectorTest {
         param2.setValue("Ki");
         param3.setName("when");
         param3.setValue("more");
-        Parameter[] params = {param1,param2,param3};
+        Parameter[] params = {param1, param2, param3};
         s.setParameters(params);
         results = selectorRule.selectionString(s);
         assertEquals("TFFFFFFTFFTT", results);
-    
-
     }
 
     @Test

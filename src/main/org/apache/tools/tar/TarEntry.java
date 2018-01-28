@@ -38,17 +38,19 @@ import org.apache.tools.zip.ZipEncoding;
  * they are to be used.
  * <p>
  * TarEntries that are created from the header bytes read from
- * an archive are instantiated with the TarEntry( byte[] )
+ * an archive are instantiated with the TarEntry(byte[])
  * constructor. These entries will be used when extracting from
  * or listing the contents of an archive. These entries have their
  * header filled in using the header bytes. They also set the File
  * to null, since they reference an archive entry not a file.
+ * </p>
  * <p>
  * TarEntries that are created from Files that are to be written
- * into an archive are instantiated with the TarEntry( File )
+ * into an archive are instantiated with the TarEntry(File)
  * constructor. These entries have their header filled in using
  * the File's information. They also keep a reference to the File
  * for convenience when writing entries.
+ * </p>
  * <p>
  * Finally, TarEntries can be constructed from nothing but a name.
  * This allows the programmer to construct the entry by hand, for
@@ -56,8 +58,7 @@ import org.apache.tools.zip.ZipEncoding;
  * the archive, and the header information is constructed from
  * other information. In this case the header fields are set to
  * defaults and the File is set to null.
- *
- * <p>
+ * </p>
  * The C structure for a Tar Entry's header is:
  * <pre>
  * struct header {
@@ -84,8 +85,6 @@ import org.apache.tools.zip.ZipEncoding;
  * field is the binary representation of the number.
  * See TarUtils.parseOctalOrBinary.
  * </pre>
- *
- * <p>
  * The C structure for a old GNU Tar Entry's header is:
  * <pre>
  * struct oldgnu_header {
@@ -108,7 +107,6 @@ import org.apache.tools.zip.ZipEncoding;
  * char numbytes[12]; // offset 12
  * };
  * </pre>
- *
  */
 
 public class TarEntry implements TarConstants {
@@ -333,7 +331,7 @@ public class TarEntry implements TarConstants {
      * @return True if the entries are equal.
      */
     public boolean equals(TarEntry it) {
-        return getName().equals(it.getName());
+        return it != null && getName().equals(it.getName());
     }
 
     /**
@@ -706,8 +704,7 @@ public class TarEntry implements TarConstants {
      * @return true if this is a long name extension provided by GNU tar
      */
     public boolean isGNULongLinkEntry() {
-        return linkFlag == LF_GNUTYPE_LONGLINK
-            && name.equals(GNU_LONGLINK);
+        return linkFlag == LF_GNUTYPE_LONGLINK;
     }
 
     /**
@@ -716,8 +713,7 @@ public class TarEntry implements TarConstants {
      * @return true if this is a long name extension provided by GNU tar
      */
     public boolean isGNULongNameEntry() {
-        return linkFlag == LF_GNUTYPE_LONGNAME
-                           && name.equals(GNU_LONGLINK);
+        return linkFlag == LF_GNUTYPE_LONGNAME;
     }
 
     /**
@@ -848,7 +844,7 @@ public class TarEntry implements TarConstants {
                 writeEntryHeader(outbuf, TarUtils.FALLBACK_ENCODING, false);
             } catch (IOException ex2) {
                 // impossible
-                throw new RuntimeException(ex2);
+                throw new RuntimeException(ex2); //NOSONAR
             }
         }
     }
@@ -934,7 +930,7 @@ public class TarEntry implements TarConstants {
                 parseTarHeader(header, TarUtils.DEFAULT_ENCODING, true);
             } catch (IOException ex2) {
                 // not really possible
-                throw new RuntimeException(ex2);
+                throw new RuntimeException(ex2); //NOSONAR
             }
         }
     }
@@ -993,39 +989,38 @@ public class TarEntry implements TarConstants {
 
         int type = evaluateType(header);
         switch (type) {
-        case FORMAT_OLDGNU: {
-            offset += ATIMELEN_GNU;
-            offset += CTIMELEN_GNU;
-            offset += OFFSETLEN_GNU;
-            offset += LONGNAMESLEN_GNU;
-            offset += PAD2LEN_GNU;
-            offset += SPARSELEN_GNU;
-            isExtended = TarUtils.parseBoolean(header, offset);
-            offset += ISEXTENDEDLEN_GNU;
-            realSize = TarUtils.parseOctal(header, offset, REALSIZELEN_GNU);
-            offset += REALSIZELEN_GNU;
-            break;
-        }
-        case FORMAT_POSIX:
-        default: {
-            String prefix = oldStyle
-                ? TarUtils.parseName(header, offset, PREFIXLEN)
-                : TarUtils.parseName(header, offset, PREFIXLEN, encoding);
-            // SunOS tar -E does not add / to directory names, so fix
-            // up to be consistent
-            if (isDirectory() && !name.endsWith("/")) {
-                name = name + "/";
+            case FORMAT_OLDGNU: {
+                offset += ATIMELEN_GNU;
+                offset += CTIMELEN_GNU;
+                offset += OFFSETLEN_GNU;
+                offset += LONGNAMESLEN_GNU;
+                offset += PAD2LEN_GNU;
+                offset += SPARSELEN_GNU;
+                isExtended = TarUtils.parseBoolean(header, offset);
+                offset += ISEXTENDEDLEN_GNU;
+                realSize = TarUtils.parseOctal(header, offset, REALSIZELEN_GNU);
+                offset += REALSIZELEN_GNU;
+                break;
             }
-            if (prefix.length() > 0) {
-                name = prefix + "/" + name;
+            case FORMAT_POSIX:
+            default: {
+                String prefix = oldStyle ? TarUtils.parseName(header, offset, PREFIXLEN)
+                        : TarUtils.parseName(header, offset, PREFIXLEN, encoding);
+                // SunOS tar -E does not add / to directory names, so fix
+                // up to be consistent
+                if (isDirectory() && !name.endsWith("/")) {
+                    name = name + "/";
+                }
+                if (prefix.length() > 0) {
+                    name = prefix + "/" + name;
+                }
             }
-        }
         }
     }
 
     /**
      * Strips Windows' drive letter as well as any leading slashes,
-     * turns path separators into forward slahes.
+     * turns path separators into forward slashes.
      */
     private static String normalizeFileName(String fileName,
                                             boolean preserveLeadingSlashes) {
@@ -1085,10 +1080,10 @@ public class TarEntry implements TarConstants {
     /**
      * Check if buffer contents matches Ascii String.
      *
-     * @param expected
-     * @param buffer
-     * @param offset
-     * @param length
+     * @param expected String
+     * @param buffer byte[]
+     * @param offset int
+     * @param length int
      * @return {@code true} if buffer is the same as the expected string
      */
     private static boolean matchAsciiBuffer(String expected, byte[] buffer,
@@ -1097,7 +1092,8 @@ public class TarEntry implements TarConstants {
         try {
             buffer1 = expected.getBytes("ASCII");
         } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException(e); // Should not happen
+            // Should not happen
+            throw new RuntimeException(e); //NOSONAR
         }
         return isEqual(buffer1, 0, buffer1.length, buffer, offset, length,
                        false);
@@ -1106,22 +1102,22 @@ public class TarEntry implements TarConstants {
     /**
      * Compare byte buffers, optionally ignoring trailing nulls
      *
-     * @param buffer1
-     * @param offset1
-     * @param length1
-     * @param buffer2
-     * @param offset2
-     * @param length2
-     * @param ignoreTrailingNulls
+     * @param buffer1 byte[]
+     * @param offset1 int
+     * @param length1 int
+     * @param buffer2 byte[]
+     * @param offset2 int
+     * @param length2 int
+     * @param ignoreTrailingNulls boolean
      * @return {@code true} if buffer1 and buffer2 have same contents, having regard to trailing nulls
      */
     private static boolean isEqual(
             final byte[] buffer1, final int offset1, final int length1,
             final byte[] buffer2, final int offset2, final int length2,
             boolean ignoreTrailingNulls) {
-        int minLen=length1 < length2 ? length1 : length2;
-        for (int i=0; i < minLen; i++) {
-            if (buffer1[offset1+i] != buffer2[offset2+i]) {
+        int minLen = (length1 < length2) ? length1 : length2;
+        for (int i = 0; i < minLen; i++) {
+            if (buffer1[offset1 + i] != buffer2[offset2 + i]) {
                 return false;
             }
         }
@@ -1129,15 +1125,15 @@ public class TarEntry implements TarConstants {
             return true;
         }
         if (ignoreTrailingNulls) {
-            if (length1 > length2){
-                for(int i = length2; i < length1; i++){
-                    if (buffer1[offset1+i] != 0) {
+            if (length1 > length2) {
+                for (int i = length2; i < length1; i++) {
+                    if (buffer1[offset1 + i] != 0) {
                         return false;
                     }
                 }
             } else {
-                for (int i = length1; i < length2; i++){
-                    if (buffer2[offset2+i] != 0) {
+                for (int i = length1; i < length2; i++) {
+                    if (buffer2[offset2 + i] != 0) {
                         return false;
                     }
                 }

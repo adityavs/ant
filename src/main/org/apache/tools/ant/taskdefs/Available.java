@@ -19,6 +19,7 @@
 package org.apache.tools.ant.taskdefs;
 
 import java.io.File;
+import java.io.InputStream;
 
 import org.apache.tools.ant.AntClassLoader;
 import org.apache.tools.ant.BuildException;
@@ -192,9 +193,9 @@ public class Available extends Task implements Condition {
      *             the type in its own class.
      * @param type the type of resource
      */
+    @Deprecated
     public void setType(String type) {
-        log("DEPRECATED - The setType(String) method has been deprecated."
-            + " Use setType(Available.FileDir) instead.",
+        log("DEPRECATED - The setType(String) method has been deprecated. Use setType(Available.FileDir) instead.",
             Project.MSG_WARN);
         this.type = new FileDir();
         this.type.setValue(type);
@@ -226,6 +227,7 @@ public class Available extends Task implements Condition {
      *
      * @exception BuildException if the task is not configured correctly.
      */
+    @Override
     public void execute() throws BuildException {
         if (property == null) {
             throw new BuildException("property attribute is required",
@@ -260,17 +262,19 @@ public class Available extends Task implements Condition {
      * @return boolean is the resource is available.
      * @exception BuildException if the condition is not configured correctly
      */
+    @Override
     public boolean eval() throws BuildException {
         try {
             if (classname == null && file == null && resource == null) {
-                throw new BuildException("At least one of (classname|file|"
-                                         + "resource) is required", getLocation());
+                throw new BuildException(
+                    "At least one of (classname|file|resource) is required",
+                    getLocation());
             }
             if (type != null) {
                 if (file == null) {
-                    throw new BuildException("The type attribute is only valid "
-                                             + "when specifying the file "
-                                             + "attribute.", getLocation());
+                    throw new BuildException(
+                        "The type attribute is only valid when specifying the file attribute.",
+                        getLocation());
                 }
             }
             if (classpath != null) {
@@ -283,13 +287,13 @@ public class Available extends Task implements Condition {
             } else {
                 setTaskName("available");
             }
-            if ((classname != null) && !checkClass(classname)) {
+            if (!(classname == null || checkClass(classname))) {
                 log("Unable to load class " + classname + appendix,
                     Project.MSG_VERBOSE);
                 return false;
             }
             if ((file != null) && !checkFile()) {
-                StringBuffer buf = new StringBuffer("Unable to find ");
+                StringBuilder buf = new StringBuilder("Unable to find ");
                 if (type != null) {
                     buf.append(type).append(' ');
                 }
@@ -333,62 +337,64 @@ public class Available extends Task implements Condition {
     private boolean checkFile() {
         if (filepath == null) {
             return checkFile(file, filename);
-        } else {
-            String[] paths = filepath.list();
-            for (int i = 0; i < paths.length; ++i) {
-                log("Searching " + paths[i], Project.MSG_VERBOSE);
-                File path = new File(paths[i]);
+        }
+        String[] paths = filepath.list();
+        for (String p : paths) {
+            log("Searching " + p, Project.MSG_VERBOSE);
+            File path = new File(p);
 
-                // **   full-pathname specified == path in list
-                // **   simple name specified   == path in list
-                if (path.exists()
-                    && (filename.equals(paths[i])
-                        || filename.equals(path.getName()))) {
-                    if (type == null) {
-                        log("Found: " + path, Project.MSG_VERBOSE);
-                        return true;
-                    } else if (type.isDir()
-                               && path.isDirectory()) {
-                        log("Found directory: " + path, Project.MSG_VERBOSE);
-                        return true;
-                    } else if (type.isFile()
-                               && path.isFile()) {
-                        log("Found file: " + path, Project.MSG_VERBOSE);
-                        return true;
-                    }
-                    // not the requested type
-                    return false;
+            // **   full-pathname specified == path in list
+            // **   simple name specified   == path in list
+            if (path.exists()
+                && (filename.equals(p)
+                    || filename.equals(path.getName()))) {
+                if (type == null) {
+                    log("Found: " + path, Project.MSG_VERBOSE);
+                    return true;
                 }
-                File parent = path.getParentFile();
-                // **   full-pathname specified == parent dir of path in list
-                if (parent != null && parent.exists()
-                    && filename.equals(parent.getAbsolutePath())) {
-                    if (type == null) {
-                        log("Found: " + parent, Project.MSG_VERBOSE);
-                        return true;
-                    } else if (type.isDir()) {
-                        log("Found directory: " + parent, Project.MSG_VERBOSE);
-                        return true;
-                    }
-                    // not the requested type
-                    return false;
+                if (type.isDir()
+                           && path.isDirectory()) {
+                    log("Found directory: " + path, Project.MSG_VERBOSE);
+                    return true;
                 }
-                // **   simple name specified   == path in list + name
-                if (path.exists() && path.isDirectory()) {
-                    if (checkFile(new File(path, filename),
-                                  filename + " in " + path)) {
-                        return true;
-                    }
+                if (type.isFile()
+                           && path.isFile()) {
+                    log("Found file: " + path, Project.MSG_VERBOSE);
+                    return true;
                 }
+                // not the requested type
+                return false;
+            }
+            File parent = path.getParentFile();
+            // **   full-pathname specified == parent dir of path in list
+            if (parent != null && parent.exists()
+                && filename.equals(parent.getAbsolutePath())) {
+                if (type == null) {
+                    log("Found: " + parent, Project.MSG_VERBOSE);
+                    return true;
+                }
+                if (type.isDir()) {
+                    log("Found directory: " + parent, Project.MSG_VERBOSE);
+                    return true;
+                }
+                // not the requested type
+                return false;
+            }
+            // **   simple name specified   == path in list + name
+            if (path.exists() && path.isDirectory()) {
+                if (checkFile(new File(path, filename),
+                              filename + " in " + path)) {
+                    return true;
+                }
+            }
 
-                // **   simple name specified   == parent dir + name
-                while (searchParents && parent != null && parent.exists()) {
-                    if (checkFile(new File(parent, filename),
-                                  filename + " in " + parent)) {
-                        return true;
-                    }
-                    parent = parent.getParentFile();
+            // **   simple name specified   == parent dir + name
+            while (searchParents && parent != null && parent.exists()) {
+                if (checkFile(new File(parent, filename),
+                              filename + " in " + parent)) {
+                    return true;
                 }
+                parent = parent.getParentFile();
             }
         }
         return false;
@@ -404,7 +410,8 @@ public class Available extends Task implements Condition {
                     log("Found directory: " + text, Project.MSG_VERBOSE);
                 }
                 return f.isDirectory();
-            } else if (type.isFile()) {
+            }
+            if (type.isFile()) {
                 if (f.isFile()) {
                     log("Found file: " + text, Project.MSG_VERBOSE);
                 }
@@ -421,16 +428,21 @@ public class Available extends Task implements Condition {
      * Check if a given resource can be loaded.
      */
     private boolean checkResource(String resource) {
-        if (loader != null) {
-            return (loader.getResourceAsStream(resource) != null);
-        } else {
-            ClassLoader cL = this.getClass().getClassLoader();
-            if (cL != null) {
-                return (cL.getResourceAsStream(resource) != null);
+        InputStream is = null;
+        try {
+            if (loader != null) {
+                is = loader.getResourceAsStream(resource);
             } else {
-                return
-                    (ClassLoader.getSystemResourceAsStream(resource) != null);
+                ClassLoader cL = this.getClass().getClassLoader();
+                if (cL != null) {
+                    is = cL.getResourceAsStream(resource);
+                } else {
+                    is = ClassLoader.getSystemResourceAsStream(resource);
+                }
             }
+            return is != null;
+        } finally {
+            FileUtils.close(is);
         }
     }
 
@@ -486,8 +498,9 @@ public class Available extends Task implements Condition {
 
         /**
          * @see EnumeratedAttribute#getValues
+         * {@inheritDoc}.
          */
-        /** {@inheritDoc}. */
+        @Override
         public String[] getValues() {
             return VALUES;
         }

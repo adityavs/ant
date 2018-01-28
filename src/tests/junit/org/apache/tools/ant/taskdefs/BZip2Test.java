@@ -20,7 +20,6 @@ package org.apache.tools.ant.taskdefs;
 
 import org.apache.tools.ant.BuildFileRule;
 import org.apache.tools.bzip2.CBZip2InputStream;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -101,12 +100,12 @@ public class BZip2Test {
     }
 
     @Test
-    public void testResource(){
+    public void testResource() {
         buildRule.executeTarget("realTestWithResource");
     }
 
     @Test
-    public void testDateCheck(){
+    public void testDateCheck() {
         buildRule.executeTarget("testDateCheck");
         String log = buildRule.getLog();
         assertTrue(

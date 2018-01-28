@@ -27,9 +27,16 @@ import static org.apache.tools.ant.AntAssert.assertNotContains;
 import static org.apache.tools.ant.AntAssert.assertContains;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Arrays;
+import java.util.Set;
+import java.util.TreeSet;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -37,8 +44,14 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 
+import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.BuildFileRule;
+import org.apache.tools.ant.MagicNames;
+import org.apache.tools.ant.Project;
+import org.apache.tools.ant.taskdefs.launcher.CommandLauncher;
+import org.apache.tools.ant.types.Path;
 import org.apache.tools.ant.util.JavaEnvUtils;
+import org.apache.tools.ant.util.LoaderUtils;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Rule;
@@ -48,39 +61,39 @@ import org.w3c.dom.Node;
 
 public class JUnitTaskTest {
 
-	@Rule
-	public BuildFileRule buildRule = new BuildFileRule();
-	
+    @Rule
+    public BuildFileRule buildRule = new BuildFileRule();
+
     /**
      * The JUnit setup method.
      */
-	@Before
+    @Before
     public void setUp() {
         buildRule.configureProject("src/etc/testcases/taskdefs/optional/junit.xml");
     }
 
-	@Test
+    @Test
     public void testCrash() {
-    	buildRule.executeTarget("crash");
-    	assertEquals("true", buildRule.getProject().getProperty("crashed"));
+        buildRule.executeTarget("crash");
+        assertEquals("true", buildRule.getProject().getProperty("crashed"));
     }
 
-	@Test
+    @Test
     public void testNoCrash() {
-    	buildRule.executeTarget("nocrash");
-    	assertNull(buildRule.getProject().getProperty("crashed"));
+        buildRule.executeTarget("nocrash");
+        assertNull(buildRule.getProject().getProperty("crashed"));
     }
 
-	@Test
+    @Test
     public void testTimeout() {
-    	buildRule.executeTarget("timeout");
-    	assertEquals("true", buildRule.getProject().getProperty("timeout"));
+        buildRule.executeTarget("timeout");
+        assertEquals("true", buildRule.getProject().getProperty("timeout"));
     }
 
     @Test
     public void testNoTimeout() {
        buildRule.executeTarget("notimeout");
-   	   assertNull(buildRule.getProject().getProperty("timeout"));
+       assertNull(buildRule.getProject().getProperty("timeout"));
     }
 
     @Test
@@ -126,7 +139,7 @@ public class JUnitTaskTest {
     public void testFailureRecorder() {
         if (JavaEnvUtils.isAtLeastJavaVersion(JavaEnvUtils.JAVA_1_5)) {
             try {
-            	Class<?> clazz =Class.forName("junit.framework.JUnit4TestAdapter");
+                Class<?> clazz = Class.forName("junit.framework.JUnit4TestAdapter");
                 Assume.assumeFalse("Skipping test since it fails with JUnit 4", clazz != null);
             } catch (ClassNotFoundException e) {
                 // OK, this is JUnit3, can run test
@@ -139,14 +152,14 @@ public class JUnitTaskTest {
 
         // ensure that there is a clean test environment
         assertFalse("Test directory '" + testDir.getAbsolutePath()
-                    + "' must not exist before the test preparation.", 
+                    + "' must not exist before the test preparation.",
                     testDir.exists());
         assertFalse("The collector file '"
                     + collectorFile.getAbsolutePath()
-                    + "'must not exist before the test preparation.", 
+                    + "'must not exist before the test preparation.",
                     collectorFile.exists());
 
-    
+
         // prepare the test environment
         buildRule.executeTarget("failureRecorder.prepare");
         assertTrue("Test directory '" + testDir.getAbsolutePath()
@@ -154,14 +167,14 @@ public class JUnitTaskTest {
         assertTrue("There should be one class.",
                    (new File(testDir, "A.class")).exists());
         assertFalse("The collector file '"
-                    + collectorFile.getAbsolutePath() 
+                    + collectorFile.getAbsolutePath()
                     + "' should not exist before the 1st run.",
                     collectorFile.exists());
-    
-    
+
+
         // 1st junit run: should do all tests - failing and not failing tests
         buildRule.executeTarget("failureRecorder.runtest");
-        assertTrue("The collector file '" + collectorFile.getAbsolutePath() 
+        assertTrue("The collector file '" + collectorFile.getAbsolutePath()
                    + "' should exist after the 1st run.",
                    collectorFile.exists());
         // the passing test cases
@@ -187,10 +200,10 @@ public class JUnitTaskTest {
         buildRule.executeTarget("D.test10");
         assertContains("1st run: should run D.test10", buildRule.getOutput());
 
-    
+
         // 2nd junit run: should do only failing tests
         buildRule.executeTarget("failureRecorder.runtest");
-        assertTrue("The collector file '" + collectorFile.getAbsolutePath() 
+        assertTrue("The collector file '" + collectorFile.getAbsolutePath()
                    + "' should exist after the 2nd run.",
                    collectorFile.exists());
         // the passing test cases
@@ -215,14 +228,14 @@ public class JUnitTaskTest {
         assertContains("2nd run: should run B.test04", buildRule.getOutput());
         buildRule.executeTarget("D.test10");
         assertContains("2nd run: should run D.test10", buildRule.getOutput());
-    
-    
+
+
         // "fix" errors in class A
         buildRule.executeTarget("failureRecorder.fixing");
-    
+
         // 3rd run: four running tests with two errors
         buildRule.executeTarget("failureRecorder.runtest");
-        assertTrue("The collector file '" + collectorFile.getAbsolutePath() 
+        assertTrue("The collector file '" + collectorFile.getAbsolutePath()
                    + "' should exist after the 3rd run.",
                    collectorFile.exists());
         buildRule.executeTarget("A.test02");
@@ -233,11 +246,11 @@ public class JUnitTaskTest {
         assertContains("3rd run: should run B.test04", buildRule.getOutput());
         buildRule.executeTarget("D.test10");
         assertContains("3rd run: should run D.test10", buildRule.getOutput());
-    
-    
+
+
         // 4rd run: two running tests with errors
         buildRule.executeTarget("failureRecorder.runtest");
-        assertTrue("The collector file '" + collectorFile.getAbsolutePath() 
+        assertTrue("The collector file '" + collectorFile.getAbsolutePath()
                    + "' should exist after the 4th run.",
                    collectorFile.exists());
         //TODO: these two statements fail
@@ -349,16 +362,25 @@ public class JUnitTaskTest {
         XPathFactory factory = XPathFactory.newInstance();
         XPath xpath = factory.newXPath();
 
-        assertEquals("Incorrect number of skipped tests in header", 4, Integer.parseInt(xpath.compile("//testsuite/@skipped").evaluate(doc)));
-        assertEquals("Incorrect number of error tests in header", 1, Integer.parseInt(xpath.compile("//testsuite/@errors").evaluate(doc)));
-        assertEquals("Incorrect number of failure tests in header", 2, Integer.parseInt(xpath.compile("//testsuite/@failures").evaluate(doc)));
-        assertEquals("Incorrect number of tests in header", 8, Integer.parseInt(xpath.compile("//testsuite/@tests").evaluate(doc)));
+        assertEquals("Incorrect number of skipped tests in header", 4,
+                Integer.parseInt(xpath.compile("//testsuite/@skipped").evaluate(doc)));
+        assertEquals("Incorrect number of error tests in header", 1,
+                Integer.parseInt(xpath.compile("//testsuite/@errors").evaluate(doc)));
+        assertEquals("Incorrect number of failure tests in header", 2,
+                Integer.parseInt(xpath.compile("//testsuite/@failures").evaluate(doc)));
+        assertEquals("Incorrect number of tests in header", 8,
+                Integer.parseInt(xpath.compile("//testsuite/@tests").evaluate(doc)));
 
 
-        assertEquals("Incorrect ignore message on explicit ignored test", "Please don't ignore me!", xpath.compile("//testsuite/testcase[@name='explicitIgnoreTest']/skipped/@message").evaluate(doc));
-        assertEquals("No message should be set on Ignored tests with no Ignore annotation text", 0, ((Node)xpath.compile("//testsuite/testcase[@name='explicitlyIgnoreTestNoMessage']/skipped").evaluate(doc, XPathConstants.NODE)).getAttributes().getLength());
-        assertEquals("Incorrect ignore message on implicit ignored test", "This test will be ignored", xpath.compile("//testsuite/testcase[@name='implicitlyIgnoreTest']/skipped/@message").evaluate(doc));
-        assertNotNull("Implicit ignore test should have an ignore element", xpath.compile("//testsuite/testcase[@name='implicitlyIgnoreTestNoMessage']/skipped").evaluate(doc, XPathConstants.NODE));
+        assertEquals("Incorrect ignore message on explicit ignored test", "Please don't ignore me!",
+                xpath.compile("//testsuite/testcase[@name='explicitIgnoreTest']/skipped/@message").evaluate(doc));
+        assertEquals("No message should be set on Ignored tests with no Ignore annotation text", 0,
+                ((Node) xpath.compile("//testsuite/testcase[@name='explicitlyIgnoreTestNoMessage']/skipped")
+                        .evaluate(doc, XPathConstants.NODE)).getAttributes().getLength());
+        assertEquals("Incorrect ignore message on implicit ignored test", "This test will be ignored",
+                xpath.compile("//testsuite/testcase[@name='implicitlyIgnoreTest']/skipped/@message").evaluate(doc));
+        assertNotNull("Implicit ignore test should have an ignore element",
+                xpath.compile("//testsuite/testcase[@name='implicitlyIgnoreTestNoMessage']/skipped").evaluate(doc, XPathConstants.NODE));
 
     }
 
@@ -371,28 +393,241 @@ public class JUnitTaskTest {
     public void testNonTestsSkipped() throws Exception {
 
         buildRule.executeTarget("testNonTests");
-        assertFalse("Test result should not exist as test was skipped - TEST-org.example.junit.NonTestMissed.xml", new File(buildRule.getOutputDir(), "TEST-org.example.junit.NonTestMissed.xml").exists());
-        assertFalse("Test result should not exist as test was skipped - TEST-org.example.junit.JUnit3NonTestMissed.xml", new File(buildRule.getOutputDir(), "TEST-org.example.junit.JUnit3TestMissed.xml").exists());
-        assertFalse("Test result should not exist as test was skipped - TEST-org.example.junit.AbstractTestMissed.xml", new File(buildRule.getOutputDir(), "TEST-org.example.junit.AbstractTestMissed.xml").exists());
-        assertFalse("Test result should not exist as test was skipped - TEST-org.example.junit.AbstractJUnit3TestMissed.xml", new File(buildRule.getOutputDir(), "TEST-org.example.junit.AbstractJUnit3TestMissed.xml").exists());
-        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.AbstractTestNotMissed.xml", new File(buildRule.getOutputDir(), "TEST-org.example.junit.AbstractTestNotMissed.xml").exists());
-        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.AbstractJUnit3TestNotMissed.xml", new File(buildRule.getOutputDir(), "TEST-org.example.junit.AbstractJUnit3TestNotMissed.xml").exists());
-        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.TestNotMissed.xml", new File(buildRule.getOutputDir(), "TEST-org.example.junit.TestNotMissed.xml").exists());
-        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.JUnit3TestNotMissed.xml", new File(buildRule.getOutputDir(), "TEST-org.example.junit.JUnit3TestNotMissed.xml").exists());
-        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.TestWithSuiteNotMissed.xml", new File(buildRule.getOutputDir(), "TEST-org.example.junit.TestWithSuiteNotMissed.xml").exists());
+        assertFalse("Test result should not exist as test was skipped - TEST-org.example.junit.NonTestMissed.xml",
+                new File(buildRule.getOutputDir(), "TEST-org.example.junit.NonTestMissed.xml").exists());
+        assertFalse("Test result should not exist as test was skipped - TEST-org.example.junit.JUnit3NonTestMissed.xml",
+                new File(buildRule.getOutputDir(), "TEST-org.example.junit.JUnit3TestMissed.xml").exists());
+        assertFalse("Test result should not exist as test was skipped - TEST-org.example.junit.AbstractTestMissed.xml",
+                new File(buildRule.getOutputDir(), "TEST-org.example.junit.AbstractTestMissed.xml").exists());
+        assertFalse("Test result should not exist as test was skipped - TEST-org.example.junit.AbstractJUnit3TestMissed.xml",
+                new File(buildRule.getOutputDir(), "TEST-org.example.junit.AbstractJUnit3TestMissed.xml").exists());
+        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.AbstractTestNotMissed.xml",
+                new File(buildRule.getOutputDir(), "TEST-org.example.junit.AbstractTestNotMissed.xml").exists());
+        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.AbstractJUnit3TestNotMissed.xml",
+                new File(buildRule.getOutputDir(), "TEST-org.example.junit.AbstractJUnit3TestNotMissed.xml").exists());
+        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.TestNotMissed.xml",
+                new File(buildRule.getOutputDir(), "TEST-org.example.junit.TestNotMissed.xml").exists());
+        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.JUnit3TestNotMissed.xml",
+                new File(buildRule.getOutputDir(), "TEST-org.example.junit.JUnit3TestNotMissed.xml").exists());
+        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.TestWithSuiteNotMissed.xml",
+                new File(buildRule.getOutputDir(), "TEST-org.example.junit.TestWithSuiteNotMissed.xml").exists());
 
         buildRule.executeTarget("testNonTestsRun");
-        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.NonTestMissed.xml", new File(buildRule.getOutputDir(), "TEST-org.example.junit.NonTestMissed.xml").exists());
-        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.JUnit3NonTestMissed.xml", new File(buildRule.getOutputDir(), "TEST-org.example.junit.JUnit3NonTestMissed.xml").exists());
-        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.TestNotMissed.xml", new File(buildRule.getOutputDir(), "TEST-org.example.junit.TestNotMissed.xml").exists());
-        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.JUnit3TestNotMissed.xml", new File(buildRule.getOutputDir(), "TEST-org.example.junit.JUnit3TestNotMissed.xml").exists());
-        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.AbstractTestMissed.xml", new File(buildRule.getOutputDir(), "TEST-org.example.junit.AbstractTestMissed.xml").exists());
-        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.AbstractTestNotMissed.xml", new File(buildRule.getOutputDir(), "TEST-org.example.junit.AbstractTestNotMissed.xml").exists());
-        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.AbstractJUnit3TestMissed.xml", new File(buildRule.getOutputDir(), "TEST-org.example.junit.AbstractJUnit3TestMissed.xml").exists());
-        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.JUnit3NonTestMissed.xml", new File(buildRule.getOutputDir(), "TEST-org.example.junit.JUnit3NonTestMissed.xml").exists());
-        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.TestWithSuiteNotMissed.xml", new File(buildRule.getOutputDir(), "TEST-org.example.junit.TestWithSuiteNotMissed.xml").exists());
+        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.NonTestMissed.xml",
+                new File(buildRule.getOutputDir(), "TEST-org.example.junit.NonTestMissed.xml").exists());
+        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.JUnit3NonTestMissed.xml",
+                new File(buildRule.getOutputDir(), "TEST-org.example.junit.JUnit3NonTestMissed.xml").exists());
+        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.TestNotMissed.xml",
+                new File(buildRule.getOutputDir(), "TEST-org.example.junit.TestNotMissed.xml").exists());
+        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.JUnit3TestNotMissed.xml",
+                new File(buildRule.getOutputDir(), "TEST-org.example.junit.JUnit3TestNotMissed.xml").exists());
+        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.AbstractTestMissed.xml",
+                new File(buildRule.getOutputDir(), "TEST-org.example.junit.AbstractTestMissed.xml").exists());
+        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.AbstractTestNotMissed.xml",
+                new File(buildRule.getOutputDir(), "TEST-org.example.junit.AbstractTestNotMissed.xml").exists());
+        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.AbstractJUnit3TestMissed.xml",
+                new File(buildRule.getOutputDir(), "TEST-org.example.junit.AbstractJUnit3TestMissed.xml").exists());
+        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.JUnit3NonTestMissed.xml",
+                new File(buildRule.getOutputDir(), "TEST-org.example.junit.JUnit3NonTestMissed.xml").exists());
+        assertTrue("Test result should exist as test was not skipped - TEST-org.example.junit.TestWithSuiteNotMissed.xml",
+                new File(buildRule.getOutputDir(), "TEST-org.example.junit.TestWithSuiteNotMissed.xml").exists());
 
 
     }
 
+    @Test(expected = BuildException.class)
+    public void testModulePathNeedsFork() throws Exception {
+        final Project project = new Project();
+        project.init();
+        JUnitTask task = new JUnitTask();
+        task.setProject(project);
+        final Path p = new Path(project);
+        p.setPath("modules");
+        task.createModulepath().add(p);
+        task.addTest(new JUnitTest("org.apache.tools.ant.taskdefs.optional.junit.TestTest"));
+        task.execute();
+    }
+
+    @Test(expected = BuildException.class)
+    public void testUpgradeModulePathNeedsFork() throws Exception {
+        final Project project = new Project();
+        project.init();
+        JUnitTask task = new JUnitTask();
+        task.setProject(project);
+        final Path p = new Path(project);
+        p.setPath("modules");
+        task.createUpgrademodulepath().add(p);
+        task.addTest(new JUnitTest("org.apache.tools.ant.taskdefs.optional.junit.TestTest"));
+        task.execute();
+    }
+
+    @Test
+    public void testJunitOnCpArguments() throws Exception {
+        final File tmp = new File(System.getProperty("java.io.tmpdir"));    //NOI18N
+        final File workDir = new File(tmp, String.format("%s_testJCP%d",    //NOI18N
+                getClass().getName(),
+                System.currentTimeMillis() / 1000));
+        workDir.mkdirs();
+        try {
+            final File modulesDir = new File(workDir, "modules");    //NOI18N
+            modulesDir.mkdirs();
+
+            final Project project = new Project();
+            project.init();
+            project.setBaseDir(workDir);
+            final MockCommandLauncher mockProcLauncher = new MockCommandLauncher();
+            project.addReference(
+                    MagicNames.ANT_VM_LAUNCHER_REF_ID,
+                    mockProcLauncher);
+            JUnitTask task = new JUnitTask();
+            task.setDir(workDir);
+            task.setFork(true);
+            task.setProject(project);
+            final File junit = LoaderUtils.getResourceSource(
+                    JUnitTask.class.getClassLoader(),
+                    "junit/framework/Test.class");    //NOI18N
+            final Path cp = new Path(project);
+            cp.setPath(junit.getAbsolutePath());
+            task.createClasspath().add(cp);
+            final Path mp = new Path(project);
+            mp.setPath(modulesDir.getName());
+            task.createModulepath().add(mp);
+            task.addTest(new JUnitTest("org.apache.tools.ant.taskdefs.optional.junit.TestTest"));
+            task.execute();
+            assertNotNull(mockProcLauncher.cmd);
+            String resCp = null;
+            String resMp = null;
+            Set<String> resExports = new TreeSet<>();
+            for (int i = 1; i < mockProcLauncher.cmd.length; i++) {
+                if ("-classpath".equals(mockProcLauncher.cmd[i])) { //NOI18N
+                    resCp = mockProcLauncher.cmd[++i];
+                } else if ("--module-path".equals(mockProcLauncher.cmd[i])) { //NOI18N
+                    resMp = mockProcLauncher.cmd[++i];
+                } else if (mockProcLauncher.cmd[i].equals("--add-exports")) {   //NOI18N
+                    resExports.add(mockProcLauncher.cmd[++i]);
+                } else if (JUnitTestRunner.class.getName().equals(mockProcLauncher.cmd[i])) {
+                    break;
+                }
+            }
+            assertTrue("No exports", resExports.isEmpty());
+            if (project.getProperty(MagicNames.BUILD_SYSCLASSPATH) == null
+                && System.getProperty(MagicNames.BUILD_SYSCLASSPATH) == null) {
+                assertEquals("Expected classpath", cp.toString(), resCp);
+            }
+            assertEquals("Expected modulepath", mp.toString(), resMp);
+        } finally {
+            delete(workDir);
+        }
+    }
+
+    @Test
+    public void testJunitOnMpArguments() throws Exception {
+        final File tmp = new File(System.getProperty("java.io.tmpdir"));    //NOI18N
+        final File workDir = new File(tmp, String.format("%s_testJMP%d",    //NOI18N
+                getClass().getName(),
+                System.currentTimeMillis() / 1000));
+        workDir.mkdirs();
+        try {
+            final File modulesDir = new File(workDir, "modules");    //NOI18N
+            modulesDir.mkdirs();
+
+            final Project project = new Project();
+            project.init();
+            project.setBaseDir(workDir);
+            final MockCommandLauncher mockProcLauncher = new MockCommandLauncher();
+            project.addReference(
+                    MagicNames.ANT_VM_LAUNCHER_REF_ID,
+                    mockProcLauncher);
+            JUnitTask task = new JUnitTask();
+            task.setDir(workDir);
+            task.setFork(true);
+            task.setProject(project);
+            final File junit = LoaderUtils.getResourceSource(
+                    JUnitTask.class.getClassLoader(),
+                    "junit/framework/Test.class");    //NOI18N
+            final Path mp = new Path(project);
+            mp.add(new Path(project, junit.getAbsolutePath()));
+            mp.add(new Path(project, modulesDir.getName()));
+            task.createModulepath().add(mp);
+            task.addTest(new JUnitTest("org.apache.tools.ant.taskdefs.optional.junit.TestTest"));       //NOI18N
+            task.execute();
+            assertNotNull(mockProcLauncher.cmd);
+            String resCp = null;
+            String resMp = null;
+            Set<String> resExports = new TreeSet<>();
+            for (int i = 1; i < mockProcLauncher.cmd.length; i++) {
+                if ("-classpath".equals(mockProcLauncher.cmd[i])) { //NOI18N
+                    resCp = mockProcLauncher.cmd[++i];
+                } else if ("--module-path".equals(mockProcLauncher.cmd[i])) { //NOI18N
+                    resMp = mockProcLauncher.cmd[++i];
+                } else if (mockProcLauncher.cmd[i].equals("--add-exports")) {   //NOI18N
+                    resExports.add(mockProcLauncher.cmd[++i]);
+                } else if (JUnitTestRunner.class.getName().equals(mockProcLauncher.cmd[i])) {
+                    break;
+                }
+            }
+            assertTrue("No exports", resExports.isEmpty());
+            if (project.getProperty(MagicNames.BUILD_SYSCLASSPATH) == null
+                && System.getProperty(MagicNames.BUILD_SYSCLASSPATH) == null) {
+                assertNull("No classpath", resCp);
+            }
+            assertEquals("Expected modulepath", mp.toString(), resMp);
+        } finally {
+            delete(workDir);
+        }
+    }
+
+    private void delete(File f) {
+        if (f.isDirectory()) {
+            final File[] clds = f.listFiles();
+            if (clds != null) {
+                for (File cld : clds) {
+                    delete(cld);
+                }
+            }
+        }
+        f.delete();
+    }
+
+    private static final class MockCommandLauncher extends CommandLauncher {
+        private String[] cmd;
+
+        @Override
+        public Process exec(Project project, String[] cmd, String[] env, File workingDir) throws IOException {
+            this.cmd = Arrays.copyOf(cmd, cmd.length);
+            return new MockProcess();
+        }
+
+        private static class MockProcess extends Process {
+
+            @Override
+            public OutputStream getOutputStream() {
+                return new ByteArrayOutputStream();
+            }
+
+            @Override
+            public InputStream getInputStream() {
+                return new ByteArrayInputStream(new byte[0]);
+            }
+
+            @Override
+            public InputStream getErrorStream() {
+                return new ByteArrayInputStream(new byte[0]);
+            }
+
+            @Override
+            public int waitFor() throws InterruptedException {
+                return exitValue();
+            }
+
+            @Override
+            public int exitValue() {
+                return 0;
+            }
+
+            @Override
+            public void destroy() {
+            }
+        }
+    }
 }

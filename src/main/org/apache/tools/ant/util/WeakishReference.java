@@ -34,6 +34,7 @@ import java.lang.ref.WeakReference;
  * @deprecated deprecated 1.7; will be removed in Ant1.8
  *             Just use {@link java.lang.ref.WeakReference} directly.
  */
+@Deprecated
 public class WeakishReference  {
 
 
@@ -43,7 +44,7 @@ public class WeakishReference  {
      * create a new soft reference, which is bound to a
      * Weak reference inside
      *
-     * @param reference
+     * @param reference ditto
      * @see java.lang.ref.WeakReference
      */
     WeakishReference(Object reference) {

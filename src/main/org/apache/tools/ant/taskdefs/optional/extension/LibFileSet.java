@@ -25,8 +25,7 @@ import org.apache.tools.ant.types.FileSet;
  * how they are to be handled when building manifests.
  *
  */
-public class LibFileSet
-    extends FileSet {
+public class LibFileSet extends FileSet {
     /**
      * Flag indicating whether should include the
      * "Implementation-URL" attribute in manifest.
@@ -42,7 +41,7 @@ public class LibFileSet
     private boolean includeImpl;
 
     /**
-     * String that is the base URL for the librarys
+     * String that is the base URL for the libraries
      * when constructing the "Implementation-URL"
      * attribute. For instance setting the base to
      * "http://jakarta.apache.org/avalon/libs/" and then

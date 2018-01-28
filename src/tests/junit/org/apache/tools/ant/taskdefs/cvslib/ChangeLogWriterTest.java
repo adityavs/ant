@@ -17,21 +17,21 @@
  */
 package org.apache.tools.ant.taskdefs.cvslib;
 
-import java.util.Date;
-import java.io.PrintWriter;
-import java.io.OutputStreamWriter;
-import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.util.Date;
 
 import org.apache.tools.ant.util.JAXPUtils;
 import org.junit.Test;
-import org.xml.sax.XMLReader;
-import org.xml.sax.InputSource;
-import org.xml.sax.ContentHandler;
-import org.xml.sax.SAXException;
-import org.xml.sax.Locator;
 import org.xml.sax.Attributes;
+import org.xml.sax.ContentHandler;
+import org.xml.sax.InputSource;
+import org.xml.sax.Locator;
+import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
 
 /**
  *  Test for the cvslib ChangeLogWriter
@@ -45,7 +45,7 @@ public class ChangeLogWriterTest {
         CVSEntry entry = new CVSEntry(new Date(), "Se\u00f1orita", "2003 < 2004 && 3 > 5");
         entry.addFile("Medicare & review.doc", "1.1");
         entry.addFile("El\u00e8ments de style", "1.2");
-        CVSEntry[] entries = { entry };
+        CVSEntry[] entries = {entry};
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         PrintWriter pwriter = new PrintWriter(new OutputStreamWriter(output, "UTF-8"));
@@ -65,11 +65,12 @@ public class ChangeLogWriterTest {
         public void startDocument() throws SAXException {
         }
 
-        public void characters(char ch[], int start, int length) throws SAXException {
+        public void characters(char[] ch, int start, int length) throws SAXException {
+            @SuppressWarnings("unused")
             String debug = new String(ch, start, length);
         }
 
-        public void ignorableWhitespace(char ch[], int start, int length) throws SAXException {
+        public void ignorableWhitespace(char[] ch, int start, int length) throws SAXException {
         }
 
         public void endPrefixMapping(String prefix) throws SAXException {

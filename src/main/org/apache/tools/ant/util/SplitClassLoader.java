@@ -31,7 +31,10 @@ public final class SplitClassLoader extends AntClassLoader {
     private final String[] splitClasses;
 
     /**
-     * @param splitClasses classes contained herin will not be loaded
+     * @param parent ClassLoader
+     * @param path Path
+     * @param project Project
+     * @param splitClasses classes contained herein will not be loaded
      * via Ant's classloader
      */
     public SplitClassLoader(ClassLoader parent, Path path, Project project,
@@ -42,9 +45,10 @@ public final class SplitClassLoader extends AntClassLoader {
 
     // forceLoadClass is not convenient here since it would not
     // properly deal with inner classes of these classes.
-    protected synchronized Class loadClass(String classname, boolean resolve)
+    @Override
+    protected synchronized Class<?> loadClass(String classname, boolean resolve)
         throws ClassNotFoundException {
-        Class theClass = findLoadedClass(classname);
+        Class<?> theClass = findLoadedClass(classname);
         if (theClass != null) {
             return theClass;
         }
@@ -54,9 +58,8 @@ public final class SplitClassLoader extends AntClassLoader {
                 resolveClass(theClass);
             }
             return theClass;
-        } else {
-            return super.loadClass(classname, resolve);
         }
+        return super.loadClass(classname, resolve);
     }
 
     private boolean isSplit(String classname) {

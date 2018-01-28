@@ -17,9 +17,9 @@
  */
 package org.apache.tools.ant.taskdefs;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Paths;
 
 import org.apache.tools.ant.BuildEvent;
 import org.apache.tools.ant.BuildException;
@@ -27,6 +27,7 @@ import org.apache.tools.ant.BuildLogger;
 import org.apache.tools.ant.DefaultLogger;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.SubBuildListener;
+import org.apache.tools.ant.util.FileUtils;
 import org.apache.tools.ant.util.StringUtils;
 
 /**
@@ -90,16 +91,16 @@ public class RecorderEntry implements BuildLogger, SubBuildListener {
 
     /**
      * @see org.apache.tools.ant.BuildListener#buildStarted(BuildEvent)
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
     public void buildStarted(BuildEvent event) {
         log("> BUILD STARTED", Project.MSG_DEBUG);
     }
 
     /**
      * @see org.apache.tools.ant.BuildListener#buildFinished(BuildEvent)
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
     public void buildFinished(BuildEvent event) {
         log("< BUILD FINISHED", Project.MSG_DEBUG);
 
@@ -111,7 +112,7 @@ public class RecorderEntry implements BuildLogger, SubBuildListener {
             } else {
                 out.println(StringUtils.LINE_SEP + "BUILD FAILED"
                             + StringUtils.LINE_SEP);
-                error.printStackTrace(out);
+                error.printStackTrace(out); //NOSONAR
             }
         }
         cleanup();
@@ -144,8 +145,8 @@ public class RecorderEntry implements BuildLogger, SubBuildListener {
 
     /**
      * @see org.apache.tools.ant.BuildListener#targetStarted(BuildEvent)
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
     public void targetStarted(BuildEvent event) {
         log(">> TARGET STARTED -- " + event.getTarget(), Project.MSG_DEBUG);
         log(StringUtils.LINE_SEP + event.getTarget().getName() + ":",
@@ -155,8 +156,8 @@ public class RecorderEntry implements BuildLogger, SubBuildListener {
 
     /**
      * @see org.apache.tools.ant.BuildListener#targetFinished(BuildEvent)
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
     public void targetFinished(BuildEvent event) {
         log("<< TARGET FINISHED -- " + event.getTarget(), Project.MSG_DEBUG);
 
@@ -168,16 +169,16 @@ public class RecorderEntry implements BuildLogger, SubBuildListener {
 
     /**
      * @see org.apache.tools.ant.BuildListener#taskStarted(BuildEvent)
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
     public void taskStarted(BuildEvent event) {
         log(">>> TASK STARTED -- " + event.getTask(), Project.MSG_DEBUG);
     }
 
     /**
      * @see org.apache.tools.ant.BuildListener#taskFinished(BuildEvent)
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
     public void taskFinished(BuildEvent event) {
         log("<<< TASK FINISHED -- " + event.getTask(), Project.MSG_DEBUG);
         flush();
@@ -185,8 +186,8 @@ public class RecorderEntry implements BuildLogger, SubBuildListener {
 
     /**
      * @see org.apache.tools.ant.BuildListener#messageLogged(BuildEvent)
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
     public void messageLogged(BuildEvent event) {
         log("--- MESSAGE LOGGED", Project.MSG_DEBUG);
 
@@ -231,8 +232,8 @@ public class RecorderEntry implements BuildLogger, SubBuildListener {
 
     /**
      * @see BuildLogger#setMessageOutputLevel(int)
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
     public void setMessageOutputLevel(int level) {
         if (level >= Project.MSG_ERR && level <= Project.MSG_DEBUG) {
             loglevel = level;
@@ -241,8 +242,8 @@ public class RecorderEntry implements BuildLogger, SubBuildListener {
 
     /**
      * @see BuildLogger#setOutputPrintStream(PrintStream)
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
     public void setOutputPrintStream(PrintStream output) {
         closeFile();
         out = output;
@@ -251,8 +252,8 @@ public class RecorderEntry implements BuildLogger, SubBuildListener {
 
     /**
      * @see BuildLogger#setEmacsMode(boolean)
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
     public void setEmacsMode(boolean emacsMode) {
         this.emacsMode = emacsMode;
     }
@@ -260,8 +261,8 @@ public class RecorderEntry implements BuildLogger, SubBuildListener {
 
     /**
      * @see BuildLogger#setErrorPrintStream(PrintStream)
+     * {@inheritDoc}.
      */
-    /** {@inheritDoc}. */
     public void setErrorPrintStream(PrintStream err) {
         setOutputPrintStream(err);
     }
@@ -302,6 +303,7 @@ public class RecorderEntry implements BuildLogger, SubBuildListener {
     /**
      * Get the project associated with this recorder entry.
      *
+     * @return Project
      * @since 1.8.0
      */
     public Project getProject() {
@@ -324,7 +326,7 @@ public class RecorderEntry implements BuildLogger, SubBuildListener {
      * Used by Recorder.
      * @param append Indicates if output must be appended to the logfile or that
      * the logfile should be overwritten.
-     * @throws BuildException
+     * @throws BuildException if something goes wrong
      * @since 1.6.3
      */
     void openFile(boolean append) throws BuildException {
@@ -346,7 +348,7 @@ public class RecorderEntry implements BuildLogger, SubBuildListener {
     /**
      * Re-opens the file associated with this recorder.
      * Used by Recorder.
-     * @throws BuildException
+     * @throws BuildException if something goes wrong
      * @since 1.6.3
      */
     void reopenFile() throws BuildException {
@@ -356,7 +358,7 @@ public class RecorderEntry implements BuildLogger, SubBuildListener {
     private void openFileImpl(boolean append) throws BuildException {
         if (out == null) {
             try {
-                out = new PrintStream(new FileOutputStream(filename, append));
+                out = new PrintStream(FileUtils.newOutputStream(Paths.get(filename), append));
             } catch (IOException ioe) {
                 throw new BuildException("Problems opening file using a "
                                          + "recorder entry", ioe);

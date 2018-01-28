@@ -72,7 +72,7 @@ public class Script extends Task {
     }
 
     /**
-     * Load the script from an external file ; optional.
+     * Load the script from an external file; optional.
      *
      * @param fileName the name of the file containing the script source.
      */
@@ -130,4 +130,15 @@ public class Script extends Task {
     public void setSetBeans(boolean setBeans) {
         helper.setSetBeans(setBeans);
     }
+
+    /**
+     * Set the encoding of the script from an external file; optional.
+     *
+     * @param encoding the encoding of the file containing the script source.
+     * @since Ant 1.10.2
+     */
+    public void setEncoding(String encoding) {
+        helper.setEncoding(encoding);
+    }
+
 }

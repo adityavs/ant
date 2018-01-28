@@ -18,6 +18,7 @@
 package org.apache.tools.ant.taskdefs;
 
 import java.io.File;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -32,13 +33,13 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
-import javax.xml.xpath.XPathVariableResolver;
 
 import org.apache.tools.ant.AntClassLoader;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.DirectoryScanner;
 import org.apache.tools.ant.DynamicConfigurator;
 import org.apache.tools.ant.Project;
+import org.apache.tools.ant.ProjectComponent;
 import org.apache.tools.ant.PropertyHelper;
 import org.apache.tools.ant.types.CommandlineJava;
 import org.apache.tools.ant.types.Environment;
@@ -53,9 +54,11 @@ import org.apache.tools.ant.types.resources.FileProvider;
 import org.apache.tools.ant.types.resources.FileResource;
 import org.apache.tools.ant.types.resources.Resources;
 import org.apache.tools.ant.types.resources.Union;
+import org.apache.tools.ant.util.ClasspathUtils;
 import org.apache.tools.ant.util.FileNameMapper;
 import org.apache.tools.ant.util.FileUtils;
 import org.apache.tools.ant.util.ResourceUtils;
+import org.apache.tools.ant.util.StringUtils;
 
 /**
  * Processes a set of XML documents via XSLT. This is
@@ -68,6 +71,15 @@ import org.apache.tools.ant.util.ResourceUtils;
  */
 
 public class XSLTProcess extends MatchingTask implements XSLTLogger {
+    /**
+     * The default processor is trax
+     * @since Ant 1.7
+     */
+    public static final String PROCESSOR_TRAX = "trax";
+
+    /** Utilities used for file operations */
+    private static final FileUtils FILE_UTILS = FileUtils.getFileUtils();
+
     /** destination directory */
     private File destDir = null;
 
@@ -90,7 +102,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
     private String fileDirParameter = null;
 
     /** additional parameters to be passed to the stylesheets */
-    private final List<Param> params = new ArrayList<Param>();
+    private final List<Param> params = new ArrayList<>();
 
     /** Input XML document to be used */
     private File inFile = null;
@@ -116,13 +128,10 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
     private boolean force = false;
 
     /** XSL output properties to be used */
-    private final Vector outputProperties = new Vector();
+    private final List<OutputProperty> outputProperties = new Vector<>();
 
     /** for resolving entities such as dtds */
     private final XMLCatalog xmlCatalog = new XMLCatalog();
-
-    /** Utilities used for file operations */
-    private static final FileUtils FILE_UTILS = FileUtils.getFileUtils();
 
     /**
      * Whether to style all files in the included directories as well.
@@ -175,12 +184,6 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
      * @since Ant 1.7
      */
     private boolean useImplicitFileset = true;
-
-    /**
-     * The default processor is trax
-     * @since Ant 1.7
-     */
-    public static final String PROCESSOR_TRAX = "trax";
 
     /**
      * whether to suppress warnings.
@@ -240,12 +243,6 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
     private TraceConfiguration traceConfiguration;
 
     /**
-     * Creates a new XSLTProcess Task.
-     */
-    public XSLTProcess() {
-    } //-- XSLTProcess
-
-    /**
      * Whether to style all files in the included directories as well;
      * optional, default is true.
      *
@@ -300,8 +297,8 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
      */
     public void addConfiguredStyle(final Resources rc) {
         if (rc.size() != 1) {
-            handleError("The style element must be specified with exactly one"
-                        + " nested resource.");
+            handleError(
+                "The style element must be specified with exactly one nested resource.");
         } else {
             setXslResource(rc.iterator().next());
         }
@@ -342,13 +339,8 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
         }
         final File savedBaseDir = baseDir;
 
-        DirectoryScanner scanner;
-        String[]         list;
-        String[]         dirs;
-
         final String baseMessage =
-            "specify the stylesheet either as a filename in style attribute "
-            + "or as a nested resource";
+            "specify the stylesheet either as a filename in style attribute or as a nested resource";
 
         if (xslResource == null && xslFile == null) {
             handleError(baseMessage);
@@ -392,8 +384,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
                      * the wrong version has been used.
                      */
                     if (alternative.exists()) {
-                        log("DEPRECATED - the 'style' attribute should be "
-                            + "relative to the project's");
+                        log("DEPRECATED - the 'style' attribute should be relative to the project's");
                         log("             basedir, not the tasks's basedir.");
                         stylesheet = alternative;
                     }
@@ -424,33 +415,30 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
             //-- make sure destination directory exists...
             checkDest();
 
+
             if (useImplicitFileset) {
-                scanner = getDirectoryScanner(baseDir);
+                DirectoryScanner scanner = getDirectoryScanner(baseDir);
                 log("Transforming into " + destDir, Project.MSG_INFO);
 
                 // Process all the files marked for styling
-                list = scanner.getIncludedFiles();
-                for (int i = 0; i < list.length; ++i) {
-                    process(baseDir, list[i], destDir, styleResource);
+                for (String element : scanner.getIncludedFiles()) {
+                    process(baseDir, element, destDir, styleResource);
                 }
                 if (performDirectoryScan) {
                     // Process all the directories marked for styling
-                    dirs = scanner.getIncludedDirectories();
-                    for (int j = 0; j < dirs.length; ++j) {
-                        list = new File(baseDir, dirs[j]).list();
-                        for (int i = 0; i < list.length; ++i) {
-                            process(baseDir, dirs[j] + File.separator + list[i], destDir,
+                    for (String dir : scanner.getIncludedDirectories()) {
+                        for (String element : new File(baseDir, dir).list()) {
+                            process(baseDir, dir + File.separator + element, destDir,
                                     styleResource);
                         }
                     }
                 }
-            } else { // only resource collections, there better be some
-                if (resources.size() == 0) {
-                    if (failOnNoResources) {
-                        handleError("no resources specified");
-                    }
-                    return;
+            } else if (resources.isEmpty()) {
+                // only resource collections, there better be some
+                if (failOnNoResources) {
+                    handleError("no resources specified");
                 }
+                return;
             }
             processResources(styleResource);
         } finally {
@@ -604,6 +592,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
     /**
      * Whether to suppress warning messages of the processor.
      *
+     * @param b boolean
      * @since Ant 1.8.0
      */
     public void setSuppressWarnings(final boolean b) {
@@ -613,6 +602,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
     /**
      * Whether to suppress warning messages of the processor.
      *
+     * @return boolean
      * @since Ant 1.8.0
      */
     public boolean getSuppressWarnings() {
@@ -622,6 +612,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
     /**
      * Whether transformation errors should make the build fail.
      *
+     * @param b boolean
      * @since Ant 1.8.0
      */
     public void setFailOnTransformationError(final boolean b) {
@@ -631,6 +622,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
     /**
      * Whether any errors should make the build fail.
      *
+     * @param b boolean
      * @since Ant 1.8.0
      */
     public void setFailOnError(final boolean b) {
@@ -640,6 +632,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
     /**
      * Whether the build should fail if the nested resource collection is empty.
      *
+     * @param b boolean
      * @since Ant 1.8.0
      */
     public void setFailOnNoResources(final boolean b) {
@@ -649,6 +642,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
     /**
      * A system property to set during transformation.
      *
+     * @param sysp Environment.Variable
      * @since Ant 1.8.0
      */
     public void addSysproperty(final Environment.Variable sysp) {
@@ -658,6 +652,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
     /**
      * A set of system properties to set during transformation.
      *
+     * @param sysp PropertySet
      * @since Ant 1.8.0
      */
     public void addSyspropertyset(final PropertySet sysp) {
@@ -671,12 +666,12 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
      * processor other than trax or if the Transformer is not Xalan2's
      * transformer implementation.</p>
      *
+     * @return TraceConfiguration
      * @since Ant 1.8.0
      */
     public TraceConfiguration createTrace() {
         if (traceConfiguration != null) {
-            throw new BuildException("can't have more than one trace"
-                                     + " configuration");
+            throw new BuildException("can't have more than one trace configuration");
         }
         traceConfiguration = new TraceConfiguration();
         return traceConfiguration;
@@ -685,6 +680,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
     /**
      * Configuration for Xalan2 traces.
      *
+     * @return TraceConfiguration
      * @since Ant 1.8.0
      */
     public TraceConfiguration getTraceConfiguration() {
@@ -700,12 +696,12 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
      * @exception Exception if the processor cannot be loaded.
      */
     private void resolveProcessor(final String proc) throws Exception {
-        if (proc.equals(PROCESSOR_TRAX)) {
+        if (PROCESSOR_TRAX.equals(proc)) {
             liaison = new org.apache.tools.ant.taskdefs.optional.TraXLiaison();
         } else {
             //anything else is a classname
-            final Class clazz = loadClass(proc);
-            liaison = (XSLTLiaison) clazz.newInstance();
+            final Class<? extends XSLTLiaison> clazz = loadClass(proc).asSubclass(XSLTLiaison.class);
+            liaison = clazz.newInstance();
         }
     }
 
@@ -716,9 +712,8 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
      * As a side effect, the loader is set as the thread context classloader
      * @param classname the name of the class to load.
      * @return the requested class.
-     * @exception Exception if the class could not be loaded.
      */
-    private Class loadClass(final String classname) throws Exception {
+    private Class<?> loadClass(final String classname) throws ClassNotFoundException {
         setupLoader();
         if (loader == null) {
             return Class.forName(classname);
@@ -750,7 +745,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
 
     /**
      * specifies a single XML document to be styled. Should be used
-     * with the <tt>out</tt> attribute; ; required if <tt>out</tt> is set
+     * with the <tt>out</tt> attribute; required if <tt>out</tt> is set
      *
      * @param inFile the input file
      */
@@ -808,29 +803,25 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
             throws BuildException {
 
         File   outF = null;
-        File   inF = null;
 
         try {
             final long styleSheetLastModified = stylesheet.getLastModified();
-            inF = new File(baseDir, xmlFile);
+            File inF = new File(baseDir, xmlFile);
 
             if (inF.isDirectory()) {
                 log("Skipping " + inF + " it is a directory.", Project.MSG_VERBOSE);
                 return;
             }
-            FileNameMapper mapper = null;
-            if (mapperElement != null) {
-                mapper = mapperElement.getImplementation();
-            } else {
-                mapper = new StyleMapper();
-            }
+            FileNameMapper mapper = mapperElement == null ? new StyleMapper()
+                : mapperElement.getImplementation();
 
             final String[] outFileName = mapper.mapFileName(xmlFile);
             if (outFileName == null || outFileName.length == 0) {
                 log("Skipping " + inFile + " it cannot get mapped to output.", Project.MSG_VERBOSE);
                 return;
-            } else if (outFileName == null || outFileName.length > 1) {
-                log("Skipping " + inFile + " its mapping is ambiguos.", Project.MSG_VERBOSE);
+            }
+            if (outFileName.length > 1) {
+                log("Skipping " + inFile + " its mapping is ambiguous.", Project.MSG_VERBOSE);
                 return;
             }
             outF = new File(destDir, outFileName[0]);
@@ -928,8 +919,8 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
      * Get an enumeration on the outputproperties.
      * @return the outputproperties
      */
-    public Enumeration getOutputProperties() {
-        return outputProperties.elements();
+    public Enumeration<OutputProperty> getOutputProperties() {
+        return Collections.enumeration(outputProperties);
     }
 
     /**
@@ -950,7 +941,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
                 try {
                     resolveProcessor(PROCESSOR_TRAX);
                 } catch (final Throwable e1) {
-                    e1.printStackTrace();
+                    log(StringUtils.getStackTrace(e1), Project.MSG_ERR);
                     handleError(e1);
                 }
             }
@@ -1018,6 +1009,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
         }
 
         /**
+         * @param type String
          * @see ParamType
          * @since Ant 1.9.3
          */
@@ -1053,6 +1045,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
         }
 
         /**
+         * @return String
          * @see ParamType
          * @since Ant 1.9.3
          */
@@ -1172,7 +1165,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
      */
     public OutputProperty createOutputProperty() {
         final OutputProperty p = new OutputProperty();
-        outputProperties.addElement(p);
+        outputProperties.add(p);
         return p;
     }
 
@@ -1233,11 +1226,8 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
 
         xpathFactory = XPathFactory.newInstance();
         xpath = xpathFactory.newXPath();
-        xpath.setXPathVariableResolver(new XPathVariableResolver() {
-            public Object resolveVariable(final QName variableName) {
-                return getProject().getProperty(variableName.toString());
-            }
-        });
+        xpath.setXPathVariableResolver(
+            variableName -> getProject().getProperty(variableName.toString()));
     }
 
     /**
@@ -1297,16 +1287,15 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
                 if (p.shouldUse()) {
                     final Object evaluatedParam = evaluateParam(p);
                     if (liaison instanceof XSLTLiaison4) {
-                        ((XSLTLiaison4)liaison).addParam(p.getName(), evaluatedParam);
+                        ((XSLTLiaison4) liaison).addParam(p.getName(),
+                            evaluatedParam);
+                    } else if (evaluatedParam == null || evaluatedParam instanceof String) {
+                        liaison.addParam(p.getName(), (String) evaluatedParam);
                     } else {
-                        if (evaluatedParam == null || evaluatedParam instanceof String) {
-                            liaison.addParam(p.getName(), (String)evaluatedParam);
-                        } else {
-                            log("XSLTLiaison '" + liaison.getClass().getName()
-                                    + "' supports only String parameters. Converting parameter '" + p.getName()
-                                    + "' to its String value '" + evaluatedParam, Project.MSG_WARN);
-                            liaison.addParam(p.getName(), String.valueOf(evaluatedParam));
-                        }
+                        log("XSLTLiaison '" + liaison.getClass().getName()
+                                + "' supports only String parameters. Converting parameter '" + p.getName()
+                                + "' to its String value '" + evaluatedParam, Project.MSG_WARN);
+                        liaison.addParam(p.getName(), String.valueOf(evaluatedParam));
                     }
                 }
             }
@@ -1333,7 +1322,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
 
         ParamType type;
 
-        if (typeName == null || "".equals(typeName)) {
+        if (typeName == null || typeName.isEmpty()) {
             type = ParamType.STRING; // String is default
         } else {
             try {
@@ -1358,11 +1347,10 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
                 final QName xpathType = ParamType.XPATH_TYPES.get(type);
                 if (xpathType == null) {
                     throw new IllegalArgumentException("Invalid XSLT parameter type: " + typeName);
-                } else {
-                    final XPathExpression xpe = xpath.compile(expression);
-                    // null = evaluate XPath on empty XML document
-                    return xpe.evaluate((Object) null, xpathType);
                 }
+                final XPathExpression xpe = xpath.compile(expression);
+                // null = evaluate XPath on empty XML document
+                return xpe.evaluate((Object) null, xpathType);
         }
     }
 
@@ -1377,7 +1365,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
      * @since Ant 1.7
      */
     private void setLiaisonDynamicFileParameters(
-        final XSLTLiaison liaison, final File inFile) throws Exception {
+        final XSLTLiaison liaison, final File inFile) throws Exception { //NOSONAR
         if (fileNameParameter != null) {
             liaison.addParam(fileNameParameter, inFile.getName());
         }
@@ -1385,7 +1373,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
             final String fileName = FileUtils.getRelativePath(baseDir, inFile);
             final File file = new File(fileName);
             // Give always a slash as file separator, so the stylesheet could be sure about that
-            // Use '.' so a dir+"/"+name would not result in an absolute path
+            // Use '.' so a dir + "/" + name would not result in an absolute path
             liaison.addParam(fileDirParameter, file.getParent() != null ? file.getParent().replace(
                     '\\', '/') : ".");
         }
@@ -1409,6 +1397,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
      * Throws an exception with the given message if failOnError is
      * true, otherwise logs the message using the WARN level.
      *
+     * @param msg String
      * @since Ant 1.8.0
      */
     protected void handleError(final String msg) {
@@ -1424,14 +1413,14 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
      * failOnError is true, otherwise logs the message using the WARN
      * level.
      *
+     * @param ex Throwable
      * @since Ant 1.8.0
      */
     protected void handleError(final Throwable ex) {
         if (failOnError) {
             throw new BuildException(ex);
-        } else {
-            log("Caught an exception: " + ex, Project.MSG_WARN);
         }
+        log("Caught an exception: " + ex, Project.MSG_WARN);
     }
 
     /**
@@ -1439,15 +1428,15 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
      * failOnError and failOnTransformationError are true, otherwise
      * logs the message using the WARN level.
      *
+     * @param ex Exception
      * @since Ant 1.8.0
      */
     protected void handleTransformationError(final Exception ex) {
         if (failOnError && failOnTransformationError) {
             throw new BuildException(ex);
-        } else {
-            log("Caught an error during transformation: " + ex,
-                Project.MSG_WARN);
         }
+        log("Caught an error during transformation: " + ex,
+            Project.MSG_WARN);
     }
 
     /**
@@ -1462,7 +1451,12 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
         /**
          * the list of factory attributes to use for TraXLiaison
          */
-        private final Vector attributes = new Vector();
+        private final List<Attribute> attributes = new ArrayList<>();
+
+        /**
+         * the list of factory features to use for TraXLiaison
+         */
+        private final List<Feature> features = new ArrayList<>();
 
         /**
          * @return the name of the factory.
@@ -1484,15 +1478,34 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
          * @param attr the newly created factory attribute
          */
         public void addAttribute(final Attribute attr) {
-            attributes.addElement(attr);
+            attributes.add(attr);
         }
 
         /**
          * return the attribute elements.
          * @return the enumeration of attributes
          */
-        public Enumeration getAttributes() {
-            return attributes.elements();
+        public Enumeration<Attribute> getAttributes() {
+            return Collections.enumeration(attributes);
+        }
+
+        /**
+         * Create an instance of a factory feature.
+         * @param feature the newly created feature
+         * @since Ant 1.9.8
+         */
+        public void addFeature(final Feature feature) {
+            features.add(feature);
+        }
+
+        /**
+         * The configured features.
+         * @since Ant 1.9.8
+         *
+         * @return Iterable&lt;Feature&gt;
+         */
+        public Iterable<Feature> getFeatures() {
+            return features;
         }
 
         /**
@@ -1503,7 +1516,8 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
          *  <li>http://xml.apache.org/xalan/features/incremental (true|false) </li>
          * </ul>
          */
-        public static class Attribute implements DynamicConfigurator {
+        public static class Attribute extends ProjectComponent
+            implements DynamicConfigurator {
 
             /** attribute name, mostly processor specific */
             private String name;
@@ -1519,7 +1533,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
             }
 
             /**
-             * @return the output property value.
+             * @return the attribute value.
              */
             public Object getValue() {
                 return value;
@@ -1531,6 +1545,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
              * @return null
              * @throws BuildException never
              */
+            @Override
             public Object createDynamicElement(final String name) throws BuildException {
                 return null;
             }
@@ -1542,6 +1557,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
              * @param value the value of the attribute
              * @throws BuildException on error
              */
+            @Override
             public void setDynamicAttribute(final String name, final String value) throws BuildException {
                 // only 'name' and 'value' exist.
                 if ("name".equalsIgnoreCase(name)) {
@@ -1555,16 +1571,68 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
                         this.value = Boolean.FALSE;
                     } else {
                         try {
-                            this.value = new Integer(value);
+                            this.value = Integer.valueOf(value);
                         } catch (final NumberFormatException e) {
                             this.value = value;
                         }
                     }
+                } else if ("valueref".equalsIgnoreCase(name)) {
+                    this.value = getProject().getReference(value);
+                } else if ("classloaderforpath".equalsIgnoreCase(name)) {
+                    this.value =
+                        ClasspathUtils.getClassLoaderForPath(getProject(),
+                                                             new Reference(getProject(),
+                                                                           value));
                 } else {
-                    throw new BuildException("Unsupported attribute: " + name);
+                    throw new BuildException("Unsupported attribute: %s", name);
                 }
             }
         } // -- class Attribute
+
+        /**
+         * A feature for the TraX factory.
+         * @since Ant 1.9.8
+         */
+        public static class Feature {
+            private String name;
+            private boolean value;
+
+            public Feature() {
+            }
+
+            public Feature(String name, boolean value) {
+                this.name = name;
+                this.value = value;
+            }
+
+            /**
+             * @param name the feature name.
+             */
+            public void setName(String name) {
+                this.name = name;
+            }
+
+            /**
+             * @param value the feature value.
+             */
+            public void setValue(boolean value) {
+                this.value = value;
+            }
+
+            /**
+             * @return the feature name.
+             */
+            public String getName() {
+                return name;
+            }
+
+            /**
+             * @return the feature value.
+             */
+            public boolean getValue() {
+                return value;
+            }
+        }
     } // -- class Factory
 
     /**
@@ -1577,10 +1645,15 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
      * @since Ant 1.6.2
      */
     private class StyleMapper implements FileNameMapper {
+        @Override
         public void setFrom(final String from) {
         }
+
+        @Override
         public void setTo(final String to) {
         }
+
+        @Override
         public String[] mapFileName(String xmlFile) {
             final int dotPos = xmlFile.lastIndexOf('.');
             if (dotPos > 0) {
@@ -1601,6 +1674,8 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
         /**
          * Set to true if the listener is to print events that occur
          * as each node is 'executed' in the stylesheet.
+         *
+         * @param b boolean
          */
         public void setElements(final boolean b) {
             elements = b;
@@ -1609,6 +1684,8 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
         /**
          * True if the listener is to print events that occur as each
          * node is 'executed' in the stylesheet.
+         *
+         * @return boolean
          */
         public boolean getElements() {
             return elements;
@@ -1617,6 +1694,8 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
         /**
          * Set to true if the listener is to print information after
          * each extension event.
+         *
+         * @param b boolean
          */
         public void setExtension(final boolean b) {
             extension = b;
@@ -1625,6 +1704,8 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
         /**
          * True if the listener is to print information after each
          * extension event.
+         *
+         * @return boolean
          */
         public boolean getExtension() {
             return extension;
@@ -1633,6 +1714,8 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
         /**
          * Set to true if the listener is to print information after
          * each result-tree generation event.
+         *
+         * @param b boolean
          */
         public void setGeneration(final boolean b) {
             generation = b;
@@ -1641,6 +1724,8 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
         /**
          * True if the listener is to print information after each
          * result-tree generation event.
+         *
+         * @return boolean
          */
         public boolean getGeneration() {
             return generation;
@@ -1649,6 +1734,8 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
         /**
          * Set to true if the listener is to print information after
          * each selection event.
+         *
+         * @param b boolean
          */
         public void setSelection(final boolean b) {
             selection = b;
@@ -1657,6 +1744,8 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
         /**
          * True if the listener is to print information after each
          * selection event.
+         *
+         * @return boolean
          */
         public boolean getSelection() {
             return selection;
@@ -1665,6 +1754,8 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
         /**
          * Set to true if the listener is to print an event whenever a
          * template is invoked.
+         *
+         * @param b boolean
          */
         public void setTemplates(final boolean b) {
             templates = b;
@@ -1673,6 +1764,8 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
         /**
          * True if the listener is to print an event whenever a
          * template is invoked.
+         *
+         * @return boolean
          */
         public boolean getTemplates() {
             return templates;
@@ -1680,8 +1773,10 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
 
         /**
          * The stream to write traces to.
+         *
+         * @return OutputStream
          */
-        public java.io.OutputStream getOutputStream() {
+        public OutputStream getOutputStream() {
             return new LogOutputStream(XSLTProcess.this);
         }
     }

@@ -25,6 +25,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.StringTokenizer;
+import java.util.stream.Stream;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.ProjectComponent;
@@ -34,19 +35,19 @@ import org.apache.tools.ant.util.StringUtils;
 /**
  * Commandline objects help handling command lines specifying processes to
  * execute.
- *
+ * <p>
  * The class can be used to define a command line as nested elements or as a
  * helper to define a command line by an application.
- * <p>
- * <code>
- * &lt;someelement&gt;<br>
- * &nbsp;&nbsp;&lt;acommandline executable="/executable/to/run"&gt;<br>
- * &nbsp;&nbsp;&nbsp;&nbsp;&lt;argument value="argument 1" /&gt;<br>
- * &nbsp;&nbsp;&nbsp;&nbsp;&lt;argument line="argument_1 argument_2 argument_3" /&gt;<br>
- * &nbsp;&nbsp;&nbsp;&nbsp;&lt;argument value="argument 4" /&gt;<br>
- * &nbsp;&nbsp;&lt;/acommandline&gt;<br>
- * &lt;/someelement&gt;<br>
- * </code>
+ * </p>
+ * <pre>
+ * &lt;someelement&gt;
+ *   &lt;acommandline executable="/executable/to/run"&gt;
+ *     &lt;argument value="argument 1"/&gt;
+ *     &lt;argument line="argument_1 argument_2 argument_3"/&gt;
+ *     &lt;argument value="argument 4"/&gt;
+ *   &lt;/acommandline&gt;
+ * &lt;/someelement&gt;
+ * </pre>
  * The element <code>someelement</code> must provide a method
  * <code>createAcommandline</code> which returns an instance of this class.
  *
@@ -188,7 +189,7 @@ public class Commandline implements Cloneable {
          */
         public String[] getParts() {
             if (parts == null || parts.length == 0
-                || (prefix.length() == 0 && suffix.length() == 0)) {
+                    || (prefix.length() == 0 && suffix.length() == 0)) {
                 return parts;
             }
             String[] fullParts = new String[parts.length];
@@ -229,11 +230,9 @@ public class Commandline implements Cloneable {
          */
         public int getPosition() {
             if (realPos == -1) {
-                realPos = (executable == null ? 0 : 1);
-                for (int i = 0; i < position; i++) {
-                    Argument arg = (Argument) arguments.get(i);
-                    realPos += arg.getParts().length;
-                }
+                realPos = (executable == null ? 0 : 1) + (int)
+                arguments.stream().limit(position).map(Argument::getParts)
+                        .flatMap(Stream::of).count();
             }
             return realPos;
         }
@@ -251,6 +250,7 @@ public class Commandline implements Cloneable {
         /**
          * Get the prefix to be placed in front of the inserted argument.
          *
+         * @return String
          * @since Ant 1.8.0
          */
         public String getPrefix() {
@@ -270,6 +270,7 @@ public class Commandline implements Cloneable {
         /**
          * Get the suffix to be placed at the end of the inserted argument.
          *
+         * @return String
          * @since Ant 1.8.0
          */
         public String getSuffix() {
@@ -318,11 +319,25 @@ public class Commandline implements Cloneable {
      * @param executable the String executable name.
      */
     public void setExecutable(String executable) {
+        setExecutable(executable, true);
+    }
+
+    /**
+     * Set the executable to run.
+     *
+     * @param executable the String executable name.
+     * @param translateFileSeparator if {@code true} all file separators in the string
+     * are converted to the platform specific value.
+     *
+     * @since Ant 1.9.7
+     */
+    public void setExecutable(String executable, boolean translateFileSeparator) {
         if (executable == null || executable.length() == 0) {
             return;
         }
-        this.executable = executable.replace('/', File.separatorChar)
-            .replace('\\', File.separatorChar);
+        this.executable = translateFileSeparator
+            ? executable.replace('/', File.separatorChar).replace('\\', File.separatorChar)
+            : executable;
     }
 
     /**
@@ -371,7 +386,7 @@ public class Commandline implements Cloneable {
      * @return the arguments as an array of strings.
      */
     public String[] getArguments() {
-        List<String> result = new ArrayList<String>(arguments.size() * 2);
+        List<String> result = new ArrayList<>(arguments.size() * 2);
         addArgumentsToList(result.listIterator());
         return result.toArray(new String[result.size()]);
     }
@@ -398,6 +413,7 @@ public class Commandline implements Cloneable {
      * Return the command line as a string.
      * @return the command line.
      */
+    @Override
     public String toString() {
         return toString(getCommandline());
     }
@@ -418,17 +434,16 @@ public class Commandline implements Cloneable {
             if (argument.indexOf("\'") > -1) {
                 throw new BuildException("Can\'t handle single and double"
                         + " quotes in same argument");
-            } else {
-                return '\'' + argument + '\'';
             }
-        } else if (argument.indexOf("\'") > -1
-                   || argument.indexOf(" ") > -1
-                   // WIN9x uses a bat file for executing commands
-                   || (IS_WIN_9X && argument.indexOf(';') != -1)) {
-            return '\"' + argument + '\"';
-        } else {
-            return argument;
+            return '\'' + argument + '\'';
         }
+        if (argument.indexOf("\'") > -1
+               || argument.indexOf(" ") > -1
+               // WIN9x uses a bat file for executing commands
+               || (IS_WIN_9X && argument.indexOf(';') != -1)) {
+            return '\"' + argument + '\"';
+        }
+        return argument;
     }
 
     /**
@@ -472,7 +487,7 @@ public class Commandline implements Cloneable {
         final int inDoubleQuote = 2;
         int state = normal;
         final StringTokenizer tok = new StringTokenizer(toProcess, "\"\' ", true);
-        final ArrayList<String> result = new ArrayList<String>();
+        final ArrayList<String> result = new ArrayList<>();
         final StringBuilder current = new StringBuilder();
         boolean lastTokenHasBeenQuoted = false;
 
@@ -534,10 +549,11 @@ public class Commandline implements Cloneable {
      * Generate a deep clone of the contained object.
      * @return a clone of the contained object
      */
-    public Object clone() {
+    @Override
+    public Commandline clone() {
         try {
             Commandline c = (Commandline) super.clone();
-            c.arguments = new ArrayList<Argument>(arguments);
+            c.arguments = new ArrayList<>(arguments);
             return c;
         } catch (CloneNotSupportedException e) {
             throw new BuildException(e);
@@ -574,7 +590,7 @@ public class Commandline implements Cloneable {
 
     /**
      * Return a String that describes the command and arguments suitable for
-     * verbose output before a call to <code>Runtime.exec(String[])<code>.
+     * verbose output before a call to <code>Runtime.exec(String[])</code>.
      * @return a string that describes the command and arguments.
      * @since Ant 1.5
      */
@@ -584,7 +600,7 @@ public class Commandline implements Cloneable {
 
     /**
      * Return a String that describes the arguments suitable for
-     * verbose output before a call to <code>Runtime.exec(String[])<code>.
+     * verbose output before a call to <code>Runtime.exec(String[])</code>.
      * @return a string that describes the arguments.
      * @since Ant 1.5
      */
@@ -594,7 +610,7 @@ public class Commandline implements Cloneable {
 
     /**
      * Return a String that describes the command and arguments suitable for
-     * verbose output before a call to <code>Runtime.exec(String[])<code>.
+     * verbose output before a call to <code>Runtime.exec(String[])</code>.
      * @param line the Commandline to describe.
      * @return a string that describes the command and arguments.
      * @since Ant 1.5
@@ -605,7 +621,7 @@ public class Commandline implements Cloneable {
 
     /**
      * Return a String that describes the arguments suitable for
-     * verbose output before a call to <code>Runtime.exec(String[])<code>.
+     * verbose output before a call to <code>Runtime.exec(String[])</code>.
      * @param line the Commandline whose arguments to describe.
      * @return a string that describes the arguments.
      * @since Ant 1.5
@@ -616,7 +632,7 @@ public class Commandline implements Cloneable {
 
     /**
      * Return a String that describes the command and arguments suitable for
-     * verbose output before a call to <code>Runtime.exec(String[])<code>.
+     * verbose output before a call to <code>Runtime.exec(String[])</code>.
      *
      * <p>This method assumes that the first entry in the array is the
      * executable to run.</p>
@@ -628,9 +644,7 @@ public class Commandline implements Cloneable {
         if (args == null || args.length == 0) {
             return "";
         }
-        StringBuffer buf = new StringBuffer("Executing \'");
-        buf.append(args[0]);
-        buf.append("\'");
+        StringBuilder buf = new StringBuilder("Executing \'").append(args[0]).append("\'");
         if (args.length > 1) {
             buf.append(" with ");
             buf.append(describeArguments(args, 1));
@@ -642,7 +656,7 @@ public class Commandline implements Cloneable {
 
     /**
      * Return a String that describes the arguments suitable for
-     * verbose output before a call to <code>Runtime.exec(String[])<code>.
+     * verbose output before a call to <code>Runtime.exec(String[])</code>.
      * @param args the command line to describe as an array of strings.
      * @return a string that describes the arguments.
      * @since Ant 1.5
@@ -653,7 +667,7 @@ public class Commandline implements Cloneable {
 
     /**
      * Return a String that describes the arguments suitable for
-     * verbose output before a call to <code>Runtime.exec(String[])<code>.
+     * verbose output before a call to <code>Runtime.exec(String[])</code>.
      *
      * @param args the command line to describe as an array of strings.
      * @param offset ignore entries before this index.
@@ -665,7 +679,7 @@ public class Commandline implements Cloneable {
         if (args == null || args.length <= offset) {
             return "";
         }
-        StringBuffer buf = new StringBuffer("argument");
+        StringBuilder buf = new StringBuilder("argument");
         if (args.length > offset) {
             buf.append("s");
         }

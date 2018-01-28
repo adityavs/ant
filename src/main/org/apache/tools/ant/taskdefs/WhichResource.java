@@ -105,14 +105,11 @@ public class WhichResource extends Task {
             setcount++;
         }
 
-
         if (setcount == 0) {
-            throw new BuildException("One of classname or resource must"
-                                     + " be specified");
+            throw new BuildException("One of classname or resource must be specified");
         }
         if (setcount > 1) {
-            throw new BuildException("Only one of classname or resource can"
-                                     + " be specified");
+            throw new BuildException("Only one of classname or resource can be specified");
         }
         if (property == null) {
             throw new BuildException("No property defined");
@@ -123,6 +120,7 @@ public class WhichResource extends Task {
      * execute it
      * @throws BuildException on error
      */
+    @Override
     public void execute() throws BuildException {
         validate();
         if (classpath != null) {
@@ -135,11 +133,10 @@ public class WhichResource extends Task {
             getProject().log("using system classpath: " + classpath,
                              Project.MSG_DEBUG);
         }
-        AntClassLoader loader = null;
-        try {
-            loader = AntClassLoader.newAntClassLoader(getProject().getCoreLoader(),
-                                                      getProject(),
-                                                      classpath, false);
+        try (AntClassLoader loader =
+             AntClassLoader.newAntClassLoader(getProject().getCoreLoader(),
+                                              getProject(),
+                                              classpath, false)) {
             String loc = null;
             if (classname != null) {
                 //convert a class name into a resource
@@ -155,16 +152,11 @@ public class WhichResource extends Task {
             }
 
             log("Searching for " + resource, Project.MSG_VERBOSE);
-            URL url;
-            url = loader.getResource(resource);
+            URL url = loader.getResource(resource);
             if (url != null) {
                 //set the property
                 loc = url.toExternalForm();
                 getProject().setNewProperty(property, loc);
-            }
-        } finally {
-            if (loader != null) {
-                loader.cleanup();
             }
         }
     }

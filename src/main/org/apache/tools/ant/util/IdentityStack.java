@@ -33,6 +33,7 @@ public class IdentityStack<E> extends Stack<E> {
 
     /**
      * Get an IdentityStack containing the contents of the specified Stack.
+     * @param <E> desired type
      * @param s the Stack to copy; ignored if null.
      * @return an IdentityStack instance.
      */
@@ -40,7 +41,7 @@ public class IdentityStack<E> extends Stack<E> {
         if (s instanceof IdentityStack) {
             return (IdentityStack<E>) s;
         }
-        IdentityStack<E> result = new IdentityStack<E>();
+        IdentityStack<E> result = new IdentityStack<>();
         if (s != null) {
             result.addAll(s);
         }
@@ -69,6 +70,7 @@ public class IdentityStack<E> extends Stack<E> {
      * @return true if the stack contains the object.
      * @see java.util.Vector#contains(Object)
      */
+    @Override
     public synchronized boolean contains(Object o) {
         return indexOf(o) >= 0;
     }
@@ -80,6 +82,7 @@ public class IdentityStack<E> extends Stack<E> {
      * @return the position of the object, -1 if not found.
      * @see java.util.Vector#indexOf(Object, int)
      */
+    @Override
     public synchronized int indexOf(Object o, int pos) {
         final int size = size();
         for (int i = pos; i < size; i++) {
@@ -97,6 +100,7 @@ public class IdentityStack<E> extends Stack<E> {
      * @return the position of the object, -1 if not found.
      * @see java.util.Vector#indexOf(Object, int)
      */
+    @Override
     public synchronized int lastIndexOf(Object o, int pos) {
         for (int i = pos; i >= 0; i--) {
             if (get(i) == o) {
@@ -106,22 +110,25 @@ public class IdentityStack<E> extends Stack<E> {
         return -1;
     }
 
+    @Override
     public synchronized boolean removeAll(Collection<?> c) {
-        if (!(c instanceof Set)) {
-            c = new HashSet(c);
+        if (!(c instanceof Set<?>)) {
+            c = new HashSet<>(c);
         }
         return super.removeAll(c);
     }
 
-    public synchronized boolean retainAll(Collection c) {
-        if (!(c instanceof Set)) {
-            c = new HashSet(c);
+    @Override
+    public synchronized boolean retainAll(Collection<?> c) {
+        if (!(c instanceof Set<?>)) {
+            c = new HashSet<>(c);
         }
         return super.retainAll(c);
     }
 
+    @Override
     public synchronized boolean containsAll(Collection<?> c) {
-        IdentityHashMap map = new IdentityHashMap();
+        IdentityHashMap<Object, Boolean> map = new IdentityHashMap<>();
         for (Object e : this) {
             map.put(e, Boolean.TRUE);
         }

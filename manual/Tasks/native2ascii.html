@@ -15,8 +15,10 @@
    limitations under the License.
 -->
 <html>
-  <head><link rel="stylesheet" type="text/css" href="../stylesheets/style.css">
-<title>Native2Ascii Task</title></head>
+  <head>
+    <link rel="stylesheet" type="text/css" href="../stylesheets/style.css">
+    <title>Native2Ascii Task</title>
+  </head>
   <body>
     <h2>Native2Ascii</h2>
 
@@ -57,16 +59,22 @@
       and <code>&lt;patternset&gt;</code> elements.
     </p>
 
-    <p>It is possible to use different converters. This can be selected
-      with the <code>implementation</code> attribute or a nested element.
-      <a name="implementationvalues">Here are the choices of the attribute</a>:</p>
+    <p id="implementationvalues">
+      It is possible to use different converters. This can be selected
+      with the <code>implementation</code> attribute or a nested
+      element. Here are the choices of the attribute:
+    </p>
     <ul>
-      <li>default - the default converter (kaffe or sun) for the platform.</li>
-      <li>sun (the standard converter of the JDK)</li>
-      <li>kaffe (the standard converter of <a href="http://www.kaffe.org" target="_top">Kaffe</a>)</li>
+      <li>default - the default converter for the platform: kaffe
+        when run on Kaffe, builtin otherwise.</li>
+      <li>sun - used to be the standard converter of the JDK &lt; 9</li>
+      <li>kaffe - the standard converter
+        of <a href="http://www.kaffe.org" target="_top">Kaffe</a></li>
+      <li>builtin - Ant's internal implementation. <em>Since Ant
+          1.9.8</em></li>
     </ul>
 
-    <table border="1" cellpadding="2" cellspacing="0">
+    <table>
       <tr>
         <td><b>Attribute</b></td>
         <td><b>Description</b></td>
@@ -76,7 +84,7 @@
         <td>reverse</td>
         <td>Reverse the sense of the conversion,
           i.e. convert from ASCII to native <b>only supported by the
-            sun converter</b></td>
+            sun and builtin converters</b></td>
         <td align="center">No</td>
       </tr>
       <tr>
@@ -152,7 +160,7 @@ specified like <a href="../using.html#arg">Command-line Arguments</a>
 but have an additional attribute that can be used to enable arguments
 only if a given converter implementation will be used.</p>
 
-<table border="1" cellpadding="2" cellspacing="0">
+<table>
 <tr>
   <td width="12%" valign="top"><b>Attribute</b></td>
   <td width="78%" valign="top"><b>Description</b></td>
@@ -183,7 +191,7 @@ only if a given converter implementation will be used.</p>
   </tr>
 </table>
 
-<h4>implementationclasspath <em>since Apache Ant 1.8.0</em></h4>
+<h4>implementationclasspath (<em>since Apache Ant 1.8.0</em>)</h4>
 
 <p>A <a href="../using.html#path">PATH like structure</a> holding the
   classpath to use when loading the converter implementation if a
@@ -191,7 +199,7 @@ only if a given converter implementation will be used.</p>
   using one of the built-in converters.</p>
 
 <h4>Any nested element of a type that implements Native2AsciiAdapter
-  <em>since Ant 1.8.0</em></h4>
+  (<em>since Ant 1.8.0</em>)</h4>
 
 <p>If a defined type implements the <code>Native2AsciiAdapter</code>
   interface a nested element of that type can be used as an
@@ -241,6 +249,6 @@ only if a given converter implementation will be used.</p>
 </pre>
 <p>in which case your native2ascii adapter can support attributes and
   nested elements of its own.</p>
-  </body>
 
+</body>
 </html>

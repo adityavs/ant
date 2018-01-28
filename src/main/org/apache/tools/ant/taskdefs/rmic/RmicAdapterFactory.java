@@ -22,6 +22,7 @@ import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Task;
 import org.apache.tools.ant.types.Path;
 import org.apache.tools.ant.util.ClasspathUtils;
+import org.apache.tools.ant.util.JavaEnvUtils;
 
 /**
  * Creates the necessary rmic adapter, given basic criteria.
@@ -95,19 +96,27 @@ public final class RmicAdapterFactory {
         throws BuildException {
         //handle default specially by choosing the sun or kaffe compiler
         if (DEFAULT_COMPILER.equalsIgnoreCase(rmicType) || rmicType.length() == 0) {
-            rmicType = KaffeRmic.isAvailable()
-                ? KaffeRmic.COMPILER_NAME
-                : SunRmic.COMPILER_NAME;
+            if (KaffeRmic.isAvailable()) {
+                rmicType = KaffeRmic.COMPILER_NAME;
+            } else if (JavaEnvUtils.isAtLeastJavaVersion(JavaEnvUtils.JAVA_9)) {
+                rmicType = ForkingSunRmic.COMPILER_NAME;
+            } else {
+                rmicType = SunRmic.COMPILER_NAME;
+            }
         }
         if (SunRmic.COMPILER_NAME.equalsIgnoreCase(rmicType)) {
             return new SunRmic();
-        } else if (KaffeRmic.COMPILER_NAME.equalsIgnoreCase(rmicType)) {
+        }
+        if (KaffeRmic.COMPILER_NAME.equalsIgnoreCase(rmicType)) {
             return new KaffeRmic();
-        } else if (WLRmic.COMPILER_NAME.equalsIgnoreCase(rmicType)) {
+        }
+        if (WLRmic.COMPILER_NAME.equalsIgnoreCase(rmicType)) {
             return new WLRmic();
-        } else if (ForkingSunRmic.COMPILER_NAME.equalsIgnoreCase(rmicType)) {
+        }
+        if (ForkingSunRmic.COMPILER_NAME.equalsIgnoreCase(rmicType)) {
             return new ForkingSunRmic();
-        } else if (XNewRmic.COMPILER_NAME.equalsIgnoreCase(rmicType)) {
+        }
+        if (XNewRmic.COMPILER_NAME.equalsIgnoreCase(rmicType)) {
             return new XNewRmic();
         }
         //no match?
@@ -128,7 +137,7 @@ public final class RmicAdapterFactory {
     private static RmicAdapter resolveClassName(String className,
                                                 ClassLoader loader)
             throws BuildException {
-        return (RmicAdapter) ClasspathUtils.newInstance(className,
+        return ClasspathUtils.newInstance(className,
                 loader != null ? loader :
                 RmicAdapterFactory.class.getClassLoader(), RmicAdapter.class);
     }

@@ -27,6 +27,7 @@ import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
 import org.apache.tools.ant.types.Path;
 import org.apache.tools.ant.types.Reference;
+import org.apache.tools.ant.util.StringUtils;
 
 /**
  * EXPERIMENTAL
@@ -69,12 +70,6 @@ public class Classloader extends Task {
     private boolean parentFirst = true;
     private String parentName = null;
 
-    /**
-     * Default constructor
-     */
-    public Classloader() {
-    }
-
     /** Name of the loader. If none, the default loader will be modified
      *
      * @param name the name of this loader
@@ -100,6 +95,7 @@ public class Classloader extends Task {
      * @param b if true reverse the normal classloader lookup.
      * @deprecated use setParentFirst with a negated argument instead
      */
+    @Deprecated
     public void setReverse(boolean b) {
         this.parentFirst = !b;
     }
@@ -155,17 +151,17 @@ public class Classloader extends Task {
         return this.classpath.createPath();
     }
 
-
     /**
      * do the classloader manipulation.
      */
+    @Override
     public void execute() {
         try {
             // Gump friendly - don't mess with the core loader if only classpath
             if ("only".equals(getProject().getProperty("build.sysclasspath"))
                 && (name == null || SYSTEM_LOADER_REF.equals(name))) {
-                log("Changing the system loader is disabled "
-                    + "by build.sysclasspath=only", Project.MSG_WARN);
+                log("Changing the system loader is disabled by build.sysclasspath=only",
+                    Project.MSG_WARN);
                 return;
             }
 
@@ -185,6 +181,7 @@ public class Classloader extends Task {
                 return;
             }
 
+            @SuppressWarnings("resource")
             AntClassLoader acl = (AntClassLoader) obj;
             boolean existingLoader = acl != null;
 
@@ -228,7 +225,7 @@ public class Classloader extends Task {
                 for (int i = 0; i < list.length; i++) {
                     File f = new File(list[i]);
                     if (f.exists()) {
-                        log("Adding to class loader " +  acl + " " + f.getAbsolutePath(),
+                        log("Adding to class loader " + acl + " " + f.getAbsolutePath(),
                                 Project.MSG_DEBUG);
                         acl.addPathElement(f.getAbsolutePath());
                     }
@@ -238,7 +235,7 @@ public class Classloader extends Task {
             // TODO add exceptions
 
         } catch (Exception ex) {
-            ex.printStackTrace();
+            log(StringUtils.getStackTrace(ex), Project.MSG_ERR);
         }
     }
 }

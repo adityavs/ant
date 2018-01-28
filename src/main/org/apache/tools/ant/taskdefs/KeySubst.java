@@ -28,8 +28,10 @@ import java.util.Hashtable;
 import java.util.StringTokenizer;
 
 import org.apache.tools.ant.BuildException;
+import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
 import org.apache.tools.ant.util.FileUtils;
+import org.apache.tools.ant.util.StringUtils;
 
 /**
  * Keyword substitution. Input file is written to output file.
@@ -80,7 +82,7 @@ public class KeySubst extends Task {
             }
             bw.flush();
         } catch (IOException ioe) {
-            ioe.printStackTrace();
+            log(StringUtils.getStackTrace(ioe), Project.MSG_ERR);
         } finally {
             FileUtils.close(bw);
             FileUtils.close(br);
@@ -153,7 +155,7 @@ public class KeySubst extends Task {
             System.out.println(KeySubst.replace("$f ${VERSION} f ${b} jj $",
                                                 hash));
         } catch (Exception e) {
-            e.printStackTrace();
+            e.printStackTrace(); //NOSONAR
         }
     }
 
@@ -174,18 +176,18 @@ public class KeySubst extends Task {
         while ((index = origString.indexOf("${", i)) > -1) {
             key = origString.substring(index + 2, origString.indexOf("}",
                                        index + 3));
-            finalString.append (origString.substring(i, index));
+            finalString.append(origString.substring(i, index));
             if (keys.containsKey(key)) {
-                finalString.append (keys.get(key));
+                finalString.append(keys.get(key));
             } else {
-                finalString.append ("${");
-                finalString.append (key);
-                finalString.append ("}");
+                finalString.append("${");
+                finalString.append(key);
+                finalString.append("}");
             }
             i = index + 3 + key.length();
         }
         // CheckStyle:MagicNumber ON
-        finalString.append (origString.substring(i));
+        finalString.append(origString.substring(i));
         return finalString.toString();
     }
 }

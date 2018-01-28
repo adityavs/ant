@@ -35,7 +35,6 @@ public class SmtpResponseReader {
     // CheckStyle:VisibilityModifier OFF - bc
     protected BufferedReader reader = null;
     // CheckStyle:VisibilityModifier ON
-    private StringBuffer result = new StringBuffer();
 
     /**
      * Wrap this input stream.
@@ -48,13 +47,13 @@ public class SmtpResponseReader {
     /**
      * Read until the server indicates that the response is complete.
      *
-     * @return Responsecode (3 digits) + Blank + Text from all
+     * @return Response code (3 digits) + Blank + Text from all
      *         response line concatenated (with blanks replacing the \r\n
      *         sequences).
      * @throws IOException on error.
      */
     public String getResponse() throws IOException {
-        result.setLength(0);
+        StringBuilder result = new StringBuilder();
         String line = reader.readLine();
         // CheckStyle:MagicNumber OFF
         if (line != null && line.length() >= 3) {
@@ -64,7 +63,7 @@ public class SmtpResponseReader {
         // CheckStyle:MagicNumber ON
 
         while (line != null) {
-            append(line);
+            appendTo(result, line);
             if (!hasMoreLines(line)) {
                 break;
             }
@@ -93,13 +92,12 @@ public class SmtpResponseReader {
     }
 
     /**
-     * Append the text from this line of the resonse.
+     * Append the text from this line of the response.
      */
-    private void append(String line) {
+    private static void appendTo(StringBuilder target, String line) {
         // CheckStyle:MagicNumber OFF
         if (line.length() > 4) {
-            result.append(line.substring(4));
-            result.append(" ");
+            target.append(line.substring(4)).append(' ');
         }
         // CheckStyle:MagicNumber ON
     }

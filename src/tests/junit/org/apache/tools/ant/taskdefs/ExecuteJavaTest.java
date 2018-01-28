@@ -35,19 +35,18 @@ import static org.junit.Assert.assertTrue;
  */
 public class ExecuteJavaTest {
 
-    private final static int TIME_OUT = 5000;
-
-    private final static int CLOCK_ERROR=200;
-    private final static int TIME_OUT_TEST=TIME_OUT-CLOCK_ERROR;
+    private static final int TIME_OUT = 5000;
+    private static final int CLOCK_ERROR = 200;
+    private static final int TIME_OUT_TEST = TIME_OUT - CLOCK_ERROR;
 
     private ExecuteJava ej;
     private Project project;
     private Path cp;
 
     @Before
-    public void setUp(){
+    public void setUp() {
         ej = new ExecuteJava();
-        ej.setTimeout((long)TIME_OUT);
+        ej.setTimeout((long) TIME_OUT);
         project = new Project();
         project.setBasedir(".");
         project.setProperty(MagicNames.ANT_HOME, System.getProperty(MagicNames.ANT_HOME));
@@ -64,7 +63,7 @@ public class ExecuteJavaTest {
 
     @Test
     public void testNoTimeOut() throws Exception {
-        Commandline cmd = getCommandline(TIME_OUT/2);
+        Commandline cmd = getCommandline(TIME_OUT / 2);
         ej.setJavaCommand(cmd);
         ej.execute(project);
         assertTrue("process should not have been killed", !ej.killedProcess());
@@ -73,24 +72,24 @@ public class ExecuteJavaTest {
     // test that the watchdog ends the process
     @Test
     public void testTimeOut() throws Exception {
-        Commandline cmd = getCommandline(TIME_OUT*2);
+        Commandline cmd = getCommandline(TIME_OUT * 2);
         ej.setJavaCommand(cmd);
         long now = System.currentTimeMillis();
         ej.execute(project);
         long elapsed = System.currentTimeMillis() - now;
         assertTrue("process should have been killed", ej.killedProcess());
 
-        assertTrue("elapse time of "+elapsed
-                   +" ms is less than timeout value of "+TIME_OUT_TEST+" ms",
+        assertTrue("elapse time of " + elapsed
+                   + " ms is less than timeout value of " + TIME_OUT_TEST + " ms",
                    elapsed >= TIME_OUT_TEST);
-        assertTrue("elapse time of "+elapsed
-                   +" ms is greater than run value of "+(TIME_OUT*2)+" ms",
-                   elapsed < TIME_OUT*2);
+        assertTrue("elapse time of " + elapsed
+                   + " ms is greater than run value of " + (TIME_OUT * 2) + " ms",
+                   elapsed < TIME_OUT * 2);
     }
 
     @Test
     public void testNoTimeOutForked() throws Exception {
-        Commandline cmd = getCommandline(TIME_OUT/2);
+        Commandline cmd = getCommandline(TIME_OUT / 2);
         ej.setJavaCommand(cmd);
         ej.fork(cp);
         assertTrue("process should not have been killed", !ej.killedProcess());
@@ -99,29 +98,29 @@ public class ExecuteJavaTest {
     // test that the watchdog ends the process
     @Test
     public void testTimeOutForked() throws Exception {
-        Commandline cmd = getCommandline(TIME_OUT*2);
+        Commandline cmd = getCommandline(TIME_OUT * 2);
         ej.setJavaCommand(cmd);
         long now = System.currentTimeMillis();
         ej.fork(cp);
         long elapsed = System.currentTimeMillis() - now;
         assertTrue("process should have been killed", ej.killedProcess());
 
-        assertTrue("elapse time of "+elapsed
-                   +" ms is less than timeout value of "+TIME_OUT_TEST+" ms",
+        assertTrue("elapse time of " + elapsed
+                   + " ms is less than timeout value of " + TIME_OUT_TEST + " ms",
                    elapsed >= TIME_OUT_TEST);
-        assertTrue("elapse time of "+elapsed
-                   +" ms is greater than run value of "+(TIME_OUT*2)+" ms",
-                   elapsed < TIME_OUT*2);
+        assertTrue("elapse time of " + elapsed
+                   + " ms is greater than run value of " + (TIME_OUT * 2) + " ms",
+                   elapsed < TIME_OUT * 2);
     }
 
     /**
      * Dangerous method to obtain the classpath for the test. This is
      * severely tighted to the build.xml properties.
      */
-    private static String getTestClassPath(){
+    private static String getTestClassPath() {
         String classpath = System.getProperty("build.tests");
         if (classpath == null) {
-            System.err.println("WARNING: 'build.tests' property is not available !");
+            System.err.println("WARNING: 'build.tests' property is not available!");
             classpath = System.getProperty("java.class.path");
         }
 

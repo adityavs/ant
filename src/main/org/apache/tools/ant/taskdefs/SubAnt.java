@@ -19,7 +19,7 @@ package org.apache.tools.ant.taskdefs;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Enumeration;
+import java.util.List;
 import java.util.Vector;
 
 import org.apache.tools.ant.BuildException;
@@ -34,13 +34,13 @@ import org.apache.tools.ant.types.Path;
 import org.apache.tools.ant.types.PropertySet;
 import org.apache.tools.ant.types.Reference;
 import org.apache.tools.ant.types.ResourceCollection;
-
+import org.apache.tools.ant.util.StringUtils;
 
 /**
  * Calls a given target for all defined sub-builds. This is an extension
  * of ant for bulk project execution.
- * <p>
- * <h2> Use with directories </h2>
+ *
+ * <h2>Use with directories</h2>
  * <p>
  * subant can be used with directory sets to execute a build from different directories.
  * 2 different options are offered
@@ -72,18 +72,19 @@ public class SubAnt extends Task {
     private boolean failOnError = true;
     private String output  = null;
 
-    private Vector properties = new Vector();
-    private Vector references = new Vector();
-    private Vector propertySets = new Vector();
+    private List<Property> properties = new Vector<>();
+    private List<Ant.Reference> references = new Vector<>();
+    private List<PropertySet> propertySets = new Vector<>();
 
     /** the targets to call on the new project */
-    private Vector/*<TargetElement>*/ targets = new Vector();
+    private List<TargetElement> targets = new Vector<>();
 
     /**
      * Get the default build file name to use when launching the task.
      * <p>
-     * This function may be overrided by providers of custom ProjectHelper so they can implement easily their sub
-     * launcher.
+     * This function may be overriden by providers of custom ProjectHelper so
+     * they can implement easily their sub launcher.
+     * </p>
      *
      * @return the name of the default file
      * @since Ant 1.8.0
@@ -255,7 +256,7 @@ public class SubAnt extends Task {
                     log("Target '" + file
                         + "' failed with message '"
                         + thrownException.getMessage() + "'.", Project.MSG_ERR);
-                    thrownException.printStackTrace(System.err);
+                    log(StringUtils.getStackTrace(thrownException), Project.MSG_ERR);
                     if (buildException == null) {
                         buildException =
                             new BuildException(thrownException);
@@ -296,11 +297,7 @@ public class SubAnt extends Task {
         ant = createAntTask(directory);
         String antfilename = file.getAbsolutePath();
         ant.setAntfile(antfilename);
-        final int size = targets.size();
-        for (int i = 0; i < size; i++) {
-            TargetElement targetElement = (TargetElement) targets.get(i);
-            ant.addConfiguredTarget(targetElement);
-        }
+        targets.forEach(ant::addConfiguredTarget);
 
         try {
             if (verbose) {
@@ -331,13 +328,15 @@ public class SubAnt extends Task {
     private boolean isHardError(Throwable t) {
         if (t instanceof BuildException) {
             return isHardError(t.getCause());
-        } else if (t instanceof OutOfMemoryError) {
-            return true;
-        } else if (t instanceof ThreadDeath) {
-            return true;
-        } else { // incl. t == null
-            return false;
         }
+        if (t instanceof OutOfMemoryError) {
+            return true;
+        }
+        if (t instanceof ThreadDeath) {
+            return true;
+        }
+        // incl. t == null
+        return false;
     }
 
     /**
@@ -378,10 +377,10 @@ public class SubAnt extends Task {
     /**
      * The target to call on the different sub-builds. Set to "" to execute
      * the default target.
+     *
      * @param target the target
-     * <p>
      */
-    //     REVISIT: Defaults to the target name that contains this task if not specified.
+    // REVISIT: Defaults to the target name that contains this task if not specified.
     public void setTarget(String target) {
         this.subTarget = target;
     }
@@ -392,8 +391,7 @@ public class SubAnt extends Task {
      * @since Ant 1.7
      */
     public void addConfiguredTarget(TargetElement t) {
-        String name = t.getName();
-        if ("".equals(name)) {
+        if (t.getName().isEmpty()) {
             throw new BuildException("target name must not be empty");
         }
         targets.add(t);
@@ -445,7 +443,7 @@ public class SubAnt extends Task {
      * @param  p the property to pass on explicitly to the sub-build.
      */
     public void addProperty(Property p) {
-        properties.addElement(p);
+        properties.add(p);
     }
 
     /**
@@ -455,7 +453,7 @@ public class SubAnt extends Task {
      * @param  r the reference to pass on explicitly to the sub-build.
      */
     public void addReference(Ant.Reference r) {
-        references.addElement(r);
+        references.add(r);
     }
 
     /**
@@ -464,7 +462,7 @@ public class SubAnt extends Task {
      * @param ps the propertyset
      */
     public void addPropertyset(PropertySet ps) {
-        propertySets.addElement(ps);
+        propertySets.add(ps);
     }
 
     /**
@@ -473,6 +471,7 @@ public class SubAnt extends Task {
      * <em>Note that the directories will be added to the build path
      * in no particular order, so if order is significant, one should
      * use a file list instead!</em>
+     * </p>
      *
      * @param  set the directory set to add.
      */
@@ -486,6 +485,7 @@ public class SubAnt extends Task {
      * <em>Note that the directories will be added to the build path
      * in no particular order, so if order is significant, one should
      * use a file list instead!</em>
+     * </p>
      *
      * @param  set the file set to add.
      */
@@ -498,6 +498,7 @@ public class SubAnt extends Task {
      * <p>
      * <em>Note that contrary to file and directory sets, file lists
      * can reference non-existent files or directories!</em>
+     * </p>
      *
      * @param  list the file list to add.
      */
@@ -591,18 +592,14 @@ public class SubAnt extends Task {
         }
 
         antTask.setInheritAll(inheritAll);
-        for (Enumeration i = properties.elements(); i.hasMoreElements();) {
-            copyProperty(antTask.createProperty(), (Property) i.nextElement());
-        }
 
-        for (Enumeration i = propertySets.elements(); i.hasMoreElements();) {
-            antTask.addPropertyset((PropertySet) i.nextElement());
-        }
+        properties.forEach(p -> copyProperty(antTask.createProperty(), p));
+
+        propertySets.forEach(antTask::addPropertyset);
 
         antTask.setInheritRefs(inheritRefs);
-        for (Enumeration i = references.elements(); i.hasMoreElements();) {
-            antTask.addReference((Ant.Reference) i.nextElement());
-        }
+
+        references.forEach(antTask::addReference);
 
         return antTask;
     }
@@ -639,4 +636,4 @@ public class SubAnt extends Task {
         }
     }
 
-} // END class SubAnt
+}

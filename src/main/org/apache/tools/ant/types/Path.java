@@ -20,11 +20,12 @@ package org.apache.tools.ant.types;
 
 import java.io.File;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Stack;
-import java.util.Vector;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.MagicNames;
@@ -39,44 +40,43 @@ import org.apache.tools.ant.util.JavaEnvUtils;
  * This object represents a path as used by CLASSPATH or PATH
  * environment variable. A path might also be described as a collection
  * of unique filesystem resources.
- * <p>
- * <code>
- * &lt;sometask&gt;<br>
- * &nbsp;&nbsp;&lt;somepath&gt;<br>
- * &nbsp;&nbsp;&nbsp;&nbsp;&lt;pathelement location="/path/to/file.jar" /&gt;<br>
- * &nbsp;&nbsp;&nbsp;&nbsp;&lt;pathelement
- *  path="/path/to/file2.jar:/path/to/class2;/path/to/class3" /&gt;
- * <br>
- * &nbsp;&nbsp;&nbsp;&nbsp;&lt;pathelement location="/path/to/file3.jar" /&gt;<br>
- * &nbsp;&nbsp;&nbsp;&nbsp;&lt;pathelement location="/path/to/file4.jar" /&gt;<br>
- * &nbsp;&nbsp;&lt;/somepath&gt;<br>
- * &lt;/sometask&gt;<br>
- * </code>
+ * <pre>
+ * &lt;sometask&gt;
+ *   &lt;somepath&gt;
+ *     &lt;pathelement location="/path/to/file.jar"/&gt;
+ *     &lt;pathelement path="/path/to/file2.jar:/path/to/class2;/path/to/class3"/&gt;
+ *     &lt;pathelement location="/path/to/file3.jar"/&gt;
+ *     &lt;pathelement location="/path/to/file4.jar"/&gt;
+ *   &lt;/somepath&gt;
+ * &lt;/sometask&gt;
+ * </pre>
  * <p>
  * The object implementation <code>sometask</code> must provide a method called
  * <code>createSomepath</code> which returns an instance of <code>Path</code>.
  * Nested path definitions are handled by the Path object and must be labeled
- * <code>pathelement</code>.<p>
- *
+ * <code>pathelement</code>.
+ * </p>
+ * <p>
  * The path element takes a parameter <code>path</code> which will be parsed
  * and split into single elements. It will usually be used
  * to define a path from an environment variable.
+ * </p>
  */
 
 public class Path extends DataType implements Cloneable, ResourceCollection {
     // CheckStyle:VisibilityModifier OFF - bc
 
+    // non-final as some IDE integrations (at least Eclipse) want to override it
     /** The system classpath as a Path object */
-    public static Path systemClasspath =
+    public static Path systemClasspath = //NOSONAR
         new Path(null, System.getProperty("java.class.path"));
-
 
     /**
      * The system bootclasspath as a Path object.
      *
      * @since Ant 1.6.2
      */
-    public static Path systemBootClasspath =
+    public static final Path systemBootClasspath =
         new Path(null, System.getProperty("sun.boot.class.path"));
 
     // CheckStyle:VisibilityModifier OFF - bc
@@ -118,6 +118,7 @@ public class Path extends DataType implements Cloneable, ResourceCollection {
          * Create an iterator.
          * @return an iterator.
          */
+        @Override
         public Iterator<Resource> iterator() {
             return new FileResourceIterator(getProject(), null, parts);
         }
@@ -126,6 +127,7 @@ public class Path extends DataType implements Cloneable, ResourceCollection {
          * Check if this resource is only for filesystems.
          * @return true.
          */
+        @Override
         public boolean isFilesystemOnly() {
             return true;
         }
@@ -134,6 +136,7 @@ public class Path extends DataType implements Cloneable, ResourceCollection {
          * Get the number of resources.
          * @return the number of parts.
          */
+        @Override
         public int size() {
             return parts == null ? 0 : parts.length;
         }
@@ -193,6 +196,7 @@ public class Path extends DataType implements Cloneable, ResourceCollection {
      * @param r the reference to another Path
      * @throws BuildException on error
      */
+    @Override
     public void setRefid(Reference r) throws BuildException {
         if (union != null) {
             throw tooManyAttributes();
@@ -343,9 +347,9 @@ public class Path extends DataType implements Cloneable, ResourceCollection {
             } else if (f.getParentFile() != null && f.getParentFile().exists()
                        && containsWildcards(f.getName())) {
                 setLocation(f);
-                log("adding " + f + " which contains wildcards and may not"
-                    + " do what you intend it to do depending on your OS or"
-                    + " version of Java", Project.MSG_VERBOSE);
+                log("adding " + f
+                    + " which contains wildcards and may not do what you intend it to do depending on your OS or version of Java",
+                    Project.MSG_VERBOSE);
             } else {
                 log("dropping " + f + " from path as it doesn't exist",
                     Project.MSG_VERBOSE);
@@ -355,6 +359,7 @@ public class Path extends DataType implements Cloneable, ResourceCollection {
 
     /**
      * Whether to cache the current path.
+     * @param b boolean
      * @since Ant 1.8.0
      */
     public void setCache(boolean b) {
@@ -382,6 +387,7 @@ public class Path extends DataType implements Cloneable, ResourceCollection {
      * CLASSPATH or PATH environment variable definition.
      * @return a textual representation of the path.
      */
+    @Override
     public String toString() {
         return isReference() ? getCheckedRef().toString()
             : union == null ? "" : union.toString();
@@ -394,13 +400,13 @@ public class Path extends DataType implements Cloneable, ResourceCollection {
      * @return an array of strings, one for each path element
      */
     public static String[] translatePath(Project project, String source) {
-        final Vector<String> result = new Vector<String>();
         if (source == null) {
             return new String[0];
         }
+        final List<String> result = new ArrayList<>();
         PathTokenizer tok = new PathTokenizer(source);
-        StringBuffer element = new StringBuffer();
         while (tok.hasMoreTokens()) {
+            StringBuffer element = new StringBuffer();
             String pathElement = tok.nextToken();
             try {
                 element.append(resolveFile(project, pathElement).getPath());
@@ -412,8 +418,7 @@ public class Path extends DataType implements Cloneable, ResourceCollection {
             for (int i = 0; i < element.length(); i++) {
                 translateFileSep(element, i);
             }
-            result.addElement(element.toString());
-            element = new StringBuffer();
+            result.add(element.toString());
         }
         return result.toArray(new String[result.size()]);
     }
@@ -455,6 +460,7 @@ public class Path extends DataType implements Cloneable, ResourceCollection {
      * Fulfill the ResourceCollection contract.
      * @return number of elements as int.
      */
+    @Override
     public synchronized int size() {
         if (isReference()) {
             return ((Path) getCheckedRef()).size();
@@ -467,6 +473,7 @@ public class Path extends DataType implements Cloneable, ResourceCollection {
      * Clone this Path.
      * @return Path with shallowly cloned Resource children.
      */
+    @Override
     public Object clone() {
         try {
             Path result = (Path) super.clone();
@@ -484,6 +491,7 @@ public class Path extends DataType implements Cloneable, ResourceCollection {
      * @param p   the project to use to dereference the references.
      * @throws BuildException on error.
      */
+    @Override
     protected synchronized void dieOnCircularReference(Stack<Object> stk, Project p)
         throws BuildException {
         if (isChecked()) {
@@ -554,22 +562,22 @@ public class Path extends DataType implements Cloneable, ResourceCollection {
         if (o != null) {
             order = o;
         }
-        if (order.equals("only")) {
+        if ("only".equals(order)) {
             // only: the developer knows what (s)he is doing
             result.addExisting(p, true);
 
-        } else if (order.equals("first")) {
+        } else if ("first".equals(order)) {
             // first: developer could use a little help
             result.addExisting(p, true);
             result.addExisting(this);
 
-        } else if (order.equals("ignore")) {
+        } else if ("ignore".equals(order)) {
             // ignore: don't trust anyone
             result.addExisting(this);
 
         } else {
             // last: don't trust the developer
-            if (!order.equals("last")) {
+            if (!"last".equals(order)) {
                 log("invalid value for " + MagicNames.BUILD_SYSCLASSPATH
                     + ": " + order,
                     Project.MSG_WARN);
@@ -662,7 +670,7 @@ public class Path extends DataType implements Cloneable, ResourceCollection {
     }
 
     /**
-     * Emulation of extdirs feature in java >= 1.2.
+     * Emulation of extdirs feature in Java &gt;= 1.2.
      * This method adds all files in the given
      * directories (but not in sub-directories!) to the classpath,
      * so that you don't have to specify them all one by one.
@@ -696,6 +704,7 @@ public class Path extends DataType implements Cloneable, ResourceCollection {
      * are added to this container while the Iterator is in use.
      * @return a "fail-fast" Iterator.
      */
+    @Override
     public final synchronized Iterator<Resource> iterator() {
         if (isReference()) {
             return ((Path) getCheckedRef()).iterator();
@@ -712,6 +721,7 @@ public class Path extends DataType implements Cloneable, ResourceCollection {
      * Fulfill the ResourceCollection contract.
      * @return whether this is a filesystem-only resource collection.
      */
+    @Override
     public synchronized boolean isFilesystemOnly() {
         if (isReference()) {
             return ((Path) getCheckedRef()).isFilesystemOnly();
@@ -729,8 +739,8 @@ public class Path extends DataType implements Cloneable, ResourceCollection {
      */
     protected ResourceCollection assertFilesystemOnly(ResourceCollection rc) {
         if (rc != null && !(rc.isFilesystemOnly())) {
-            throw new BuildException(getDataTypeName()
-                + " allows only filesystem resources.");
+            throw new BuildException("%s allows only filesystem resources.",
+                getDataTypeName());
         }
         return rc;
     }
@@ -748,7 +758,7 @@ public class Path extends DataType implements Cloneable, ResourceCollection {
             return false;
         }
         try {
-            Method listMethod = getClass().getMethod("list", (Class[]) null);
+            Method listMethod = getClass().getMethod("list");
             return !listMethod.getDeclaringClass().equals(Path.class);
         } catch (Exception e) {
             //shouldn't happen, but
@@ -769,7 +779,7 @@ public class Path extends DataType implements Cloneable, ResourceCollection {
      */
     private static boolean containsWildcards(String path) {
         return path != null
-            && (path.indexOf("*") > -1 || path.indexOf("?") > -1);
+            && (path.indexOf('*') > -1 || path.indexOf('?') > -1);
     }
 
 }

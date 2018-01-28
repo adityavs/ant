@@ -19,8 +19,6 @@
 package org.apache.tools.ant.taskdefs;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -28,6 +26,7 @@ import java.io.PrintStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.file.Files;
 import java.util.Date;
 import java.util.zip.GZIPInputStream;
 
@@ -36,6 +35,7 @@ import org.apache.tools.ant.MagicNames;
 import org.apache.tools.ant.Main;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
+import org.apache.tools.ant.taskdefs.email.Header;
 import org.apache.tools.ant.types.Mapper;
 import org.apache.tools.ant.types.Resource;
 import org.apache.tools.ant.types.ResourceCollection;
@@ -44,6 +44,10 @@ import org.apache.tools.ant.types.resources.URLProvider;
 import org.apache.tools.ant.types.resources.URLResource;
 import org.apache.tools.ant.util.FileNameMapper;
 import org.apache.tools.ant.util.FileUtils;
+import org.apache.tools.ant.util.StringUtils;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Gets a particular file from a URL source.
@@ -90,6 +94,9 @@ public class Get extends Task {
                            DEFAULT_AGENT_PREFIX + "/"
                            + Main.getShortAntVersion());
 
+    // Store headers as key/value pair without duplicate in keyz
+    private Map<String, String> headers = new LinkedHashMap<>();
+
     /**
      * Does the work.
      *
@@ -110,7 +117,7 @@ public class Get extends Task {
                     if (path.endsWith("/")) {
                         path = path.substring(0, path.length() - 1);
                     }
-                    final int slash = path.lastIndexOf("/");
+                    final int slash = path.lastIndexOf('/');
                     if (slash > -1) {
                         path = path.substring(slash + 1);
                     }
@@ -122,11 +129,13 @@ public class Get extends Task {
                         log("skipping " + r + " - mapper can't handle it",
                             Project.MSG_WARN);
                         continue;
-                    } else if (d.length == 0) {
+                    }
+                    if (d.length == 0) {
                         log("skipping " + r + " - mapper returns no file name",
                             Project.MSG_WARN);
                         continue;
-                    } else if (d.length > 1) {
+                    }
+                    if (d.length > 1) {
                         log("skipping " + r + " - mapper returns multiple file"
                             + " names", Project.MSG_WARN);
                         continue;
@@ -135,22 +144,22 @@ public class Get extends Task {
                 }
             }
 
-        //set up logging
-        final int logLevel = Project.MSG_INFO;
-        DownloadProgress progress = null;
-        if (verbose) {
-            progress = new VerboseProgress(System.out);
-        }
-
-        //execute the get
-        try {
-            doGet(source, dest, logLevel, progress);
-        } catch (final IOException ioe) {
-            log("Error getting " + source + " to " + dest);
-            if (!ignoreErrors) {
-                throw new BuildException(ioe, getLocation());
+            //set up logging
+            final int logLevel = Project.MSG_INFO;
+            DownloadProgress progress = null;
+            if (verbose) {
+                progress = new VerboseProgress(System.out);
             }
-        }
+
+            //execute the get
+            try {
+                doGet(source, dest, logLevel, progress);
+            } catch (final IOException ioe) {
+                log("Error getting " + source + " to " + dest);
+                if (!ignoreErrors) {
+                    throw new BuildException(ioe, getLocation());
+                }
+            }
         }
     }
 
@@ -259,7 +268,7 @@ public class Get extends Task {
 
     @Override
     public void log(final String msg, final int msgLevel) {
-        if (!quiet || msgLevel >= Project.MSG_ERR) {
+        if (!quiet || msgLevel <= Project.MSG_ERR) {
             super.log(msg, msgLevel);
         }
     }
@@ -280,8 +289,8 @@ public class Get extends Task {
         for (final Resource r : sources) {
             final URLProvider up = r.as(URLProvider.class);
             if (up == null) {
-                throw new BuildException("Only URLProvider resources are"
-                                         + " supported", getLocation());
+                throw new BuildException(
+                    "Only URLProvider resources are supported", getLocation());
             }
         }
 
@@ -291,9 +300,8 @@ public class Get extends Task {
 
         if (destination.exists() && sources.size() > 1
             && !destination.isDirectory()) {
-            throw new BuildException("The specified destination is not a"
-                                     + " directory",
-                                     getLocation());
+            throw new BuildException(
+                "The specified destination is not a directory", getLocation());
         }
 
         if (destination.exists() && !destination.canWrite()) {
@@ -318,6 +326,7 @@ public class Get extends Task {
 
     /**
      * Adds URLs to get.
+     * @param rc ResourceCollection
      * @since Ant 1.8.0
      */
     public void add(final ResourceCollection rc) {
@@ -348,7 +357,7 @@ public class Get extends Task {
      * @param v if "true" then be quiet
      * @since Ant 1.9.4
      */
-    public void setQuiet(final boolean v){
+    public void setQuiet(final boolean v) {
         this.quiet = v;
     }
 
@@ -383,7 +392,6 @@ public class Get extends Task {
         useTimestamp = v;
     }
 
-
     /**
      * Username for basic auth.
      *
@@ -406,6 +414,7 @@ public class Get extends Task {
      * The time in seconds the download is allowed to take before
      * being terminated.
      *
+     * @param maxTime long
      * @since Ant 1.8.0
      */
     public void setMaxTime(final long maxTime) {
@@ -413,13 +422,21 @@ public class Get extends Task {
     }
 
     /**
-     * The number of retries to attempt upon error, defaults to 3.
+     * The number of attempts to make for opening the URI, defaults to 3.
      *
-     * @param r retry count
+     * <p>The name of the method is misleading as a value of 1 means
+     * "don't retry on error" and a value of 0 meant don't even try to
+     * reach the URI at all.</p>
      *
+     * @param r number of attempts to make
      * @since Ant 1.8.0
      */
     public void setRetries(final int r) {
+        if (r <= 0) {
+            log("Setting retries to " + r
+                + " will make the task not even try to reach the URI at all",
+                Project.MSG_WARN);
+        }
         this.numberRetries = r;
     }
 
@@ -427,7 +444,6 @@ public class Get extends Task {
      * Skip files that already exist locally.
      *
      * @param s "true" to skip existing destination files
-     *
      * @since Ant 1.8.0
      */
     public void setSkipExisting(final boolean s) {
@@ -440,6 +456,7 @@ public class Get extends Task {
      * the value is considered unset and the behaviour falls
      * back to the default of the http API.
      *
+     * @param userAgent String
      * @since Ant 1.9.3
      */
     public void setUserAgent(final String userAgent) {
@@ -454,6 +471,7 @@ public class Get extends Task {
      * <p>Defaults to true (allow caching, which is also the
      * HttpUrlConnection default value.</p>
      *
+     * @param httpUseCache boolean
      * @since Ant 1.8.0
      */
     public void setHttpUseCaches(final boolean httpUseCache) {
@@ -467,10 +485,26 @@ public class Get extends Task {
      * <p>Setting this to true also means Ant will uncompress
      * <code>.tar.gz</code> and similar files automatically.</p>
      *
+     * @param b boolean
      * @since Ant 1.9.5
      */
     public void setTryGzipEncoding(boolean b) {
         tryGzipEncoding = b;
+    }
+
+    /**
+     * Add a nested header
+     * @param header to be added
+     *
+     */
+    public void addConfiguredHeader(Header header) {
+        if (header != null) {
+            String key = StringUtils.trimToNull(header.getName());
+            String value = StringUtils.trimToNull(header.getValue());
+            if (key != null && value != null) {
+                this.headers.put(key, value);
+            }
+        }
     }
 
     /**
@@ -534,6 +568,7 @@ public class Get extends Task {
         /**
          * begin a download
          */
+        @Override
         public void beginDownload() {
         }
 
@@ -541,12 +576,14 @@ public class Get extends Task {
          * tick handler
          *
          */
+        @Override
         public void onTick() {
         }
 
         /**
          * end a download
          */
+        @Override
         public void endDownload() {
         }
     }
@@ -571,6 +608,7 @@ public class Get extends Task {
         /**
          * begin a download
          */
+        @Override
         public void beginDownload() {
             dots = 0;
         }
@@ -579,6 +617,7 @@ public class Get extends Task {
          * tick handler
          *
          */
+        @Override
         public void onTick() {
             out.print(".");
             if (dots++ > DOTS_PER_LINE) {
@@ -590,6 +629,7 @@ public class Get extends Task {
         /**
          * end a download
          */
+        @Override
         public void endDownload() {
             out.println();
             out.flush();
@@ -614,8 +654,8 @@ public class Get extends Task {
         private int redirections = 0;
         private String userAgent = null;
 
-        GetThread(final URL source, final File dest,
-                  final boolean h, final long t, final DownloadProgress p, final int l, final String userAgent) {
+        GetThread(final URL source, final File dest, final boolean h,
+                  final long t, final DownloadProgress p, final int l, final String userAgent) {
             this.source = source;
             this.dest = dest;
             hasTimestamp = h;
@@ -658,34 +698,29 @@ public class Get extends Task {
 
 
         private boolean redirectionAllowed(final URL aSource, final URL aDest) {
-            if (!(aSource.getProtocol().equals(aDest.getProtocol()) || (HTTP
-                    .equals(aSource.getProtocol()) && HTTPS.equals(aDest
-                    .getProtocol())))) {
-                final String message = "Redirection detected from "
-                        + aSource.getProtocol() + " to " + aDest.getProtocol()
-                        + ". Protocol switch unsafe, not allowed.";
-                if (ignoreErrors) {
-                    log(message, logLevel);
-                    return false;
-                } else {
+            if (aSource.getProtocol().equals(aDest.getProtocol())
+                    && (HTTP.equals(aSource.getProtocol()) || HTTPS.equals(aDest.getProtocol()))) {
+                redirections++;
+                if (redirections > REDIRECT_LIMIT) {
+                    final String message = "More than " + REDIRECT_LIMIT
+                            + " times redirected, giving up";
+                    if (ignoreErrors) {
+                        log(message, logLevel);
+                        return false;
+                    }
                     throw new BuildException(message);
                 }
+                return true;
             }
 
-            redirections++;
-            if (redirections > REDIRECT_LIMIT) {
-                final String message = "More than " + REDIRECT_LIMIT
-                        + " times redirected, giving up";
-                if (ignoreErrors) {
-                    log(message, logLevel);
-                    return false;
-                } else {
-                    throw new BuildException(message);
-                }
+            final String message = "Redirection detected from "
+                    + aSource.getProtocol() + " to " + aDest.getProtocol()
+                    + ". Protocol switch unsafe, not allowed.";
+            if (ignoreErrors) {
+                log(message, logLevel);
+                return false;
             }
-
-
-            return true;
+            throw new BuildException(message);
         }
 
         private URLConnection openConnection(final URL aSource) throws IOException {
@@ -709,19 +744,22 @@ public class Get extends Task {
                 // testing
                 final Base64Converter encoder = new Base64Converter();
                 encoding = encoder.encode(up.getBytes());
-                connection.setRequestProperty("Authorization", "Basic "
-                        + encoding);
+                connection.setRequestProperty("Authorization", "Basic " + encoding);
             }
 
             if (tryGzipEncoding) {
                 connection.setRequestProperty("Accept-Encoding", GZIP_CONTENT_ENCODING);
             }
 
+            for (final Map.Entry<String, String> header : headers.entrySet()) {
+                //we do not log the header value as it may contain sensitive data like passwords
+                log(String.format("Adding header '%s' ", header.getKey()));
+                connection.setRequestProperty(header.getKey(), header.getValue());
+            }
+
             if (connection instanceof HttpURLConnection) {
-                ((HttpURLConnection) connection)
-                        .setInstanceFollowRedirects(false);
-                ((HttpURLConnection) connection)
-                        .setUseCaches(httpUseCaches);
+                ((HttpURLConnection) connection).setInstanceFollowRedirects(false);
+                connection.setUseCaches(httpUseCaches);
             }
             // connect to the remote site (may take some time)
             try {
@@ -764,9 +802,8 @@ public class Get extends Task {
                     if (ignoreErrors) {
                         log(message, logLevel);
                         return null;
-                    } else {
-                        throw new BuildException(message);
                     }
+                    throw new BuildException(message);
                 }
             }
 
@@ -779,14 +816,13 @@ public class Get extends Task {
         }
 
         private boolean isMoved(final int responseCode) {
-            return responseCode == HttpURLConnection.HTTP_MOVED_PERM ||
-                responseCode == HttpURLConnection.HTTP_MOVED_TEMP ||
-                responseCode == HttpURLConnection.HTTP_SEE_OTHER ||
-                responseCode == HTTP_MOVED_TEMP;
+            return responseCode == HttpURLConnection.HTTP_MOVED_PERM
+                    || responseCode == HttpURLConnection.HTTP_MOVED_TEMP
+                    || responseCode == HttpURLConnection.HTTP_SEE_OTHER
+                    || responseCode == HTTP_MOVED_TEMP;
         }
 
-        private boolean downloadFile()
-                throws FileNotFoundException, IOException {
+        private boolean downloadFile() throws IOException {
             for (int i = 0; i < numberRetries; i++) {
                 // this three attempt trick is to get round quirks in different
                 // Java implementations. Some of them take a few goes to bind
@@ -812,7 +848,7 @@ public class Get extends Task {
                 is = new GZIPInputStream(is);
             }
 
-            os = new FileOutputStream(dest);
+            os = Files.newOutputStream(dest.toPath());
             progress.beginDownload();
             boolean finished = false;
             try {
@@ -843,9 +879,7 @@ public class Get extends Task {
             if (verbose)  {
                 final Date t = new Date(remoteTimestamp);
                 log("last modified = " + t.toString()
-                    + ((remoteTimestamp == 0)
-                       ? " - using current time instead"
-                       : ""), logLevel);
+                    + ((remoteTimestamp == 0) ? " - using current time instead" : ""), logLevel);
             }
             if (remoteTimestamp != 0) {
                 FILE_UTILS.setFileLastModified(dest, remoteTimestamp);
@@ -855,7 +889,7 @@ public class Get extends Task {
         /**
          * Has the download completed successfully?
          *
-         * <p>Re-throws any exception caught during executaion.</p>
+         * <p>Re-throws any exception caught during execution.</p>
          */
         boolean wasSuccessful() throws IOException, BuildException {
             if (ioexception != null) {

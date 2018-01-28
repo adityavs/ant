@@ -59,6 +59,7 @@ public class ScriptSelector extends BaseSelector {
      * Set the project.
      * @param project the owner of this component.
      */
+    @Override
     public void setProject(Project project) {
         super.setProject(project);
         helper.setProjectComponent(this);
@@ -86,7 +87,7 @@ public class ScriptSelector extends BaseSelector {
      * Initialize on demand.
      *
      * @throws org.apache.tools.ant.BuildException
-     *          if someting goes wrong
+     *          if something goes wrong
      */
     private void init() throws BuildException {
         if (runner != null) {
@@ -96,7 +97,7 @@ public class ScriptSelector extends BaseSelector {
     }
 
     /**
-     * Load the script from an external file ; optional.
+     * Load the script from an external file; optional.
      *
      * @param file the file containing the script source.
      */
@@ -166,6 +167,7 @@ public class ScriptSelector extends BaseSelector {
      *
      * @return whether the file should be selected or not
      */
+    @Override
     public boolean isSelected(File basedir, String filename, File file) {
         init();
         setSelected(true);
@@ -220,4 +222,13 @@ public class ScriptSelector extends BaseSelector {
         this.selected = selected;
     }
 
+    /**
+     * Set the encoding of the script from an external file; optional.
+     *
+     * @param encoding the encoding of the file containing the script source.
+     * @since Ant 1.10.2
+     */
+    public void setEncoding(String encoding) {
+        helper.setEncoding(encoding);
+    }
 }

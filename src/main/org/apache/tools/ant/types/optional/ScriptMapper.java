@@ -35,8 +35,8 @@ public class ScriptMapper extends AbstractScriptComponent implements FileNameMap
      *
      * @param from a string.
      */
+    @Override
     public void setFrom(String from) {
-
     }
 
     /**
@@ -44,15 +44,15 @@ public class ScriptMapper extends AbstractScriptComponent implements FileNameMap
      *
      * @param to a string.
      */
+    @Override
     public void setTo(String to) {
-
     }
 
     /**
      * Reset the list of files
      */
     public void clear() {
-        files = new ArrayList<String>(1);
+        files = new ArrayList<>(1);
     }
 
     /**
@@ -66,7 +66,7 @@ public class ScriptMapper extends AbstractScriptComponent implements FileNameMap
     /**
      * Returns an array containing the target filename(s) for the given source
      * file.
-     * <p/>
+     *
      * <p>if the given rule doesn't apply to the source file, implementation
      * must return null. SourceFileScanner will then omit the source file in
      * question.</p>
@@ -77,15 +77,15 @@ public class ScriptMapper extends AbstractScriptComponent implements FileNameMap
      *         null if it does not.
      */
 
+    @Override
     public String[] mapFileName(String sourceFileName) {
         initScriptRunner();
         getRunner().addBean("source", sourceFileName);
         clear();
         executeScript("ant_mapper");
-        if (files.size() == 0) {
+        if (files.isEmpty()) {
             return null;
-        } else {
-            return files.toArray(new String[files.size()]);
         }
+        return files.toArray(new String[files.size()]);
     }
 }

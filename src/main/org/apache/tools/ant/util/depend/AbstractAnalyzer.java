@@ -22,6 +22,7 @@ import java.util.Enumeration;
 import java.util.Vector;
 import java.util.zip.ZipFile;
 
+import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.types.Path;
 import org.apache.tools.ant.util.VectorSet;
 
@@ -37,11 +38,11 @@ public abstract class AbstractAnalyzer implements DependencyAnalyzer {
     /** The source path for the source files */
     private Path sourcePath = new Path(null);
 
-    /** The classpath containg dirs and jars of class files */
+    /** The classpath containing dirs and jars of class files */
     private Path classPath = new Path(null);
 
     /** The list of root classes */
-    private final Vector<String> rootClasses = new VectorSet<String>();
+    private final Vector<String> rootClasses = new VectorSet<>();
 
     /** true if dependencies have been determined */
     private boolean determined = false;
@@ -67,6 +68,7 @@ public abstract class AbstractAnalyzer implements DependencyAnalyzer {
      * @param closure true if dependencies should be traversed to determine
      *      indirect dependencies.
      */
+    @Override
     public void setClosure(boolean closure) {
         this.closure = closure;
     }
@@ -78,10 +80,11 @@ public abstract class AbstractAnalyzer implements DependencyAnalyzer {
      *
      * @return an enumeration of File instances.
      */
+    @Override
     public Enumeration<File> getFileDependencies() {
         if (!supportsFileDependencies()) {
-            throw new RuntimeException("File dependencies are not supported "
-                + "by this analyzer");
+            throw new BuildException(
+                "File dependencies are not supported by this analyzer");
         }
         if (!determined) {
             determineDependencies(fileDependencies, classDependencies);
@@ -96,6 +99,7 @@ public abstract class AbstractAnalyzer implements DependencyAnalyzer {
      * @return an enumeration of Strings, each being the name of a Java
      *      class in dot notation.
      */
+    @Override
     public Enumeration<String> getClassDependencies() {
         if (!determined) {
             determineDependencies(fileDependencies, classDependencies);
@@ -111,6 +115,7 @@ public abstract class AbstractAnalyzer implements DependencyAnalyzer {
      *         class or null if the class could not be found.
      * @exception IOException if the files in the classpath cannot be read.
      */
+    @Override
     public File getClassContainer(String classname) throws IOException {
         String classLocation = classname.replace('.', '/') + ".class";
         // we look through the classpath elements. If the element is a dir
@@ -126,6 +131,7 @@ public abstract class AbstractAnalyzer implements DependencyAnalyzer {
      *         source or null if the source for the class could not be found.
      * @exception IOException if the files in the sourcepath cannot be read.
      */
+    @Override
     public File getSourceContainer(String classname) throws IOException {
         String sourceLocation = classname.replace('.', '/') + ".java";
 
@@ -143,6 +149,7 @@ public abstract class AbstractAnalyzer implements DependencyAnalyzer {
      * @param sourcePath The Path instance specifying the source path
      *      elements.
      */
+    @Override
     public void addSourcePath(Path sourcePath) {
         if (sourcePath == null) {
             return;
@@ -159,6 +166,7 @@ public abstract class AbstractAnalyzer implements DependencyAnalyzer {
      *
      * @param classPath the Path instance specifying the classpath elements
      */
+    @Override
     public void addClassPath(Path classPath) {
         if (classPath == null) {
             return;
@@ -175,6 +183,7 @@ public abstract class AbstractAnalyzer implements DependencyAnalyzer {
      *
      * @param className the name of the class in Java dot notation.
      */
+    @Override
     public void addRootClass(String className) {
         if (className == null) {
             return;
@@ -191,6 +200,7 @@ public abstract class AbstractAnalyzer implements DependencyAnalyzer {
      * @param name the name of the aspect being configured
      * @param info the configuration info.
      */
+    @Override
     public void config(String name, Object info) {
         // do nothing by default
     }
@@ -199,11 +209,12 @@ public abstract class AbstractAnalyzer implements DependencyAnalyzer {
      * Reset the dependency list. This will reset the determined
      * dependencies and the also list of root classes.
      */
+    @Override
     public void reset() {
         rootClasses.removeAllElements();
         determined = false;
-        fileDependencies = new Vector<File>();
-        classDependencies = new Vector<String>();
+        fileDependencies = new Vector<>();
+        classDependencies = new Vector<>();
     }
 
     /**
@@ -267,15 +278,9 @@ public abstract class AbstractAnalyzer implements DependencyAnalyzer {
                 }
             } else {
                 // must be a zip of some sort
-                ZipFile zipFile = null;
-                try {
-                    zipFile = new ZipFile(element);
+                try (ZipFile zipFile = new ZipFile(element)) {
                     if (zipFile.getEntry(resourceLocation) != null) {
                         return element;
-                    }
-                } finally {
-                    if (zipFile != null) {
-                        zipFile.close();
                     }
                 }
             }

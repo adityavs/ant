@@ -40,10 +40,9 @@ public abstract class AbstractSshMessage {
 
     private final Session session;
     private final boolean verbose;
-    private LogListener listener = new LogListener() {
-        public void log(final String message) {
-            // do nothing;
-        }
+    private final boolean compressed;
+    private LogListener listener = message -> {
+        // do nothing;
     };
 
     /**
@@ -61,7 +60,19 @@ public abstract class AbstractSshMessage {
      * @since Ant 1.6.2
      */
     public AbstractSshMessage(final boolean verbose, final Session session) {
+        this(verbose, false, session);
+    }
+
+    /**
+     * Constructor for AbstractSshMessage
+     * @param verbose if true do verbose logging
+     * @param compressed if true use compression
+     * @param session the ssh session to use
+     * @since Ant 1.9.8
+     */
+    public AbstractSshMessage(boolean verbose, boolean compressed, Session session) {
         this.verbose = verbose;
+        this.compressed = compressed;
         this.session = session;
     }
 
@@ -84,9 +95,7 @@ public abstract class AbstractSshMessage {
      * @throws JSchException on error
      */
     protected ChannelSftp openSftpChannel() throws JSchException {
-        final ChannelSftp channel = (ChannelSftp) session.openChannel("sftp");
-
-        return channel;
+        return (ChannelSftp) session.openChannel("sftp");
     }
 
     /**
@@ -119,8 +128,9 @@ public abstract class AbstractSshMessage {
         if (b == -1) {
             // didn't receive any response
             throw new BuildException("No response from server");
-        } else if (b != 0) {
-            final StringBuffer sb = new StringBuffer();
+        }
+        if (b != 0) {
+            final StringBuilder sb = new StringBuilder();
 
             int c = in.read();
             while (c > 0 && c != '\n') {
@@ -192,7 +202,16 @@ public abstract class AbstractSshMessage {
     }
 
     /**
-     * Track progress every 10% if 100kb < filesize < 1mb. For larger
+     * Is the compressed attribute set.
+     * @return true if the compressed attribute is set
+     * @since Ant 1.9.8
+     */
+    protected final boolean getCompressed() {
+        return compressed;
+    }
+
+    /**
+     * Track progress every 10% if 100kb &lt; filesize &lt; 1Mb. For larger
      * files track progress for every percent transmitted.
      * @param filesize the size of the file been transmitted
      * @param totalLength the total transmission size
@@ -248,12 +267,12 @@ public abstract class AbstractSshMessage {
         private long totalLength = 0;
         private int percentTransmitted = 0;
 
+        @Override
         public void init(final int op, final String src, final String dest, final long max) {
             initFileSize = max;
-            totalLength = 0;
-            percentTransmitted = 0;
         }
 
+        @Override
         public boolean count(final long len) {
             totalLength += len;
             percentTransmitted = trackProgress(initFileSize,
@@ -262,9 +281,11 @@ public abstract class AbstractSshMessage {
             return true;
         }
 
+        @Override
         public void end() {
         }
 
+        @SuppressWarnings("unused")
         public long getTotalLength() {
             return totalLength;
         }

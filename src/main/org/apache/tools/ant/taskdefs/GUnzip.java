@@ -18,13 +18,12 @@
 
 package org.apache.tools.ant.taskdefs;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.tools.ant.BuildException;
-import org.apache.tools.ant.util.FileUtils;
 
 /**
  * Expands a file that has been compressed with the GZIP
@@ -44,6 +43,7 @@ public class GUnzip extends Unpack {
      * Get the default extension.
      * @return the value ".gz"
      */
+    @Override
     protected String getDefaultExtension() {
         return DEFAULT_EXTENSION;
     }
@@ -51,18 +51,14 @@ public class GUnzip extends Unpack {
     /**
      * Implement the gunzipping.
      */
+    @Override
     protected void extract() {
-        if (source.lastModified() > dest.lastModified()) {
-            log("Expanding " + source.getAbsolutePath() + " to "
+        if (srcResource.getLastModified() > dest.lastModified()) {
+            log("Expanding " + srcResource.getName() + " to "
                         + dest.getAbsolutePath());
-
-            FileOutputStream out = null;
-            GZIPInputStream zIn = null;
-            InputStream fis = null;
-            try {
-                out = new FileOutputStream(dest);
-                fis = srcResource.getInputStream();
-                zIn = new GZIPInputStream(fis);
+            try (OutputStream out = Files.newOutputStream(dest.toPath());
+                    GZIPInputStream zIn =
+                        new GZIPInputStream(srcResource.getInputStream())) {
                 byte[] buffer = new byte[BUFFER_SIZE];
                 int count = 0;
                 do {
@@ -72,10 +68,6 @@ public class GUnzip extends Unpack {
             } catch (IOException ioe) {
                 String msg = "Problem expanding gzip " + ioe.getMessage();
                 throw new BuildException(msg, ioe, getLocation());
-            } finally {
-                FileUtils.close(fis);
-                FileUtils.close(out);
-                FileUtils.close(zIn);
             }
         }
     }
@@ -91,6 +83,7 @@ public class GUnzip extends Unpack {
      * @return true if this task supports non file resources.
      * @since Ant 1.7
      */
+    @Override
     protected boolean supportsNonFileResources() {
         return getClass().equals(GUnzip.class);
     }

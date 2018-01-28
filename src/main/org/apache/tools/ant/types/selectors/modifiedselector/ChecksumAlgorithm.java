@@ -20,7 +20,7 @@ package org.apache.tools.ant.types.selectors.modifiedselector;
 
 import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
+import java.nio.file.Files;
 import java.security.NoSuchAlgorithmException;
 import java.util.Locale;
 import java.util.zip.Adler32;
@@ -34,17 +34,18 @@ import org.apache.tools.ant.BuildException;
 /**
  * Computes a 'checksum' for the content of file using
  * java.util.zip.CRC32 and java.util.zip.Adler32.
- * Use of this algorithm doesn't require any additional nested <param>s.
- * Supported <param>s are:
+ * Use of this algorithm doesn't require any additional nested &lt;param&gt;s.
+ * Supported &lt;param&gt;s are:
  * <table>
+ * <caption>Checksum algorithm parameters</caption>
  * <tr>
  *   <th>name</th><th>values</th><th>description</th><th>required</th>
  * </tr>
  * <tr>
- *   <td> algorithm.algorithm </td>
- *   <td> ADLER | CRC ( default ) </td>
- *   <td> name of the algorithm the checksum should use </td>
- *   <td> no, defaults to CRC </td>
+ *   <td>algorithm.algorithm</td>
+ *   <td>ADLER | CRC (default)</td>
+ *   <td>name of the algorithm the checksum should use</td>
+ *   <td>no, defaults to CRC</td>
  * </tr>
  * </table>
  *
@@ -104,6 +105,7 @@ public class ChecksumAlgorithm implements Algorithm {
      * This algorithm supports only CRC and Adler.
      * @return <i>true</i> if all is ok, otherwise <i>false</i>.
      */
+    @Override
     public boolean isValid() {
         return "CRC".equals(algorithm) || "ADLER".equals(algorithm);
     }
@@ -114,26 +116,22 @@ public class ChecksumAlgorithm implements Algorithm {
      * @param file    File object for which the value should be evaluated.
      * @return        The value for that file
      */
+    @Override
     public String getValue(File file) {
         initChecksum();
-        String rval = null;
 
-        try {
-            if (file.canRead()) {
-                 checksum.reset();
-                 FileInputStream fis = new FileInputStream(file);
-                 CheckedInputStream check = new CheckedInputStream(fis, checksum);
-                 BufferedInputStream in = new BufferedInputStream(check);
-                 while (in.read() != -1) {
-                     // Read the file
-                 }
-                 rval = Long.toString(check.getChecksum().getValue());
-                 in.close();
+        if (file.canRead()) {
+            checksum.reset();
+            try (CheckedInputStream check = new CheckedInputStream(
+                new BufferedInputStream(Files.newInputStream(file.toPath())), checksum)) {
+                // Read the file
+                while (check.read() != -1) {
+                }
+                return Long.toString(check.getChecksum().getValue());
+            } catch (Exception ignored) {
             }
-        } catch (Exception e) {
-            rval = null;
         }
-        return rval;
+        return null;
     }
 
 
@@ -141,11 +139,8 @@ public class ChecksumAlgorithm implements Algorithm {
      * Override Object.toString().
      * @return some information about this algorithm.
      */
+    @Override
     public String toString() {
-        StringBuilder buf = new StringBuilder();
-        buf.append("<ChecksumAlgorithm:");
-        buf.append("algorithm=").append(algorithm);
-        buf.append(">");
-        return buf.toString();
+        return String.format("<ChecksumAlgorithm:algorithm=%s>", algorithm);
     }
 }

@@ -63,12 +63,13 @@ import org.apache.tools.ant.util.FileUtils;
  * @ant.task category="control"
  */
 public class ImportTask extends Task {
+    private static final FileUtils FILE_UTILS = FileUtils.getFileUtils();
+
     private String file;
     private boolean optional;
     private String targetPrefix = ProjectHelper.USE_PROJECT_NAME_AS_TARGET_PREFIX;
     private String prefixSeparator = ".";
     private final Union resources = new Union();
-    private static final FileUtils FILE_UTILS = FileUtils.getFileUtils();
 
     public ImportTask() {
         resources.setCache(true);
@@ -98,6 +99,7 @@ public class ImportTask extends Task {
     /**
      * The prefix to use when prefixing the imported target names.
      *
+     * @param prefix String
      * @since Ant 1.8.0
      */
     public void setAs(String prefix) {
@@ -108,6 +110,7 @@ public class ImportTask extends Task {
      * The separator to use between prefix and target name, default is
      * ".".
      *
+     * @param s String
      * @since Ant 1.8.0
      */
     public void setPrefixSeparator(String s) {
@@ -117,24 +120,25 @@ public class ImportTask extends Task {
     /**
      * The resource to import.
      *
+     * @param r ResourceCollection
      * @since Ant 1.8.0
      */
     public void add(ResourceCollection r) {
         resources.add(r);
     }
 
+    @Override
     public void execute() {
-        if (file == null && resources.size() == 0) {
-            throw new BuildException("import requires file attribute or"
-                                     + " at least one nested resource");
+        if (file == null && resources.isEmpty()) {
+            throw new BuildException(
+                "import requires file attribute or at least one nested resource");
         }
         if (getOwningTarget() == null
-            || !"".equals(getOwningTarget().getName())) {
+            || !getOwningTarget().getName().isEmpty()) {
             throw new BuildException("import only allowed as a top-level task");
         }
 
-        ProjectHelper helper =
-                (ProjectHelper) getProject().
+        ProjectHelper helper = getProject().
                     getReference(ProjectHelper.PROJECTHELPER_REFERENCE);
 
         if (helper == null) {
@@ -142,9 +146,7 @@ public class ImportTask extends Task {
             throw new BuildException("import requires support in ProjectHelper");
         }
 
-        Vector<Object> importStack = helper.getImportStack();
-
-        if (importStack.size() == 0) {
+        if (helper.getImportStack().isEmpty()) {
             // this happens if ant is used with a project
             // helper that doesn't set the import.
             throw new BuildException("import requires support in ProjectHelper");
@@ -166,8 +168,6 @@ public class ImportTask extends Task {
 
     private void importResource(ProjectHelper helper,
                                 Resource importedResource) {
-        Vector<Object> importStack = helper.getImportStack();
-
         getProject().log("Importing file " + importedResource + " from "
                          + getLocation().getFileName(), Project.MSG_VERBOSE);
 
@@ -178,13 +178,12 @@ public class ImportTask extends Task {
             if (optional) {
                 getProject().log(message, Project.MSG_VERBOSE);
                 return;
-            } else {
-                throw new BuildException(message);
             }
+            throw new BuildException(message);
         }
 
-        if (!isInIncludeMode() &&
-            hasAlreadyBeenImported(importedResource, importStack)) {
+        if (!isInIncludeMode() && hasAlreadyBeenImported(importedResource,
+            helper.getImportStack())) {
             getProject().log(
                 "Skipped already imported file:\n   "
                 + importedResource + "\n", Project.MSG_VERBOSE);
@@ -203,10 +202,10 @@ public class ImportTask extends Task {
                 prefix = oldPrefix + oldSep + targetPrefix;
             } else if (isInIncludeMode()) {
                 prefix = targetPrefix;
-            } else if (!ProjectHelper.USE_PROJECT_NAME_AS_TARGET_PREFIX.equals(targetPrefix)) {
-                prefix = targetPrefix;
-            } else {
+            } else if (ProjectHelper.USE_PROJECT_NAME_AS_TARGET_PREFIX.equals(targetPrefix)) {
                 prefix = oldPrefix;
+            } else {
+                prefix = targetPrefix;
             }
             setProjectHelperProps(prefix, prefixSeparator,
                                   isInIncludeMode());
@@ -241,7 +240,7 @@ public class ImportTask extends Task {
 
         if (file != null) {
             if (isExistingAbsoluteFile(file)) {
-                return new FileResource(new File(file));
+                return new FileResource(FILE_UTILS.normalize(file));
             }
 
             File buildFile =
@@ -260,9 +259,8 @@ public class ImportTask extends Task {
             } catch (MalformedURLException ex) {
                 log(ex.toString(), Project.MSG_VERBOSE);
             }
-            throw new BuildException("failed to resolve " + file
-                                     + " relative to "
-                                     + getLocation().getFileName());
+            throw new BuildException("failed to resolve %s relative to %s",
+                file, getLocation().getFileName());
         }
         return null;
     }
@@ -274,22 +272,14 @@ public class ImportTask extends Task {
 
     private boolean hasAlreadyBeenImported(Resource importedResource,
                                            Vector<Object> importStack) {
-        File importedFile = null;
-        FileProvider fp = importedResource.as(FileProvider.class);
-        if (fp != null) {
-            importedFile = fp.getFile();
-        }
-        URL importedURL = null;
-        URLProvider up = importedResource.as(URLProvider.class);
-        if (up != null) {
-            importedURL = up.getURL();
-        }
-        for (Object o : importStack) {
-            if (isOneOf(o, importedResource, importedFile, importedURL)) {
-                return true;
-            }
-        }
-        return false;
+        File importedFile = importedResource.asOptional(FileProvider.class)
+            .map(FileProvider::getFile).orElse(null);
+
+        URL importedURL = importedResource.asOptional(URLProvider.class)
+            .map(URLProvider::getURL).orElse(null);
+
+        return importStack.stream().anyMatch(
+            o -> isOneOf(o, importedResource, importedFile, importedURL));
     }
 
     private boolean isOneOf(Object o, Resource importedResource,
@@ -327,6 +317,7 @@ public class ImportTask extends Task {
      * overwritten in the importing build file.  The depends list of
      * the imported targets is not modified at all.</p>
      *
+     * @return boolean
      * @since Ant 1.8.0
      */
     protected final boolean isInIncludeMode() {
@@ -336,6 +327,9 @@ public class ImportTask extends Task {
     /**
      * Sets a bunch of Thread-local ProjectHelper properties.
      *
+     * @param prefix String
+     * @param prefixSep String
+     * @param inIncludeMode boolean
      * @since Ant 1.8.0
      */
     private static void setProjectHelperProps(String prefix,

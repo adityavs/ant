@@ -23,10 +23,12 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.util.Enumeration;
 import java.util.Hashtable;
+import java.util.Map;
 import java.util.Properties;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import org.apache.tools.ant.Project;
 import org.apache.tools.ant.types.Parameter;
 import org.apache.tools.ant.types.Resource;
 import org.apache.tools.ant.types.resources.FileResource;
@@ -85,7 +87,8 @@ public final class ReplaceTokens
      *
      * @see BaseFilterReader#BaseFilterReader()
      */
-    public ReplaceTokens() {}
+    public ReplaceTokens() {
+    }
 
     /**
      * Creates a new filtered reader.
@@ -115,8 +118,8 @@ public final class ReplaceTokens
 
         if (!resolvedTokensBuilt) {
             // build the resolved tokens tree map.
-            for (String key : hash.keySet()) {
-                resolvedTokens.put(beginToken + key + endToken, hash.get(key));
+            for (Map.Entry<String, String> entry : hash.entrySet()) {
+                resolvedTokens.put(beginToken + entry.getKey() + endToken, entry.getValue());
             }
             resolvedTokensBuilt = true;
         }
@@ -136,12 +139,12 @@ public final class ReplaceTokens
             if (next == -1) {
                 return next; // end of stream. all buffers empty.
             }
-            readBuffer += (char)next;
+            readBuffer += (char) next;
         }
 
         for (;;) {
             // get the closest tokens
-            SortedMap<String,String> possibleTokens = resolvedTokens.tailMap(readBuffer);
+            SortedMap<String, String> possibleTokens = resolvedTokens.tailMap(readBuffer);
             if (possibleTokens.isEmpty() || !possibleTokens.firstKey().startsWith(readBuffer)) { // if there is none, then deliver the first char from the buffer.
                 return getFirstCharacterFromReadBuffer();
             } else if (readBuffer.equals(possibleTokens.firstKey())) { // there exists a nearest token - is it an exact match?
@@ -154,7 +157,7 @@ public final class ReplaceTokens
             } else { // nearest token is not matching exactly - read one character more.
                 int next = in.read();
                 if (next != -1) {
-                    readBuffer += (char)next;
+                    readBuffer += (char) next;
                 } else {
                     return getFirstCharacterFromReadBuffer(); // end of stream. deliver remaining characters from buffer.
                 }
@@ -215,6 +218,7 @@ public final class ReplaceTokens
      * A resource containing properties, each of which is interpreted
      * as a token/value pair.
      *
+     * @param r Resource
      * @since Ant 1.8.0
      */
     public void setPropertiesResource(Resource r) {
@@ -244,7 +248,11 @@ public final class ReplaceTokens
             in = resource.getInputStream();
             props.load(in);
         } catch (IOException ioe) {
-            ioe.printStackTrace();
+            if (getProject() != null) {
+                getProject().log("getProperties failed, " + ioe.getMessage(), Project.MSG_ERR);
+            } else {
+                ioe.printStackTrace(); //NOSONAR
+            }
         } finally {
             FileUtils.close(in);
         }

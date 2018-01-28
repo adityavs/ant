@@ -42,7 +42,7 @@ public abstract class AbstractUnicodeExtraField implements ZipExtraField {
      * file.
      * @param off The offset of the encoded filename or comment in
      * <code>bytes</code>.
-     * @param len The length of the encoded filename or commentin
+     * @param len The length of the encoded filename or comment in
      * <code>bytes</code>.
      */
     protected AbstractUnicodeExtraField(final String text, final byte[] bytes, final int off,
@@ -54,7 +54,7 @@ public abstract class AbstractUnicodeExtraField implements ZipExtraField {
         try {
             unicodeName = text.getBytes("UTF-8");
         } catch (final UnsupportedEncodingException e) {
-            throw new RuntimeException("FATAL: UTF-8 encoding not supported.",
+            throw new RuntimeException("FATAL: UTF-8 encoding not supported.", //NOSONAR
                                        e);
         }
     }

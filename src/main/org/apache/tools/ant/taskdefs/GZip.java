@@ -18,12 +18,11 @@
 
 package org.apache.tools.ant.taskdefs;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.zip.GZIPOutputStream;
 
 import org.apache.tools.ant.BuildException;
-import org.apache.tools.ant.util.FileUtils;
 
 /**
  * Compresses a file with the GZIP algorithm. Normally used to compress
@@ -38,16 +37,14 @@ public class GZip extends Pack {
     /**
      * perform the GZip compression operation.
      */
+    @Override
     protected void pack() {
-        GZIPOutputStream zOut = null;
-        try {
-            zOut = new GZIPOutputStream(new FileOutputStream(zipFile));
+        try (GZIPOutputStream zOut =
+            new GZIPOutputStream(Files.newOutputStream(zipFile.toPath()))) {
             zipResource(getSrcResource(), zOut);
         } catch (IOException ioe) {
             String msg = "Problem creating gzip " + ioe.getMessage();
             throw new BuildException(msg, ioe, getLocation());
-        } finally {
-            FileUtils.close(zOut);
         }
     }
 
@@ -62,6 +59,7 @@ public class GZip extends Pack {
      * @return true if this case supports non file resources.
      * @since Ant 1.7
      */
+    @Override
     protected boolean supportsNonFileResources() {
         return getClass().equals(GZip.class);
     }

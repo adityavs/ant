@@ -20,9 +20,10 @@ package org.apache.tools.ant.taskdefs;
 
 
 import java.io.BufferedInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.util.FileUtils;
@@ -56,16 +57,16 @@ public class BUnzip2 extends Unpack {
      * Do the unbzipping.
      */
     protected void extract() {
-        if (source.lastModified() > dest.lastModified()) {
-            log("Expanding " + source.getAbsolutePath() + " to "
+        if (srcResource.getLastModified() > dest.lastModified()) {
+            log("Expanding " + srcResource.getName() + " to "
                 + dest.getAbsolutePath());
 
-            FileOutputStream out = null;
+            OutputStream out = null;
             CBZip2InputStream zIn = null;
             InputStream fis = null;
             BufferedInputStream bis = null;
             try {
-                out = new FileOutputStream(dest);
+                out = Files.newOutputStream(dest.toPath());
                 fis = srcResource.getInputStream();
                 bis = new BufferedInputStream(fis);
                 int b = bis.read();

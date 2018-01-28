@@ -21,17 +21,16 @@ package org.apache.tools.ant.taskdefs.optional;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
 import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -56,16 +55,17 @@ import org.apache.tools.ant.util.LayoutPreservingProperties;
  *        &lt;entry key="product.version.major" type="int"  value="5"/&gt;
  *        &lt;entry key="product.version.minor" type="int"  value="0"/&gt;
  *        &lt;entry key="product.build.major"   type="int"  value="0" /&gt;
- *        &lt;entry key="product.build.minor"   type="int"  operation="+" /&gt;
- *        &lt;entry key="product.build.date"    type="date" value="now" /&gt;
+ *        &lt;entry key="product.build.minor"   type="int"  operation="+"/&gt;
+ *        &lt;entry key="product.build.date"    type="date" value="now"/&gt;
  *        &lt;entry key="intSet" type="int" operation="=" value="681"/&gt;
  *        &lt;entry key="intDec" type="int" operation="-"/&gt;
  *        &lt;entry key="StringEquals" type="string" value="testValue"/&gt;
  *     &lt;/propertyfile&gt;
  *   &lt;/target&gt;
  * </pre>
- *
+ * <p>
  * The &lt;propertyfile&gt; task must have:
+ * </p>
  * <ul>
  *   <li>file</li>
  * </ul>
@@ -77,8 +77,9 @@ import org.apache.tools.ant.util.LayoutPreservingProperties;
  *   <li>type</li>
  *   <li>value (the final four being eliminated shortly)</li>
  * </ul>
- *
+ * <p>
  * The &lt;entry&gt; task must have:
+ * </p>
  * <ul>
  *   <li>key</li>
  * </ul>
@@ -90,24 +91,29 @@ import org.apache.tools.ant.util.LayoutPreservingProperties;
  *   <li>default</li>
  *   <li>unit</li>
  * </ul>
- *
+ * <p>
  * If type is unspecified, it defaults to string.
- *
+ * </p>
  * Parameter values:
- * <ul>
- *   <li>operation:</li>
+ * <dl>
+ *   <dt>operation:</dt>
+ *   <dd>
  *   <ul>
  *     <li>"=" (set -- default)</li>
  *     <li>"-" (dec)</li>
  *     <li>"+" (inc)</li>
  *   </ul>
- *   <li>type:</li>
+ *   </dd>
+ *   <dt>type:</dt>
+ *   <dd>
  *   <ul>
  *     <li>"int"</li>
  *     <li>"date"</li>
  *     <li>"string"</li>
  *   </ul>
- *   <li>value:</li>
+ *   </dd>
+ *   <dt>value:</dt>
+ *   <dd>
  *   <ul>
  *     <li>holds the default value, if the property
  *              was not found in property file</li>
@@ -116,7 +122,8 @@ import org.apache.tools.ant.util.LayoutPreservingProperties;
  *              date/time and used even if a valid date was
  *              found in the property file.</li>
  *   </ul>
- * </ul>
+ *   </dd>
+ * </dl>
  *
  * <p>String property types can only use the "=" operation.
  * Int property types can only use the "=", "-" or "+" operations.<p>
@@ -139,7 +146,7 @@ public class PropertyFile extends Task {
     private File                propertyfile;
     private boolean             useJDKProperties;
 
-    private Vector entries = new Vector();
+    private Vector<Entry> entries = new Vector<>();
 
     /* ========================================================================
      *
@@ -174,10 +181,7 @@ public class PropertyFile extends Task {
     }
 
     private void executeOperation() throws BuildException {
-        for (Enumeration e = entries.elements(); e.hasMoreElements();) {
-            Entry entry = (Entry) e.nextElement();
-            entry.executeOn(properties);
-        }
+        entries.forEach(e -> e.executeOn(properties));
     }
 
     private void readFile() throws BuildException {
@@ -192,27 +196,16 @@ public class PropertyFile extends Task {
             if (propertyfile.exists()) {
                 log("Updating property file: "
                     + propertyfile.getAbsolutePath());
-                FileInputStream fis = null;
-                try {
-                    fis = new FileInputStream(propertyfile);
-                    BufferedInputStream bis = new BufferedInputStream(fis);
+                try (InputStream fis = Files.newInputStream(propertyfile.toPath());
+                     BufferedInputStream bis = new BufferedInputStream(fis)) {
                     properties.load(bis);
-                } finally {
-                    if (fis != null) {
-                        fis.close();
-                    }
                 }
             } else {
                 log("Creating new property file: "
                     + propertyfile.getAbsolutePath());
-                FileOutputStream out = null;
-                try {
-                    out = new FileOutputStream(propertyfile.getAbsolutePath());
+                try (OutputStream out =
+                     Files.newOutputStream(propertyfile.toPath())) {
                     out.flush();
-                } finally {
-                    if (out != null) {
-                        out.close();
-                    }
                 }
             }
         } catch (IOException ioe) {
@@ -246,6 +239,7 @@ public class PropertyFile extends Task {
     /**
      * optional flag to use original Java properties (as opposed to
      * layout preserving properties)
+     * @param val boolean
      */
     public void setJDKProperties(boolean val) {
         useJDKProperties = val;
@@ -260,7 +254,7 @@ public class PropertyFile extends Task {
             throw new BuildException(x, getLocation());
         }
         try {
-            OutputStream os = new FileOutputStream(propertyfile);
+            OutputStream os = Files.newOutputStream(propertyfile.toPath()); //NOSONAR
             try {
                 try {
                     os.write(baos.toByteArray());
@@ -277,7 +271,7 @@ public class PropertyFile extends Task {
     }
 
     private boolean checkParam(File param) {
-        return !(param == null);
+        return param != null;
     }
 
     /**
@@ -289,14 +283,14 @@ public class PropertyFile extends Task {
         private static final String DEFAULT_DATE_VALUE = "now";
         private static final String DEFAULT_STRING_VALUE = "";
 
-        private String              key = null;
-        private int                 type = Type.STRING_TYPE;
-        private int                 operation = Operation.EQUALS_OPER;
-        private String              value = null;
-        private String              defaultValue = null;
-        private String              newValue = null;
-        private String              pattern = null;
-        private int                 field = Calendar.DATE;
+        private String key = null;
+        private int    type = Type.STRING_TYPE;
+        private int    operation = Operation.EQUALS_OPER;
+        private String value = null;
+        private String defaultValue = null;
+        private String newValue = null;
+        private String pattern = null;
+        private int    field = Calendar.DATE;
 
         /**
          * Name of the property name/value pair
@@ -395,13 +389,12 @@ public class PropertyFile extends Task {
                 } else if (type == Type.STRING_TYPE) {
                     executeString(oldValue);
                 } else {
-                    throw new BuildException("Unknown operation type: "
-                                             + type);
+                    throw new BuildException("Unknown operation type: %d", type);
                 }
             } catch (NullPointerException npe) {
                 // Default to string type
                 // which means do nothing
-                npe.printStackTrace();
+                npe.printStackTrace(); //NOSONAR
             }
 
             if (newValue == null) {
@@ -458,7 +451,6 @@ public class PropertyFile extends Task {
             newValue = fmt.format(currentValue.getTime());
         }
 
-
         /**
          * Handle operations for type <code>int</code>.
          *
@@ -469,7 +461,6 @@ public class PropertyFile extends Task {
         private void executeInteger(String oldValue) throws BuildException {
             int currentValue = DEFAULT_INT_VALUE;
             int newV  = DEFAULT_INT_VALUE;
-
 
             DecimalFormat fmt = (pattern != null) ? new DecimalFormat(pattern)
                 : new DecimalFormat();
@@ -546,15 +537,17 @@ public class PropertyFile extends Task {
                                          + "properties (key:" + key + ")");
             }
             if (value == null && defaultValue == null  && operation != Operation.DELETE_OPER) {
-                throw new BuildException("\"value\" and/or \"default\" "
-                                         + "attribute must be specified (key:" + key + ")");
+                throw new BuildException(
+                    "\"value\" and/or \"default\" attribute must be specified (key: %s)",
+                    key);
             }
             if (key == null) {
                 throw new BuildException("key is mandatory");
             }
             if (type == Type.STRING_TYPE && pattern != null) {
-                throw new BuildException("pattern is not supported for string "
-                                         + "properties (key:" + key + ")");
+                throw new BuildException(
+                    "pattern is not supported for string properties (key: %s)",
+                    key);
             }
         }
 
@@ -593,7 +586,7 @@ public class PropertyFile extends Task {
                     ret = defaultValue;
                 }
             } else {
-                ret = (oldValue == null) ? defaultValue : oldValue;
+                ret = oldValue == null ? defaultValue : oldValue;
             }
 
             return ret;
@@ -606,13 +599,13 @@ public class PropertyFile extends Task {
 
             // Property type operations
             /** + */
-            public static final int INCREMENT_OPER =   0;
+            public static final int INCREMENT_OPER = 0;
             /** - */
-            public static final int DECREMENT_OPER =   1;
+            public static final int DECREMENT_OPER = 1;
             /** = */
-            public static final int EQUALS_OPER =      2;
+            public static final int EQUALS_OPER =    2;
             /** del */
-            public static final int DELETE_OPER =      3;
+            public static final int DELETE_OPER =    3;
 
             /** {@inheritDoc}. */
             @Override
@@ -628,9 +621,11 @@ public class PropertyFile extends Task {
             public static int toOperation(String oper) {
                 if ("+".equals(oper)) {
                     return INCREMENT_OPER;
-                } else if ("-".equals(oper)) {
+                }
+                if ("-".equals(oper)) {
                     return DECREMENT_OPER;
-                } else if ("del".equals(oper)) {
+                }
+                if ("del".equals(oper)) {
                     return DELETE_OPER;
                 }
                 return EQUALS_OPER;
@@ -644,11 +639,11 @@ public class PropertyFile extends Task {
 
             // Property types
             /** int */
-            public static final int INTEGER_TYPE =     0;
+            public static final int INTEGER_TYPE = 0;
             /** date */
-            public static final int DATE_TYPE =        1;
+            public static final int DATE_TYPE =    1;
             /** string */
-            public static final int STRING_TYPE =      2;
+            public static final int STRING_TYPE =  2;
 
             /** {@inheritDoc} */
             @Override
@@ -664,7 +659,8 @@ public class PropertyFile extends Task {
             public static int toType(String type) {
                 if ("int".equals(type)) {
                     return INTEGER_TYPE;
-                } else if ("date".equals(type)) {
+                }
+                if ("date".equals(type)) {
                     return DATE_TYPE;
                 }
                 return STRING_TYPE;
@@ -688,23 +684,22 @@ public class PropertyFile extends Task {
         private static final String MONTH = "month";
         private static final String YEAR = "year";
 
-        private static final String[] UNITS
-            = {MILLISECOND, SECOND, MINUTE, HOUR,
-               DAY, WEEK, MONTH, YEAR };
+        private static final String[] UNITS = {MILLISECOND, SECOND, MINUTE, HOUR, DAY, WEEK, MONTH,
+                YEAR};
 
-        private Map calendarFields = new HashMap();
+        private Map<String, Integer> calendarFields = new HashMap<>();
 
         /** no arg constructor */
         public Unit() {
             calendarFields.put(MILLISECOND,
-                               new Integer(Calendar.MILLISECOND));
-            calendarFields.put(SECOND, new Integer(Calendar.SECOND));
-            calendarFields.put(MINUTE, new Integer(Calendar.MINUTE));
-            calendarFields.put(HOUR, new Integer(Calendar.HOUR_OF_DAY));
-            calendarFields.put(DAY, new Integer(Calendar.DATE));
-            calendarFields.put(WEEK, new Integer(Calendar.WEEK_OF_YEAR));
-            calendarFields.put(MONTH, new Integer(Calendar.MONTH));
-            calendarFields.put(YEAR, new Integer(Calendar.YEAR));
+                Integer.valueOf(Calendar.MILLISECOND));
+            calendarFields.put(SECOND, Integer.valueOf(Calendar.SECOND));
+            calendarFields.put(MINUTE, Integer.valueOf(Calendar.MINUTE));
+            calendarFields.put(HOUR, Integer.valueOf(Calendar.HOUR_OF_DAY));
+            calendarFields.put(DAY, Integer.valueOf(Calendar.DATE));
+            calendarFields.put(WEEK, Integer.valueOf(Calendar.WEEK_OF_YEAR));
+            calendarFields.put(MONTH, Integer.valueOf(Calendar.MONTH));
+            calendarFields.put(YEAR, Integer.valueOf(Calendar.YEAR));
         }
 
         /**
@@ -712,9 +707,7 @@ public class PropertyFile extends Task {
          * @return the calendar value.
          */
         public int getCalendarField() {
-            String key = getValue().toLowerCase();
-            Integer i = (Integer) calendarFields.get(key);
-            return i.intValue();
+            return calendarFields.get(getValue().toLowerCase()).intValue();
         }
 
         /** {@inheritDoc}. */

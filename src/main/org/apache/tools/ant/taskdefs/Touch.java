@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Locale;
+import java.util.List;
 import java.util.Vector;
 
 import org.apache.tools.ant.BuildException;
@@ -39,6 +39,7 @@ import org.apache.tools.ant.types.resources.FileProvider;
 import org.apache.tools.ant.types.resources.FileResource;
 import org.apache.tools.ant.types.resources.Touchable;
 import org.apache.tools.ant.types.resources.Union;
+import org.apache.tools.ant.util.DateUtils;
 import org.apache.tools.ant.util.FileNameMapper;
 import org.apache.tools.ant.util.FileUtils;
 
@@ -59,25 +60,20 @@ public class Touch extends Task {
         DateFormat getFallbackFormat();
     }
 
+    /**
+     * Provides access to DateUtils.EN_US_DATE_FORMAT_MIN (primary) and
+     * DateUtils.EN_US_DATE_FORMAT_SEC (fallback).
+     */
     public static final DateFormatFactory DEFAULT_DF_FACTORY
         = new DateFormatFactory() {
-        /*
-         * The initial version used DateFormat.SHORT for the
-         * time format, which ignores seconds.  If we want
-         * seconds as well, we need DateFormat.MEDIUM, which
-         * in turn would break all old build files.
-         *
-         * First try to parse with DateFormat.SHORT and if
-         * that fails with MEDIUM - throw an exception if both
-         * fail.
-         */
+
+        @Override
         public DateFormat getPrimaryFormat() {
-            return DateFormat.getDateTimeInstance(DateFormat.SHORT,
-                DateFormat.SHORT, Locale.US);
+            return DateUtils.EN_US_DATE_FORMAT_MIN.get();
         }
+        @Override
         public DateFormat getFallbackFormat() {
-            return DateFormat.getDateTimeInstance(DateFormat.SHORT,
-                DateFormat.MEDIUM, Locale.US);
+            return DateUtils.EN_US_DATE_FORMAT_SEC.get();
         }
     };
     private static final FileUtils FILE_UTILS = FileUtils.getFileUtils();
@@ -85,19 +81,13 @@ public class Touch extends Task {
     private File file;
     private long millis = -1;
     private String dateTime;
-    private Vector filesets = new Vector();
+    private List<FileSet> filesets = new Vector<>();
     private Union resources;
     private boolean dateTimeConfigured;
     private boolean mkdirs;
     private boolean verbose = true;
     private FileNameMapper fileNameMapper = null;
     private DateFormatFactory dfFactory = DEFAULT_DF_FACTORY;
-
-    /**
-     * Construct a new <code>Touch</code> task.
-     */
-    public Touch() {
-    }
 
     /**
      * Sets a single source file to touch.  If the file does not exist
@@ -159,9 +149,11 @@ public class Touch extends Task {
      */
     public void setPattern(final String pattern) {
         dfFactory = new DateFormatFactory() {
+            @Override
             public DateFormat getPrimaryFormat() {
                 return new SimpleDateFormat(pattern);
             }
+            @Override
             public DateFormat getFallbackFormat() {
                 return null;
             }
@@ -185,8 +177,8 @@ public class Touch extends Task {
      */
     public void add(FileNameMapper fileNameMapper) throws BuildException {
         if (this.fileNameMapper != null) {
-            throw new BuildException("Only one mapper may be added to the "
-                + getTaskName() + " task.");
+            throw new BuildException(
+                "Only one mapper may be added to the %s task.", getTaskName());
         }
         this.fileNameMapper = fileNameMapper;
     }
@@ -225,8 +217,8 @@ public class Touch extends Task {
      */
     protected synchronized void checkConfiguration() throws BuildException {
         if (file == null && resources == null) {
-            throw new BuildException("Specify at least one source"
-                                   + "--a file or resource collection.");
+            throw new BuildException(
+                "Specify at least one source--a file or resource collection.");
         }
         if (file != null && file.exists() && file.isDirectory()) {
             throw new BuildException("Use a resource collection to touch directories.");
@@ -256,10 +248,9 @@ public class Touch extends Task {
                     throw new BuildException(pe.getMessage(), pe, getLocation());
                 }
                 if (workmillis < 0) {
-                    throw new BuildException("Date of " + dateTime
-                            + " results in negative " + "milliseconds value "
-                            + "relative to epoch " + "(January 1, 1970, "
-                            + "00:00:00 GMT).");
+                    throw new BuildException(
+                        "Date of %s results in negative milliseconds value relative to epoch (January 1, 1970, 00:00:00 GMT).",
+                        dateTime);
                 }
             }
             log("Setting millis to " + workmillis + " from datetime attribute",
@@ -276,6 +267,7 @@ public class Touch extends Task {
      * @throws BuildException
      *             if an error occurs.
      */
+    @Override
     public void execute() throws BuildException {
         checkConfiguration();
         touch();
@@ -307,16 +299,12 @@ public class Touch extends Task {
         // deal with filesets in a special way since the task
         // originally also used the directories and Union won't return
         // them.
-        final int size = filesets.size();
-        for (int i = 0; i < size; i++) {
-            FileSet fs = (FileSet) filesets.elementAt(i);
+        for (FileSet fs : filesets) {
             DirectoryScanner ds = fs.getDirectoryScanner(getProject());
             File fromDir = fs.getDir(getProject());
 
-            String[] srcDirs = ds.getIncludedDirectories();
-
-            for (int j = 0; j < srcDirs.length; j++) {
-                touch(new FileResource(fromDir, srcDirs[j]), defaultTimestamp);
+            for (String srcDir : ds.getIncludedDirectories()) {
+                touch(new FileResource(fromDir, srcDir), defaultTimestamp);
             }
         }
     }
@@ -329,6 +317,7 @@ public class Touch extends Task {
      * @throws BuildException on error
      * @deprecated since 1.6.x.
      */
+    @Deprecated
     protected void touch(File file) {
         touch(file, getTimestamp());
     }
@@ -372,8 +361,8 @@ public class Touch extends Task {
             }
         }
         if (!file.canWrite()) {
-            throw new BuildException("Can not change modification date of "
-                                     + "read-only file " + file);
+            throw new BuildException(
+                "Can not change modification date of read-only file %s", file);
         }
         FILE_UTILS.setFileLastModified(file, modTime);
     }

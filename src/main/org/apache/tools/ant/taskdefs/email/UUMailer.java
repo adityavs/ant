@@ -19,9 +19,10 @@ package org.apache.tools.ant.taskdefs.email;
 
 import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintStream;
+import java.nio.file.Files;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.util.UUEncoder;
@@ -32,24 +33,18 @@ import org.apache.tools.ant.util.UUEncoder;
  * @since Ant 1.5
  */
 class UUMailer extends PlainMailer {
+    @Override
     protected void attach(File file, PrintStream out)
          throws IOException {
         if (!file.exists() || !file.canRead()) {
-            throw new BuildException("File \"" + file.getName()
-                 + "\" does not exist or is not "
-                 + "readable.");
+            throw new BuildException(
+                "File \"%s" + "\" does not exist or is not " + "readable.",
+                file.getAbsolutePath());
         }
 
-        FileInputStream finstr = new FileInputStream(file);
-
-        try {
-            BufferedInputStream in = new BufferedInputStream(finstr);
-            UUEncoder encoder = new UUEncoder(file.getName());
-
-            encoder.encode(in, out);
-
-        } finally {
-            finstr.close();
+        try (InputStream in =
+            new BufferedInputStream(Files.newInputStream(file.toPath()))) {
+            new UUEncoder(file.getName()).encode(in, out);
         }
     }
 }

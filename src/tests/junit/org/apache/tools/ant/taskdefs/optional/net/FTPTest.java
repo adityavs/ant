@@ -51,19 +51,19 @@ import org.junit.Test;
 
 //FIXME these tests are more integration than unit tests and report errors badly
 public class FTPTest {
-	
-	@Rule
-	public BuildFileRule buildRule = new BuildFileRule();
-	
+
+    @Rule
+    public BuildFileRule buildRule = new BuildFileRule();
+
     // keep track of what operating systems are supported here.
     private boolean supportsSymlinks = Os.isFamily("unix");
 
     private FTPClient ftp;
-    
-    private boolean loginSuceeded = false;
-    
+
+    private boolean loginSucceeded = false;
+
     private String loginFailureMessage;
-    
+
     private String tmpDir = null;
     private String remoteTmpDir = null;
     private String ftpFileSep = null;
@@ -95,7 +95,7 @@ public class FTPTest {
         if (connectionSucceeded) {
             try {
                 ftp.login(remoteUser, password);
-                loginSuceeded = true;
+                loginSucceeded = true;
             } catch (IOException ioe) {
                 loginFailureMessage = "could not log on to " + remoteHost + " as user " + remoteUser;
             }
@@ -105,68 +105,64 @@ public class FTPTest {
     @After
     public void tearDown() {
         try {
-            if (ftp!= null) {
-            	ftp.disconnect();
+            if (ftp != null) {
+                ftp.disconnect();
             }
         } catch (IOException ioe) {
             // do nothing
         }
         buildRule.getProject().executeTarget("cleanup");
     }
-    
+
     private boolean changeRemoteDir(String remoteDir) {
         boolean result = true;
         try {
             ftp.cwd(remoteDir);
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             System.out.println("could not change directory to " + remoteTmpDir);
             result = false;
         }
         return result;
     }
-    
+
     @Test
     public void test1() {
-    	Assume.assumeTrue(loginFailureMessage, loginSuceeded);
-    	Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
-        
-    	FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
+        Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
+
+        FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
         ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
         ds.setIncludes(new String[] {"alpha"});
         ds.scan();
-        compareFiles(ds, new String[] {} ,new String[] {"alpha"});
+        compareFiles(ds, new String[] {}, new String[] {"alpha"});
     }
 
     @Test
     public void test2() {
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
         ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
         ds.setIncludes(new String[] {"alpha/"});
         ds.scan();
-        compareFiles(ds, new String[] {"alpha/beta/beta.xml",
-                                       "alpha/beta/gamma/gamma.xml"},
+        compareFiles(ds, new String[] {"alpha/beta/beta.xml", "alpha/beta/gamma/gamma.xml"},
             new String[] {"alpha", "alpha/beta", "alpha/beta/gamma"});
     }
 
     @Test
     public void test3() {
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
         ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
         ds.scan();
-        compareFiles(ds, new String[] {"alpha/beta/beta.xml",
-                                       "alpha/beta/gamma/gamma.xml"},
-            new String[] {"alpha", "alpha/beta",
-                          "alpha/beta/gamma"});
+        compareFiles(ds, new String[] {"alpha/beta/beta.xml", "alpha/beta/gamma/gamma.xml"},
+            new String[] {"alpha", "alpha/beta", "alpha/beta/gamma"});
     }
 
     @Test
     public void testFullPathMatchesCaseSensitive() {
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
         ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
@@ -177,53 +173,51 @@ public class FTPTest {
 
     @Test
     public void testFullPathMatchesCaseInsensitive() {
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
         ds.setCaseSensitive(false);
         ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
         ds.setIncludes(new String[] {"alpha/beta/gamma/GAMMA.XML"});
         ds.scan();
-        compareFiles(ds, new String[] {"alpha/beta/gamma/gamma.xml"},
-            new String[] {});
+        compareFiles(ds, new String[] {"alpha/beta/gamma/gamma.xml"}, new String[] {});
     }
 
     @Test
     public void test2ButCaseInsensitive() {
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
         ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
         ds.setIncludes(new String[] {"ALPHA/"});
         ds.setCaseSensitive(false);
         ds.scan();
-        compareFiles(ds, new String[] {"alpha/beta/beta.xml",
-                                       "alpha/beta/gamma/gamma.xml"},
+        compareFiles(ds, new String[] {"alpha/beta/beta.xml", "alpha/beta/gamma/gamma.xml"},
             new String[] {"alpha", "alpha/beta", "alpha/beta/gamma"});
     }
-    
+
     @Test
     public void test2bisButCaseInsensitive() {
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
-	    FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
-	    ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
-	    ds.setIncludes(new String[] {"alpha/BETA/gamma/"});
-	    ds.setCaseSensitive(false);
-	    ds.scan();
-	    compareFiles(ds, new String[] {"alpha/beta/gamma/gamma.xml"},
-	        new String[] {"alpha/beta/gamma"});
+        FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
+        ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
+        ds.setIncludes(new String[] {"alpha/BETA/gamma/"});
+        ds.setCaseSensitive(false);
+        ds.scan();
+        compareFiles(ds, new String[] {"alpha/beta/gamma/gamma.xml"},
+            new String[] {"alpha/beta/gamma"});
     }
-    
+
     @Test
     public void testGetWithSelector() {
-    	buildRule.executeTarget("ftp-get-with-selector");
-    	assertContains("selectors are not supported in remote filesets", buildRule.getLog());
+        buildRule.executeTarget("ftp-get-with-selector");
+        assertContains("selectors are not supported in remote filesets", buildRule.getLog());
         FileSet fsDestination = (FileSet) buildRule.getProject().getReference("fileset-destination-without-selector");
         DirectoryScanner dsDestination = fsDestination.getDirectoryScanner(buildRule.getProject());
         dsDestination.scan();
-        String [] sortedDestinationDirectories = dsDestination.getIncludedDirectories();
-        String [] sortedDestinationFiles = dsDestination.getIncludedFiles();
+        String[] sortedDestinationDirectories = dsDestination.getIncludedDirectories();
+        String[] sortedDestinationFiles = dsDestination.getIncludedFiles();
         for (int counter = 0; counter < sortedDestinationDirectories.length; counter++) {
             sortedDestinationDirectories[counter] =
                 sortedDestinationDirectories[counter].replace(File.separatorChar, '/');
@@ -237,37 +231,36 @@ public class FTPTest {
         dsSource.scan();
         compareFiles(dsSource, sortedDestinationFiles, sortedDestinationDirectories);
     }
-    
+
     @Test
     public void testGetFollowSymlinksTrue() {
         Assume.assumeTrue("System does not support Symlinks", supportsSymlinks);
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         buildRule.getProject().executeTarget("ftp-get-directory-symbolic-link");
-        FileSet fsDestination = (FileSet) buildRule.getProject().getReference("fileset-destination-without-selector");
+        FileSet fsDestination = buildRule.getProject().getReference("fileset-destination-without-selector");
         DirectoryScanner dsDestination = fsDestination.getDirectoryScanner(buildRule.getProject());
         dsDestination.scan();
         compareFiles(dsDestination, new String[] {"alpha/beta/gamma/gamma.xml"},
             new String[] {"alpha", "alpha/beta", "alpha/beta/gamma"});
     }
-    
+
     @Test
     public void testGetFollowSymlinksFalse() {
         Assume.assumeTrue("System does not support Symlinks", supportsSymlinks);
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         buildRule.getProject().executeTarget("ftp-get-directory-no-symbolic-link");
         FileSet fsDestination = (FileSet) buildRule.getProject().getReference("fileset-destination-without-selector");
         DirectoryScanner dsDestination = fsDestination.getDirectoryScanner(buildRule.getProject());
         dsDestination.scan();
-        compareFiles(dsDestination, new String[] {},
-            new String[] {});
+        compareFiles(dsDestination, new String[] {}, new String[] {});
     }
-    
+
     @Test
     public void testAllowSymlinks() {
         Assume.assumeTrue("System does not support Symlinks", supportsSymlinks);
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         buildRule.getProject().executeTarget("symlink-setup");
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
@@ -282,7 +275,7 @@ public class FTPTest {
     @Test
     public void testProhibitSymlinks() {
         Assume.assumeTrue("System does not support Symlinks", supportsSymlinks);
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         buildRule.getProject().executeTarget("symlink-setup");
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
@@ -292,11 +285,11 @@ public class FTPTest {
         ds.scan();
         compareFiles(ds, new String[] {}, new String[] {});
     }
-    
+
     @Test
     public void testFileSymlink() {
         Assume.assumeTrue("System does not support Symlinks", supportsSymlinks);
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         buildRule.getProject().executeTarget("symlink-file-setup");
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
@@ -307,15 +300,14 @@ public class FTPTest {
         compareFiles(ds, new String[] {"alpha/beta/gamma/gamma.xml"},
                      new String[] {"alpha/beta/gamma"});
     }
-    
+
     // father and child pattern test
     @Test
     public void testOrderOfIncludePatternsIrrelevant() {
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
-        String [] expectedFiles = {"alpha/beta/beta.xml",
-                                   "alpha/beta/gamma/gamma.xml"};
-        String [] expectedDirectories = {"alpha/beta", "alpha/beta/gamma" };
+        String[] expectedFiles = {"alpha/beta/beta.xml", "alpha/beta/gamma/gamma.xml"};
+        String[] expectedDirectories = {"alpha/beta", "alpha/beta/gamma" };
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
         ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
         ds.setIncludes(new String[] {"alpha/be?a/**", "alpha/beta/gamma/"});
@@ -331,49 +323,43 @@ public class FTPTest {
 
     @Test
     public void testPatternsDifferInCaseScanningSensitive() {
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
         ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
         ds.setIncludes(new String[] {"alpha/", "ALPHA/"});
         ds.scan();
-        compareFiles(ds, new String[] {"alpha/beta/beta.xml",
-                                       "alpha/beta/gamma/gamma.xml"},
+        compareFiles(ds, new String[] {"alpha/beta/beta.xml", "alpha/beta/gamma/gamma.xml"},
                      new String[] {"alpha", "alpha/beta", "alpha/beta/gamma"});
     }
 
     @Test
     public void testPatternsDifferInCaseScanningInsensitive() {
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
         ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
         ds.setIncludes(new String[] {"alpha/", "ALPHA/"});
         ds.setCaseSensitive(false);
         ds.scan();
-        compareFiles(ds, new String[] {"alpha/beta/beta.xml",
-                                       "alpha/beta/gamma/gamma.xml"},
+        compareFiles(ds, new String[] {"alpha/beta/beta.xml", "alpha/beta/gamma/gamma.xml"},
                      new String[] {"alpha", "alpha/beta", "alpha/beta/gamma"});
     }
 
     @Test
     public void testFullpathDiffersInCaseScanningSensitive() {
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
         ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
-        ds.setIncludes(new String[] {
-            "alpha/beta/gamma/gamma.xml",
-            "alpha/beta/gamma/GAMMA.XML"
-        });
+        ds.setIncludes(new String[] {"alpha/beta/gamma/gamma.xml", "alpha/beta/gamma/GAMMA.XML"});
         ds.scan();
-        compareFiles(ds, new String[] {"alpha/beta/gamma/gamma.xml"},
-                     new String[] {});
+        compareFiles(ds, new String[] {"alpha/beta/gamma/gamma.xml"}, new String[] {});
     }
 
     @Test
     public void testFullpathDiffersInCaseScanningInsensitive() {
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
         ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
@@ -389,7 +375,7 @@ public class FTPTest {
 
     @Test
     public void testParentDiffersInCaseScanningSensitive() {
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
         ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
@@ -402,120 +388,91 @@ public class FTPTest {
 
     @Test
     public void testParentDiffersInCaseScanningInsensitive() {
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
         ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
         ds.setIncludes(new String[] {"alpha/", "ALPHA/beta/"});
         ds.setCaseSensitive(false);
         ds.scan();
-        compareFiles(ds, new String[] {"alpha/beta/beta.xml",
-                                       "alpha/beta/gamma/gamma.xml"},
-                     new String[] {"alpha", "alpha/beta", "alpha/beta/gamma"});
+        compareFiles(ds, new String[] {"alpha/beta/beta.xml", "alpha/beta/gamma/gamma.xml"},
+                new String[] {"alpha", "alpha/beta", "alpha/beta/gamma"});
     }
 
     @Test
     public void testExcludeOneFile() {
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
         ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
-        ds.setIncludes(new String[] {
-            "**/*.xml"
-        });
-        ds.setExcludes(new String[] {
-            "alpha/beta/b*xml"
-        });
+        ds.setIncludes(new String[] {"**/*.xml"});
+        ds.setExcludes(new String[] {"alpha/beta/b*xml"});
         ds.scan();
-        compareFiles(ds, new String[] {"alpha/beta/gamma/gamma.xml"},
-                     new String[] {});
+        compareFiles(ds, new String[] {"alpha/beta/gamma/gamma.xml"}, new String[] {});
     }
-    
+
     @Test
     public void testExcludeHasPrecedence() {
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
         ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
-        ds.setIncludes(new String[] {
-            "alpha/**"
-        });
-        ds.setExcludes(new String[] {
-            "alpha/**"
-        });
+        ds.setIncludes(new String[] {"alpha/**"});
+        ds.setExcludes(new String[] {"alpha/**"});
         ds.scan();
-        compareFiles(ds, new String[] {},
-                     new String[] {});
-
+        compareFiles(ds, new String[] {}, new String[] {});
     }
-    
+
     @Test
     public void testAlternateIncludeExclude() {
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
         ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
-        ds.setIncludes(new String[] {
-            "alpha/**",
-            "alpha/beta/gamma/**"
-        });
-        ds.setExcludes(new String[] {
-            "alpha/beta/**"
-        });
+        ds.setIncludes(new String[] {"alpha/**", "alpha/beta/gamma/**"});
+        ds.setExcludes(new String[] {"alpha/beta/**"});
         ds.scan();
-        compareFiles(ds, new String[] {},
-                     new String[] {"alpha"});
-
+        compareFiles(ds, new String[] {}, new String[] {"alpha"});
     }
-    
+
     @Test
     public void testAlternateExcludeInclude() {
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
         ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
-        ds.setExcludes(new String[] {
-            "alpha/**",
-            "alpha/beta/gamma/**"
-        });
-        ds.setIncludes(new String[] {
-            "alpha/beta/**"
-        });
+        ds.setExcludes(new String[] {"alpha/**", "alpha/beta/gamma/**"});
+        ds.setIncludes(new String[] {"alpha/beta/**"});
         ds.scan();
-        compareFiles(ds, new String[] {},
-                     new String[] {});
-
+        compareFiles(ds, new String[] {}, new String[] {});
     }
-    
+
     /**
      * Test inspired by Bug#1415.
      */
     @Test
     public void testChildrenOfExcludedDirectory() {
-        Assume.assumeTrue(loginFailureMessage, loginSuceeded);
+        Assume.assumeTrue(loginFailureMessage, loginSucceeded);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         buildRule.getProject().executeTarget("children-of-excluded-dir-setup");
         FTP.FTPDirectoryScanner ds = myFTPTask.newScanner(ftp);
         ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
         ds.setExcludes(new String[] {"alpha/**"});
         ds.scan();
-        compareFiles(ds, new String[] {"delta/delta.xml"},
-                    new String[] {"delta"});
+        compareFiles(ds, new String[] {"delta/delta.xml"}, new String[] {"delta"});
 
         ds = myFTPTask.newScanner(ftp);
         Assume.assumeTrue("Could not change remote directory", changeRemoteDir(remoteTmpDir));
         ds.setBasedir(new File(buildRule.getProject().getBaseDir(), "tmp"));
         ds.setExcludes(new String[] {"alpha"});
         ds.scan();
-        compareFiles(ds, new String[] {"alpha/beta/beta.xml",
-                                       "alpha/beta/gamma/gamma.xml",
-                                        "delta/delta.xml"},
+        compareFiles(ds, new String[] {"alpha/beta/beta.xml", "alpha/beta/gamma/gamma.xml",
+                        "delta/delta.xml"},
                      new String[] {"alpha/beta", "alpha/beta/gamma", "delta"});
-
     }
-    
+
     /**
-     * This class enables the use of the log messages as a way of testing 
+     * This class enables the use of the log messages as a way of testing
      * the number of files actually transferred.
      * It uses the ant regular expression mechanism to get a regex parser
      * to parse the log output.
@@ -526,7 +483,7 @@ public class FTPTest {
 
         /**
          * The only constructor for a CountLogListener
-         * @param pattern a regular expression pattern.  It should have 
+         * @param pattern a regular expression pattern.  It should have
          * one parenthesized group and that group should contain the
          * number desired.
          */
@@ -534,9 +491,9 @@ public class FTPTest {
             super();
             this.matcher.setPattern(pattern);
         }
-        
-        
-        /* 
+
+
+        /*
          * @param event the build event that is being logged.
          */
         public void messageLogged(BuildEvent event) {
@@ -546,7 +503,7 @@ public class FTPTest {
             }
             super.messageLogged(event);
         }
-        
+
         /**
          * returns the desired number that results from parsing the log
          * message
@@ -560,7 +517,7 @@ public class FTPTest {
             return Integer.parseInt((String) this.lastMatchGroups.get(1));
         }
     }
-    
+
     /**
      * This class enables the use of the log to count the number
      * of times a message has been emitted.
@@ -570,23 +527,23 @@ public class FTPTest {
         private int matchCount;
 
         public void addLogMessageToSearch(String message) {
-            searchMap.put(message, new Integer(0));
+            searchMap.put(message, Integer.valueOf(0));
         }
-        
-        /* 
+
+        /*
          * @param event the build event that is being logged.
          */
         public void messageLogged(BuildEvent event) {
             String message = event.getMessage();
             Integer mcnt = (Integer) searchMap.get(message);
             if (null != mcnt) {
-                searchMap.put(message, new Integer(mcnt.intValue() + 1));
+                searchMap.put(message, Integer.valueOf(mcnt.intValue() + 1));
             }
             super.messageLogged(event);
         }
-        
+
         /**
-         * @return the number of times that the looked for message was sent 
+         * @return the number of times that the looked for message was sent
          * to the log
          */
         public int getMatchCount(String message) {
@@ -598,9 +555,9 @@ public class FTPTest {
         }
     }
     /**
-     * Tests the combination of the newer parameter and the 
-     * serverTimezoneConfig  parameter in the PUT action.  The default 
-     * configuration is an ftp server on localhost which formats 
+     * Tests the combination of the newer parameter and the
+     * serverTimezoneConfig  parameter in the PUT action.  The default
+     * configuration is an ftp server on localhost which formats
      * timestamps as GMT.
      */
     @Test
@@ -613,9 +570,9 @@ public class FTPTest {
     }
 
     /**
-     * Tests the combination of the newer parameter and the 
-     * serverTimezoneConfig  parameter in the GET action.  The default 
-     * configuration is an ftp server on localhost which formats 
+     * Tests the combination of the newer parameter and the
+     * serverTimezoneConfig  parameter in the GET action.  The default
+     * configuration is an ftp server on localhost which formats
      * timestamps as GMT.
      */
     @Test
@@ -626,19 +583,16 @@ public class FTPTest {
         buildRule.getProject().executeTarget("timed.test.get.older");
         assertEquals(3, log.getCount());
     }
-   
-    
+
+
     /**
      * Tests that the presence of one of the server config params forces
      * the system type to Unix if not specified.
      */
     @Test
     public void testConfiguration1() {
-        int[] expectedCounts = {
-                1,1,0,1,0,0,0
-        };
+        int[] expectedCounts = {1, 1, 0, 1, 0, 0, 0};
         performConfigTest("configuration.1", expectedCounts);
-        
     }
 
     /**
@@ -646,11 +600,8 @@ public class FTPTest {
      */
     @Test
     public void testConfiguration2() {
-        int[] expectedCounts = {
-                1,0,0,1,1,0,0
-        };
+        int[] expectedCounts = {1, 0, 0, 1, 1, 0, 0};
         performConfigTest("configuration.2", expectedCounts);
-        
     }
 
     /**
@@ -658,25 +609,20 @@ public class FTPTest {
      */
     @Test
     public void testConfiguration3() {
-        int[] expectedCounts = {
-                1,0,1,0,0,1,0
-        };
+        int[] expectedCounts = {1, 0, 1, 0, 0, 1, 0};
         performConfigTest("configuration.3", expectedCounts);
-        
     }
-    
+
     @Test
     public void testConfigurationLang() {
-        int[] expectedCounts = {
-                1,1,0,0,0,0,1
-        };
+        int[] expectedCounts = {1, 1, 0, 0, 0, 0, 1};
         performConfigTest("configuration.lang.good", expectedCounts);
-        
+
         try {
             performConfigTest("configuration.lang.bad", expectedCounts);
             fail("BuildException Expected");
         } catch (Exception bx) {
-            assertTrue(bx instanceof BuildException); 
+            assertTrue(bx instanceof BuildException);
         }
     }
     /**
@@ -684,13 +630,11 @@ public class FTPTest {
      */
     @Test
     public void testConfigurationNone() {
-        int[] expectedCounts = {
-                0,0,0,0,0,0,0
-        };
+        int[] expectedCounts = {0, 0, 0, 0, 0, 0, 0};
         performConfigTest("configuration.none", expectedCounts);
- 
+
     }
-    
+
     private void performConfigTest(String target, int[] expectedCounts) {
         String[] messages = new String[]{
                 "custom configuration",
@@ -699,23 +643,23 @@ public class FTPTest {
                 "custom config: server time zone ID = " + buildRule.getProject().getProperty("ftp.server.timezone"),
                 "custom config: system key = WINDOWS",
                 "custom config: default date format = yyyy/MM/dd HH:mm",
-                "custom config: server language code = de" 
-
+                "custom config: server language code = de"
         };
         LogCounter counter = new LogCounter();
-        for (int i=0; i < messages.length; i++) {
-            counter.addLogMessageToSearch(messages[i]);
+        for (String message : messages) {
+            counter.addLogMessageToSearch(message);
         }
-            
+
         buildRule.getProject().addBuildListener(counter);
         buildRule.getProject().executeTarget(target);
-        for (int i=0; i < messages.length; i++) {
-            assertEquals("target "+target+":message "+ i, expectedCounts[i], counter.getMatchCount(messages[i]));
+        for (int i = 0; i < messages.length; i++) {
+            assertEquals("target " + target + ":message " + i,
+                    expectedCounts[i], counter.getMatchCount(messages[i]));
         }
-        
+
     }
 
-    
+
     /**
      *  this test is inspired by a user reporting that deletions of directories with the ftp task do not work
      */
@@ -723,29 +667,29 @@ public class FTPTest {
     public void testFTPDelete() {
         buildRule.getProject().executeTarget("ftp-delete");
     }
-    
+
     private void compareFiles(DirectoryScanner ds, String[] expectedFiles,
                               String[] expectedDirectories) {
-        String includedFiles[] = ds.getIncludedFiles();
-        String includedDirectories[] = ds.getIncludedDirectories();
+        String[] includedFiles = ds.getIncludedFiles();
+        String[] includedDirectories = ds.getIncludedDirectories();
         assertEquals("file present: ", expectedFiles.length,
                      includedFiles.length);
         assertEquals("directories present: ", expectedDirectories.length,
                      includedDirectories.length);
 
-        for (int counter=0; counter < includedFiles.length; counter++) {
+        for (int counter = 0; counter < includedFiles.length; counter++) {
             includedFiles[counter] = includedFiles[counter].replace(File.separatorChar, '/');
         }
         Arrays.sort(includedFiles);
-        for (int counter=0; counter < includedDirectories.length; counter++) {
+        for (int counter = 0; counter < includedDirectories.length; counter++) {
             includedDirectories[counter] = includedDirectories[counter]
                             .replace(File.separatorChar, '/');
         }
         Arrays.sort(includedDirectories);
-        for (int counter=0; counter < includedFiles.length; counter++) {
+        for (int counter = 0; counter < includedFiles.length; counter++) {
             assertEquals(expectedFiles[counter], includedFiles[counter]);
         }
-        for (int counter=0; counter < includedDirectories.length; counter++) {
+        for (int counter = 0; counter < includedDirectories.length; counter++) {
             assertEquals(expectedDirectories[counter], includedDirectories[counter]);
             counter++;
         }
@@ -764,49 +708,53 @@ public class FTPTest {
     public abstract static class myRetryableFTP extends FTP {
         private final int numberOfFailuresToSimulate;
         private int simulatedFailuresLeft;
-        
+
         protected myRetryableFTP(int numberOfFailuresToSimulate) {
             this.numberOfFailuresToSimulate = numberOfFailuresToSimulate;
             this.simulatedFailuresLeft = numberOfFailuresToSimulate;
         }
 
         protected void getFile(FTPClient ftp, String dir, String filename)
-                throws IOException, BuildException 
-        {
+                throws IOException, BuildException {
             if (this.simulatedFailuresLeft > 0) {
                 this.simulatedFailuresLeft--;
                 throw new IOException("Simulated failure for testing");
             }
            super.getFile(ftp, dir, filename);
         }
+
         protected void executeRetryable(RetryHandler h, Retryable r,
-                String filename) throws IOException 
-        {
-            this.simulatedFailuresLeft = this.numberOfFailuresToSimulate;    
+                String filename) throws IOException {
+
+            this.simulatedFailuresLeft = this.numberOfFailuresToSimulate;
             super.executeRetryable(h, r, filename);
         }
     }
+
     public static class oneFailureFTP extends myRetryableFTP {
         public oneFailureFTP() {
             super(1);
         }
     }
+
     public static class twoFailureFTP extends myRetryableFTP {
         public twoFailureFTP() {
             super(2);
         }
     }
+
     public static class threeFailureFTP extends myRetryableFTP {
         public threeFailureFTP() {
             super(3);
         }
     }
-    
+
     public static class randomFailureFTP extends myRetryableFTP {
         public randomFailureFTP() {
             super(new Random().nextInt(Short.MAX_VALUE));
         }
     }
+
     public void testGetWithSelectorRetryable1() {
         buildRule.getProject().addTaskDefinition("ftp", oneFailureFTP.class);
         try {
@@ -815,7 +763,7 @@ public class FTPTest {
             fail("Two retries expected, failed after one.");
         }
     }
-    
+
     @Test
     public void testGetWithSelectorRetryable2() {
         buildRule.getProject().addTaskDefinition("ftp", twoFailureFTP.class);
@@ -825,7 +773,7 @@ public class FTPTest {
             fail("Two retries expected, failed after two.");
         }
     }
-    
+
     @Test
     public void testGetWithSelectorRetryable3() {
         buildRule.getProject().addTaskDefinition("ftp", threeFailureFTP.class);
@@ -835,7 +783,7 @@ public class FTPTest {
         } catch (BuildException bx) {
         }
     }
-    
+
     @Test
     public void testGetWithSelectorRetryableRandom() {
         buildRule.getProject().addTaskDefinition("ftp", randomFailureFTP.class);
@@ -846,17 +794,17 @@ public class FTPTest {
             fail("Retry forever specified, but failed.");
         }
     }
-    
+
     @Test
     public void testInitialCommand() {
-        performCommandTest("test-initial-command", new int[] { 1,0 });
+        performCommandTest("test-initial-command", new int[] {1, 0});
     }
-    
+
     @Test
     public void testSiteAction() {
-        performCommandTest("test-site-action", new int[] { 1,0 });
+        performCommandTest("test-site-action", new int[] {1, 0});
     }
-    
+
     private void performCommandTest(String target, int[] expectedCounts) {
         String[] messages = new String[]{
                 "Doing Site Command: umask 222",
@@ -864,16 +812,17 @@ public class FTPTest {
 
         };
         LogCounter counter = new LogCounter();
-        for (int i=0; i < messages.length; i++) {
-            counter.addLogMessageToSearch(messages[i]);
+        for (String message : messages) {
+            counter.addLogMessageToSearch(message);
         }
-            
+
         buildRule.getProject().addBuildListener(counter);
         buildRule.getProject().executeTarget(target);
-        for (int i=0; i < messages.length; i++) {
-            assertEquals("target "+target+":message "+ i, expectedCounts[i], counter.getMatchCount(messages[i]));
+        for (int i = 0; i < messages.length; i++) {
+            assertEquals("target " + target + ":message " + i,
+                    expectedCounts[i], counter.getMatchCount(messages[i]));
         }
 
     }
-    
+
 }

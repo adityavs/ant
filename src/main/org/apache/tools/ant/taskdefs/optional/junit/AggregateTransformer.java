@@ -18,17 +18,15 @@
 package org.apache.tools.ant.taskdefs.optional.junit;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Vector;
-
+import java.nio.file.Files;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.TransformerFactoryConfigurationError;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
@@ -43,6 +41,7 @@ import org.apache.tools.ant.types.resources.FileResource;
 import org.apache.tools.ant.types.resources.URLResource;
 import org.apache.tools.ant.util.FileUtils;
 import org.apache.tools.ant.util.JAXPUtils;
+import org.apache.tools.ant.util.JavaEnvUtils;
 import org.w3c.dom.Document;
 
 /**
@@ -72,12 +71,27 @@ public class AggregateTransformer {
          * list authorized values.
          * @return authorized values.
          */
+        @Override
         public String[] getValues() {
             return new String[]{FRAMES, NOFRAMES};
         }
     }
 
+    private static final String JDK_INTERNAL_FACTORY =
+            "com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl";
+
     // CheckStyle:VisibilityModifier OFF - bc
+    /** XML Parser factory */
+    private static DocumentBuilderFactory privateDBFactory;
+
+    /** XML Parser factory accessible to subclasses */
+    protected static DocumentBuilderFactory dbfactory;
+
+    static {
+       privateDBFactory = DocumentBuilderFactory.newInstance();
+       dbfactory = privateDBFactory;
+    }
+
     /** Task */
     protected Task task;
 
@@ -98,6 +112,11 @@ public class AggregateTransformer {
     private XSLTProcess xsltTask;
 
     /**
+     * The JAXP factory used for the internal XSLT task.
+     */
+    private XSLTProcess.Factory xsltFactory;
+
+    /**
      * Instance of a utility class to use for file operations.
      *
      * @since Ant 1.7
@@ -107,21 +126,11 @@ public class AggregateTransformer {
     /**
      * Used to ensure the uniqueness of a property
      */
-    private static int counter = 0;
+    private static volatile int counter = 0;
 
     /** the format to use for the report. Must be <tt>FRAMES</tt> or <tt>NOFRAMES</tt> */
     protected String format = FRAMES;
 
-    /** XML Parser factory */
-    private static DocumentBuilderFactory privateDBFactory;
-
-    /** XML Parser factory accessible to subclasses */
-    protected static DocumentBuilderFactory dbfactory;
-
-    static {
-       privateDBFactory = DocumentBuilderFactory.newInstance();
-       dbfactory = privateDBFactory;
-    }
     // CheckStyle:VisibilityModifier ON
 
     /**
@@ -168,12 +177,9 @@ public class AggregateTransformer {
     protected void setXmlfile(File xmlfile) throws BuildException {
         try {
             DocumentBuilder builder = privateDBFactory.newDocumentBuilder();
-            InputStream in = new FileInputStream(xmlfile);
-            try {
+            try (InputStream in = Files.newInputStream(xmlfile.toPath())) {
                 Document doc = builder.parse(in);
                 setXmlDocument(doc);
-            } finally {
-                in.close();
             }
         } catch (Exception e) {
             throw new BuildException("Error while parsing document: " + xmlfile, e);
@@ -231,7 +237,10 @@ public class AggregateTransformer {
      * @since Ant 1.9.5
      */
     public XSLTProcess.Factory createFactory() {
-        return xsltTask.createFactory();
+        if (xsltFactory == null) {
+            xsltFactory = xsltTask.createFactory();
+        }
+        return xsltFactory;
     }
 
     /**
@@ -249,9 +258,9 @@ public class AggregateTransformer {
 
         // acrobatic cast.
         xsltTask.setIn(((XMLResultAggregator) task).getDestinationFile());
-        File outputFile = null;
-        if (format.equals(FRAMES)) {
-            String tempFileProperty = getClass().getName() + String.valueOf(counter++);
+        File outputFile;
+        if (FRAMES.equals(format)) {
+            String tempFileProperty = getClass().getName() + String.valueOf(counter++); //NOSONAR
             File tmp = FILE_UTILS.resolveFile(project.getBaseDir(), project
                     .getProperty("java.io.tmpdir"));
             tempFileTask.setDestDir(tmp);
@@ -266,6 +275,7 @@ public class AggregateTransformer {
         paramx.setProject(task.getProject());
         paramx.setName("output.dir");
         paramx.setExpression(toDir.getAbsolutePath());
+        configureForRedirectExtension();
         final long t0 = System.currentTimeMillis();
         try {
             xsltTask.execute();
@@ -343,4 +353,27 @@ public class AggregateTransformer {
         return JAXPUtils.getSystemId(file);
     }
 
+    /**
+     * If we end up using the JDK's own TraX factory on Java 9+, then
+     * set the features and attributes necessary to allow redirect
+     * extensions to be used.
+     * @since Ant 1.9.8
+     */
+    protected void configureForRedirectExtension() {
+        XSLTProcess.Factory factory = createFactory();
+        String factoryName = factory.getName();
+        if (factoryName == null) {
+            try {
+                factoryName = TransformerFactory.newInstance().getClass().getName();
+            } catch (TransformerFactoryConfigurationError exc) {
+                throw new BuildException(exc);
+            }
+        }
+        if (JDK_INTERNAL_FACTORY.equals(factoryName)
+            && JavaEnvUtils.isAtLeastJavaVersion(JavaEnvUtils.JAVA_9)) {
+            factory.addFeature(new XSLTProcess.Factory.Feature(
+                "http://www.oracle.com/xml/jaxp/properties/enableExtensionFunctions",
+                true));
+        }
+    }
 }

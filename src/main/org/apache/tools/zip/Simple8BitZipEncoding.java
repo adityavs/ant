@@ -212,12 +212,11 @@ class Simple8BitZipEncoding implements ZipEncoding {
     }
 
     /**
-     * @see
-     * org.apache.tools.zip.ZipEncoding#canEncode(java.lang.String)
+     * @see org.apache.tools.zip.ZipEncoding#canEncode(java.lang.String)
      */
     public boolean canEncode(final String name) {
 
-        for (int i=0;i<name.length();++i) {
+        for (int i = 0; i < name.length(); ++i) {
 
             final char c = name.charAt(i);
 
@@ -230,24 +229,21 @@ class Simple8BitZipEncoding implements ZipEncoding {
     }
 
     /**
-     * @see
-     * org.apache.tools.zip.ZipEncoding#encode(java.lang.String)
+     * @see org.apache.tools.zip.ZipEncoding#encode(java.lang.String)
      */
     public ByteBuffer encode(final String name) {
         ByteBuffer out = ByteBuffer.allocate(name.length()
                                              + 6 + (name.length() + 1) / 2);
 
-        for (int i=0;i<name.length();++i) {
-
+        for (int i = 0; i < name.length(); ++i) {
             final char c = name.charAt(i);
 
             if (out.remaining() < 6) {
-                out = ZipEncodingHelper.growBuffer(out,out.position() + 6);
+                out = ZipEncodingHelper.growBuffer(out, out.position() + 6);
             }
 
-            if (!this.pushEncodedChar(out,c)) {
-
-                ZipEncodingHelper.appendSurrogate(out,c);
+            if (!this.pushEncodedChar(out, c)) {
+                ZipEncodingHelper.appendSurrogate(out, c);
             }
         }
 
@@ -257,13 +253,12 @@ class Simple8BitZipEncoding implements ZipEncoding {
     }
 
     /**
-     * @see
-     * org.apache.tools.zip.ZipEncoding#decode(byte[])
+     * @see org.apache.tools.zip.ZipEncoding#decode(byte[])
      */
     public String decode(final byte[] data) throws IOException {
-        final char [] ret = new char[data.length];
+        final char[] ret = new char[data.length];
 
-        for (int i=0;i<data.length;++i) {
+        for (int i = 0; i < data.length; ++i) {
             ret[i] = this.decodeByte(data[i]);
         }
 

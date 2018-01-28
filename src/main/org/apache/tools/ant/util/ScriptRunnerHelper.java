@@ -31,9 +31,11 @@ import org.apache.tools.ant.types.resources.Union;
 public class ScriptRunnerHelper {
     private ClasspathUtils.Delegate cpDelegate = null;
     private File    srcFile;
+    private String  encoding;
     private String  manager = "auto";
     private String  language;
     private String  text;
+    private boolean compiled = false;
     private boolean setBeans = true;
     private ProjectComponent projectComponent;
     private ClassLoader scriptLoader = null;
@@ -53,6 +55,12 @@ public class ScriptRunnerHelper {
      */
     public ScriptRunnerBase getScriptRunner() {
         ScriptRunnerBase runner = getRunner();
+        runner.setCompiled(compiled);
+
+        if (encoding != null) {
+            // set it first, because runner.setSrc() loads immediately the file
+            runner.setEncoding(encoding);
+        }
         if (srcFile != null) {
             runner.setSrc(srcFile);
         }
@@ -99,12 +107,40 @@ public class ScriptRunnerHelper {
     }
 
     /**
-     * Load the script from an external file ; optional.
+     * Load the script from an external file; optional.
      *
      * @param file the file containing the script source.
      */
     public void setSrc(File file) {
         this.srcFile = file;
+    }
+
+    /**
+     * Get the external script file; optional.
+     * @return the file containing the script source.
+     * @since Ant 1.10.2
+     */
+    public File getSrc() {
+        return srcFile;
+    }
+
+    /**
+     * Set the encoding of the script from an external file; optional.
+     *
+     * @param encoding the encoding of the file containing the script source.
+     * @since Ant 1.10.2
+     */
+    public void setEncoding(String encoding) {
+        this.encoding = encoding;
+    }
+
+    /**
+     * Get the external file encoding.
+     * @return the encoding of the file containing the script source.
+     * @since Ant 1.10.2
+     */
+    public String getEncoding() {
+        return encoding;
     }
 
     /**
@@ -140,6 +176,28 @@ public class ScriptRunnerHelper {
      */
     public String getLanguage() {
         return language;
+    }
+
+    /**
+     * Enable the compilation of the script if possible.
+     * If this is true and the compilation feature is available in
+     * the script engine, the script is compiled before the first
+     * evaluation, and should be cached for future evaluations.
+     * Otherwise, the script is evaluated each time.
+     * The default is false.
+     *
+     * @param compiled the value to set.
+     */
+    public void setCompiled(boolean compiled) {
+        this.compiled = compiled;
+    }
+
+    /**
+     * Get the compilation feature.
+     * @return the compilation feature.
+     */
+    public boolean getCompiled() {
+        return this.compiled;
     }
 
     /**

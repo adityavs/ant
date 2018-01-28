@@ -62,7 +62,7 @@ public class PropertyFileTest {
     @Test
     public void testNonExistingFile() {
         PropertyFile props = new PropertyFile();
-        props.setProject( buildRule.getProject() );
+        props.setProject(buildRule.getProject());
         File file = new File("this-file-does-not-exist.properties");
         props.setFile(file);
         assertFalse("Properties file exists before test.", file.exists());
@@ -104,7 +104,7 @@ public class PropertyFileTest {
             FNAME, beforeUpdate.getProperty(FNAME_KEY));
         assertEquals("Property '" + LNAME_KEY + "' should exist before deleting",
             LNAME, beforeUpdate.getProperty(LNAME_KEY));
-        
+
         buildRule.executeTarget("delete-properties");
         Properties afterUpdate = getTestProperties();
 
@@ -117,15 +117,15 @@ public class PropertyFileTest {
     @Test
     public void testExerciseDefaultAndIncrement() throws Exception {
         buildRule.executeTarget("exercise");
-        assertEquals("3",buildRule.getProject().getProperty("int.with.default"));
-        assertEquals("1",buildRule.getProject().getProperty("int.without.default"));
-        assertEquals("-->",buildRule.getProject().getProperty("string.with.default"));
-        assertEquals(".",buildRule.getProject().getProperty("string.without.default"));
+        assertEquals("3", buildRule.getProject().getProperty("int.with.default"));
+        assertEquals("1", buildRule.getProject().getProperty("int.without.default"));
+        assertEquals("-->", buildRule.getProject().getProperty("string.with.default"));
+        assertEquals(".", buildRule.getProject().getProperty("string.without.default"));
         assertEquals("2002/01/21 12:18", buildRule.getProject().getProperty("ethans.birth"));
         assertEquals("2003/01/21", buildRule.getProject().getProperty("first.birthday"));
         assertEquals("0124", buildRule.getProject().getProperty("olderThanAWeek"));
         assertEquals("37", buildRule.getProject().getProperty("existing.prop"));
-        assertEquals("6",buildRule.getProject().getProperty("int.without.value"));
+        assertEquals("6", buildRule.getProject().getProperty("int.without.value"));
     }
 
     @Test
@@ -199,6 +199,7 @@ public class PropertyFileTest {
         fos.close();
     }
 
+    @SuppressWarnings("unused")
     private static final String
         projectFilePath     = "src/etc/testcases/taskdefs/optional/propertyfile.xml",
 

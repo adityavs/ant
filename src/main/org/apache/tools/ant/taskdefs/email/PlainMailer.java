@@ -19,11 +19,10 @@ package org.apache.tools.ant.taskdefs.email;
 
 import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintStream;
-import java.util.Enumeration;
-
+import java.nio.file.Files;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
 import org.apache.tools.mail.MailMessage;
@@ -39,49 +38,44 @@ class PlainMailer extends Mailer {
      *
      * @see org.apache.tools.mail.MailMessage
      */
+    @Override
     public void send() {
         try {
             MailMessage mailMessage = new MailMessage(host, port);
 
             mailMessage.from(from.toString());
 
-            Enumeration e;
             boolean atLeastOneRcptReached = false;
 
-            e = replyToList.elements();
-            while (e.hasMoreElements()) {
-                mailMessage.replyto(e.nextElement().toString());
-            }
-            e = toList.elements();
-            while (e.hasMoreElements()) {
-                String to = e.nextElement().toString();
+            replyToList.stream().map(Object::toString).forEach(mailMessage::replyto);
+
+            for (EmailAddress to : toList) {
                 try {
-                    mailMessage.to(to);
+                    mailMessage.to(to.toString());
                     atLeastOneRcptReached = true;
                 } catch (IOException ex) {
                     badRecipient(to, ex);
                 }
             }
-            e = ccList.elements();
-            while (e.hasMoreElements()) {
-                String to = e.nextElement().toString();
+
+            for (EmailAddress cc : ccList) {
                 try {
-                    mailMessage.cc(to);
+                    mailMessage.cc(cc.toString());
                     atLeastOneRcptReached = true;
                 } catch (IOException ex) {
-                    badRecipient(to, ex);
+                    badRecipient(cc, ex);
                 }
             }
-            e = bccList.elements();
-            while (e.hasMoreElements()) {
-                String to = e.nextElement().toString();
+
+            for (EmailAddress bcc : bccList) {
                 try {
-                    mailMessage.bcc(to);
+                    mailMessage.bcc(bcc.toString());
                     atLeastOneRcptReached = true;
                 } catch (IOException ex) {
-                    badRecipient(to, ex);
+                    badRecipient(bcc, ex);
                 }
             }
+
             if (!atLeastOneRcptReached) {
                 throw new BuildException("Couldn't reach any recipient");
             }
@@ -96,18 +90,17 @@ class PlainMailer extends Mailer {
                 mailMessage.setHeader("Content-Type", message.getMimeType());
             }
             if (headers != null) {
-                e = headers.elements();
-                while (e.hasMoreElements()) {
-                    Header h = (Header) e.nextElement();
+                for (Header h : headers) {
                     mailMessage.setHeader(h.getName(), h.getValue());
                 }
             }
             PrintStream out = mailMessage.getPrintStream();
             message.print(out);
 
-            e = files.elements();
-            while (e.hasMoreElements()) {
-                attach((File) e.nextElement(), out);
+            if (files != null) {
+                for (File f : files) {
+                    attach(f, out);
+                }
             }
             mailMessage.sendAndClose();
         } catch (IOException ioe) {
@@ -126,9 +119,9 @@ class PlainMailer extends Mailer {
     protected void attach(File file, PrintStream out)
          throws IOException {
         if (!file.exists() || !file.canRead()) {
-            throw new BuildException("File \"" + file.getName()
-                 + "\" does not exist or is not "
-                 + "readable.");
+            throw new BuildException(
+                "File \"%s\" does not exist or is not readable.",
+                file.getAbsolutePath());
         }
 
         if (includeFileNames) {
@@ -144,23 +137,20 @@ class PlainMailer extends Mailer {
             out.println();
         }
 
-        int length;
         final int maxBuf = 1024;
         byte[] buf = new byte[maxBuf];
-        FileInputStream finstr = new FileInputStream(file);
 
-        try {
-            BufferedInputStream in = new BufferedInputStream(finstr, buf.length);
+        try (InputStream finstr = Files.newInputStream(file.toPath());
+             BufferedInputStream in = new BufferedInputStream(finstr, buf.length)) {
 
+            int length;
             while ((length = in.read(buf)) != -1) {
                 out.write(buf, 0, length);
             }
-        } finally {
-            finstr.close();
         }
     }
 
-    private void badRecipient(String rcpt, IOException reason) {
+    private void badRecipient(EmailAddress rcpt, IOException reason) {
         String msg = "Failed to send mail to " + rcpt;
         if (shouldIgnoreInvalidRecipients()) {
             msg += " because of :" + reason.getMessage();

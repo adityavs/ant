@@ -18,6 +18,8 @@
 package org.apache.tools.ant.taskdefs.optional;
 
 import org.apache.tools.ant.BuildFileRule;
+import org.apache.tools.ant.util.JavaEnvUtils;
+import org.junit.Assume;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -29,8 +31,7 @@ import static org.junit.Assert.assertTrue;
 
 public class JavahTest {
 
-    private final static String BUILD_XML = 
-        "src/etc/testcases/taskdefs/optional/javah/build.xml";
+    private static final String BUILD_XML = "src/etc/testcases/taskdefs/optional/javah/build.xml";
 
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
@@ -47,6 +48,7 @@ public class JavahTest {
 
     @Test
     public void testSimpleCompile() {
+        Assume.assumeFalse(JavaEnvUtils.isAtLeastJavaVersion("10"));
         buildRule.executeTarget("simple-compile");
         assertTrue(new File(buildRule.getProject().getProperty("output"), "org_example_Foo.h")
                 .exists());
@@ -54,6 +56,7 @@ public class JavahTest {
 
     @Test
     public void testCompileFileset() {
+        Assume.assumeFalse(JavaEnvUtils.isAtLeastJavaVersion("10"));
         buildRule.executeTarget("test-fileset");
         assertTrue(new File(buildRule.getProject().getProperty("output"), "org_example_Foo.h").exists());
     }

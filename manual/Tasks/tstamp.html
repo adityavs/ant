@@ -24,7 +24,7 @@
 
 <body>
 
-<h2><a name="tstamp">Tstamp</a></h2>
+<h2 id="tstamp">Tstamp</h2>
 
 <h3>Description</h3>
 <p>Sets the <code>DSTAMP</code>, <code>TSTAMP</code>, and <code>TODAY</code>
@@ -40,8 +40,16 @@ time-stamped filenames, or used to replace placeholder tags inside documents
 to indicate, for example, the release date. The best place for this task is
 probably in an initialization target.</p>
 
+<p><em>Since Ant 1.10.2</em> the magic
+property <code>ant.tstamp.now</code> can be used to specify a fixed
+date value in order to create reproducible builds. Its value must be
+a number and is interpreted as seconds since the epoch (midnight
+1970-01-01). With <code>ant.tstamp.now.iso</code> you could also specify that
+value in ISO-8601 format (<code>1972-04-17T08:07:00Z</code>). If you specify a value
+in an invalid format an INFO message will be logged and the value will be ignored.</p>
+
 <h3>Parameters</h3>
-<table border="1" cellpadding="2" cellspacing="0">
+<table>
   <tr>
     <td valign="top"><b>Attribute</b></td>
     <td valign="top"><b>Description</b></td>
@@ -55,13 +63,14 @@ probably in an initialization target.</p>
 </table>
 
 <h3>Nested Elements</h3>
+<p>
 The Tstamp task supports a <code>&lt;format&gt;</code> nested element that
 allows a property to be set to the current date and time in a given format.
 The date/time patterns are as defined in the Java
 <a href="http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html">SimpleDateFormat</a> class.
 The format element also allows offsets to be applied to the time to generate different time values.
-<br><br>
-<table width="60%" border="1" cellpadding="2" cellspacing="0">
+</p>
+<table>
   <tr>
     <td valign="top"><b>Attribute</b></td>
     <td valign="top"><b>Description</b></td>
@@ -153,9 +162,6 @@ is suitable for use with the <code>&lt;touch&gt;</code> task. The standard prope
 <p>
 Sets three properties with the standard formats, prefixed with "start.":
 <code>start.DSTAMP</code>, <code>start.TSTAMP</code>, and <code>start.TODAY</code>.</p>
-
-
-
 
 </body>
 </html>

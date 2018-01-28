@@ -25,7 +25,8 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 import org.w3c.dom.Attr;
 import org.w3c.dom.Element;
@@ -68,7 +69,7 @@ public class DOMElementWriter {
     /**
      * Map (URI to prefix) of known namespaces.
      */
-    private HashMap nsPrefixMap = new HashMap();
+    private Map<String, String> nsPrefixMap = new HashMap<>();
 
     /**
      * Number of generated prefix to use next.
@@ -78,7 +79,7 @@ public class DOMElementWriter {
     /**
      * Map (Element to URI) of namespaces defined on a given element.
      */
-    private HashMap nsURIByElement = new HashMap();
+    private Map<Element, List<String>> nsURIByElement = new HashMap<>();
 
     /**
      * Whether namespaces should be ignored for elements and attributes.
@@ -346,12 +347,10 @@ public class DOMElementWriter {
         }
 
         // write namespace declarations
-        ArrayList al = (ArrayList) nsURIByElement.get(element);
-        if (al != null) {
-            Iterator iter = al.iterator();
-            while (iter.hasNext()) {
-                String uri = (String) iter.next();
-                String prefix = (String) nsPrefixMap.get(uri);
+        List<String> uris = nsURIByElement.get(element);
+        if (uris != null) {
+            for (String uri : uris) {
+                String prefix = nsPrefixMap.get(uri);
                 out.write(" xmlns");
                 if (!"".equals(prefix)) {
                     out.write(":");
@@ -414,7 +413,7 @@ public class DOMElementWriter {
     }
 
     /**
-     * Escape &lt;, &gt; &amp; &apos;, &quot; as their entities and
+     * Escape &lt;, &gt;, &amp;, ', &quot; as their entities and
      * drop characters that are illegal in XML documents.
      * @param value the string to encode.
      * @return the encoded string.
@@ -424,7 +423,7 @@ public class DOMElementWriter {
     }
 
     /**
-     * Escape &lt;, &gt; &amp; &apos;, &quot; as their entities, \n,
+     * Escape &lt;, &gt;, &amp;, ', &quot; as their entities, \n,
      * \r and \t as numeric entities and drop characters that are
      * illegal in XML documents.
      * @param value the string to encode.
@@ -436,7 +435,7 @@ public class DOMElementWriter {
 
     private String encode(final String value, final boolean encodeWhitespace) {
         final int len = value.length();
-        final StringBuffer sb = new StringBuffer(len);
+        final StringBuilder sb = new StringBuilder(len);
         for (int i = 0; i < len; i++) {
             final char c = value.charAt(i);
             switch (c) {
@@ -494,7 +493,7 @@ public class DOMElementWriter {
         try {
             encodedata(out, value);
         } catch (IOException ex) {
-            throw new RuntimeException(ex);
+            throw new RuntimeException(ex); //NOSONAR
         }
         return out.toString();
     }
@@ -514,10 +513,12 @@ public class DOMElementWriter {
      * href="http://www.w3.org/TR/1998/REC-xml-19980210#sec-cdata-sect">http://www.w3.org/TR/1998/REC-xml-19980210#sec-cdata-sect</a>.</p>
      * @param value the value to be encoded.
      * @param out where to write the encoded data to.
+     * @throws IOException if data cannot be written
      */
     public void encodedata(final Writer out, final String value) throws IOException {
         final int len = value.length();
-        int prevEnd = 0, cdataEndPos = value.indexOf("]]>");
+        int prevEnd = 0;
+        int cdataEndPos = value.indexOf("]]>");
         while (prevEnd < len) {
             final int end = (cdataEndPos < 0 ? len : cdataEndPos);
             // Write out stretches of legal characters in the range [prevEnd, end).
@@ -596,13 +597,17 @@ public class DOMElementWriter {
         // CheckStyle:MagicNumber OFF
         if (c == 0x9 || c == 0xA || c == 0xD) {
             return true;
-        } else if (c < 0x20) {
+        }
+        if (c < 0x20) {
             return false;
-        } else if (c <= 0xD7FF) {
+        }
+        if (c <= 0xD7FF) {
             return true;
-        } else if (c < 0xE000) {
+        }
+        if (c < 0xE000) {
             return false;
-        } else if (c <= 0xFFFD) {
+        }
+        if (c <= 0xFFFD) {
             return true;
         }
         // CheckStyle:MagicNumber ON
@@ -610,31 +615,20 @@ public class DOMElementWriter {
     }
 
     private void removeNSDefinitions(Element element) {
-        ArrayList al = (ArrayList) nsURIByElement.get(element);
-        if (al != null) {
-            Iterator iter = al.iterator();
-            while (iter.hasNext()) {
-                nsPrefixMap.remove(iter.next());
-            }
+        List<String> uris = nsURIByElement.get(element);
+        if (uris != null) {
+            uris.forEach(nsPrefixMap::remove);
             nsURIByElement.remove(element);
         }
     }
 
     private void addNSDefinition(Element element, String uri) {
-        ArrayList al = (ArrayList) nsURIByElement.get(element);
-        if (al == null) {
-            al = new ArrayList();
-            nsURIByElement.put(element, al);
-        }
-        al.add(uri);
+        nsURIByElement.computeIfAbsent(element, e -> new ArrayList<>())
+            .add(uri);
     }
 
     private static String getNamespaceURI(Node n) {
         String uri = n.getNamespaceURI();
-        if (uri == null) {
-            // FIXME: Is "No Namespace is Empty Namespace" really OK?
-            uri = "";
-        }
-        return uri;
+        return uri == null ? "" : uri;
     }
 }
