@@ -151,7 +151,7 @@ public class BorlandGenerateClient extends Task {
             String ejbjarname = ejbjarfile.getAbsolutePath();
             //clientname = ejbjarfile+client.jar
             String clientname = ejbjarname.substring(0, ejbjarname.lastIndexOf("."));
-            clientname = clientname + "client.jar";
+            clientname += "client.jar";
             clientjarfile = new File(clientname);
         }
 
@@ -160,8 +160,7 @@ public class BorlandGenerateClient extends Task {
             setMode(JAVA_MODE);
         }
 
-        if (!(version == BorlandDeploymentTool.BES
-            || version == BorlandDeploymentTool.BAS)) {
+        if (version != BorlandDeploymentTool.BES && version != BorlandDeploymentTool.BAS) {
             throw new BuildException("version %d is not supported", version);
         }
 

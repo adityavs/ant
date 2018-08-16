@@ -40,7 +40,7 @@ public class Native2AsciiAdapterFactory {
      * vendor
      */
     public static String getDefault() {
-        if (shouldUseKaffee()) {
+        if (shouldUseKaffe()) {
             return KaffeNative2Ascii.IMPLEMENTATION_NAME;
         }
         return BuiltinNative2Ascii.IMPLEMENTATION_NAME;
@@ -79,7 +79,7 @@ public class Native2AsciiAdapterFactory {
                                                  ProjectComponent log,
                                                  Path classpath)
         throws BuildException {
-        if ((shouldUseKaffee() && choice == null)
+        if ((shouldUseKaffe() && choice == null)
             || KaffeNative2Ascii.IMPLEMENTATION_NAME.equals(choice)) {
             return new KaffeNative2Ascii();
         } else if (SunNative2Ascii.IMPLEMENTATION_NAME.equals(choice)) {
@@ -108,13 +108,13 @@ public class Native2AsciiAdapterFactory {
     private static Native2AsciiAdapter resolveClassName(String className,
                                                         ClassLoader loader)
         throws BuildException {
-        return (Native2AsciiAdapter) ClasspathUtils.newInstance(className,
+        return ClasspathUtils.newInstance(className,
             loader != null ? loader :
             Native2AsciiAdapterFactory.class.getClassLoader(),
             Native2AsciiAdapter.class);
     }
 
-    private static final boolean shouldUseKaffee() {
+    private static final boolean shouldUseKaffe() {
         return JavaEnvUtils.isKaffe() || JavaEnvUtils.isClasspathBased();
     }
 }

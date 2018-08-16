@@ -26,11 +26,11 @@ import org.apache.tools.ant.util.FileUtils;
 import org.junit.Rule;
 import org.junit.Test;
 
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.Assert.assertThat;
 
 public class XMLFormatterWithCDATAOnSystemOut {
 
-    private static final String DIR = "src/etc/testcases/taskdefs/optional/junit";
     private static final String REPORT =
         "TEST-" + XMLFormatterWithCDATAOnSystemOut.class.getName() + ".xml";
 
@@ -60,21 +60,15 @@ public class XMLFormatterWithCDATAOnSystemOut {
 
     @Test
     public void testBuildfile() throws IOException {
-        buildRule.configureProject(DIR + "/cdataoutput.xml");
+        buildRule.configureProject("src/etc/testcases/taskdefs/optional/junit/cdataoutput.xml");
         if (buildRule.getProject().getProperty("cdata.inner") == null) {
             // avoid endless loop
             buildRule.executeTarget("run-junit");
             File f = buildRule.getProject().resolveFile(REPORT);
-            FileReader reader = null;
-            try {
-                reader = new FileReader(f);
-                String content = FileUtils.readFully(reader);
-                assertTrue(content.indexOf("</RESPONSE>&#x5d;&#x5d;&gt;"
-                                           + "</ERROR>") > 0);
+            try (FileReader reader = new FileReader(f)) {
+                assertThat(FileUtils.readFully(reader),
+                        containsString("</RESPONSE>&#x5d;&#x5d;&gt;</ERROR>"));
             } finally {
-                if (reader != null) {
-                    reader.close();
-                }
                 f.delete();
             }
         }

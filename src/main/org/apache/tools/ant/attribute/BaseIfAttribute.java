@@ -18,13 +18,10 @@
 
 package org.apache.tools.ant.attribute;
 
-import java.util.HashMap;
-import java.util.Hashtable;
-import java.util.Iterator;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.tools.ant.ProjectComponent;
-import org.apache.tools.ant.RuntimeConfigurable;
 import org.apache.tools.ant.UnknownElement;
 
 
@@ -59,7 +56,7 @@ public abstract class BaseIfAttribute
      * @return val if positive or !val if not.
      */
     protected boolean convertResult(boolean val) {
-        return positive ? val : !val;
+        return positive == val;
     }
 
     /**
@@ -69,20 +66,10 @@ public abstract class BaseIfAttribute
      * @return a map of attributes.
      */
     protected Map<String, String> getParams(UnknownElement el) {
-        Map<String, String> ret = new HashMap<>();
-        RuntimeConfigurable rc = el.getWrapper();
-        Hashtable<String, Object> attributes = rc.getAttributeMap(); // This does a copy!
-        for (Iterator<Map.Entry<String, Object>> i =
-            attributes.entrySet().iterator(); i.hasNext();) {
-            Map.Entry<String, Object> entry = i.next();
-            String key = entry.getKey();
-            String value = (String) entry.getValue();
-            if (key.startsWith("ant-attribute:param")) {
-                int pos = key.lastIndexOf(':');
-                ret.put(key.substring(pos + 1),
-                    el.getProject().replaceProperties(value));
-            }
-        }
-        return ret;
+        // this makes a copy!
+        return el.getWrapper().getAttributeMap().entrySet().stream()
+                .filter(e -> e.getKey().startsWith("ant-attribute:param"))
+                .collect(Collectors.toMap(e -> e.getKey().substring(e.getKey().lastIndexOf(':') + 1),
+                        e -> el.getProject().replaceProperties((String) e.getValue()), (a, b) -> b));
     }
 }

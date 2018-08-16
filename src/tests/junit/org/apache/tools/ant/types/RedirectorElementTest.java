@@ -17,7 +17,6 @@
  */
 package org.apache.tools.ant.types;
 
-import org.apache.tools.ant.AntAssert;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.BuildFileRule;
 import org.apache.tools.ant.Project;
@@ -25,8 +24,9 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class RedirectorElementTest {
 
@@ -41,28 +41,24 @@ public class RedirectorElementTest {
     @Test
     public void test1() {
         buildRule.executeTarget("test1");
-        assertTrue((buildRule.getProject().<Object> getReference("test1")
+        assertTrue((buildRule.getProject().getReference("test1")
             instanceof RedirectorElement));
     }
 
-    @Test
+    /**
+     * Expected failure due to multiple attributes when using refid
+     */
+    @Test(expected = BuildException.class)
     public void test2() {
-        try {
-            buildRule.executeTarget("test2");
-            fail("You must not specify more than one attribute when using refid");
-        } catch (BuildException ex) {
-            //TODO assert exception message
-        }
+        buildRule.executeTarget("test2");
     }
 
-    @Test
+    /**
+     * Expected failure due to nested elements when using refid
+     */
+    @Test(expected = BuildException.class)
     public void test3() {
-        try {
-            buildRule.executeTarget("test3");
-            fail("You must not specify nested elements when using refid");
-        } catch (BuildException ex) {
-            //TODO assert exception message
-        }
+        buildRule.executeTarget("test3");
     }
 
     @Test
@@ -73,8 +69,8 @@ public class RedirectorElementTest {
     @Test
     public void testLogInputString() {
         buildRule.executeTarget("testLogInputString");
-        if (buildRule.getLog().indexOf("testLogInputString can-cat") >= 0) {
-            AntAssert.assertContains("Using input string", buildRule.getFullLog());
+        if (buildRule.getLog().contains("testLogInputString can-cat")) {
+            assertThat(buildRule.getFullLog(), containsString("Using input string"));
         }
     }
 

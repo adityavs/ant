@@ -60,7 +60,6 @@ import org.apache.tools.ant.types.ResourceCollection;
 import org.apache.tools.ant.types.resources.FileProvider;
 import org.apache.tools.ant.util.FileUtils;
 import org.apache.tools.ant.util.JavaEnvUtils;
-import org.apache.tools.ant.util.StringUtils;
 
 /**
  * Generates Javadoc documentation for a collection
@@ -1055,7 +1054,7 @@ public class Javadoc extends Task {
         final String linkOfflineError = "The linkoffline attribute must include"
             + " a URL and a package-list file location separated by a"
             + " space";
-        if (src.trim().length() == 0) {
+        if (src.trim().isEmpty()) {
             throw new BuildException(linkOfflineError);
         }
         final StringTokenizer tok = new StringTokenizer(src, " ", false);
@@ -1721,7 +1720,7 @@ public class Javadoc extends Task {
 
         log("Generating Javadoc", Project.MSG_INFO);
 
-        final Commandline toExecute = cmd.clone();
+        final Commandline toExecute = (Commandline) cmd.clone();
         if (executable != null) {
             toExecute.setExecutable(executable);
         } else {
@@ -1909,31 +1908,24 @@ public class Javadoc extends Task {
     private void doDoclet(final Commandline toExecute) {
         if (doclet != null) {
             if (doclet.getName() == null) {
-                throw new BuildException("The doclet name must be specified.",
-                    getLocation());
+                throw new BuildException("The doclet name must be specified.", getLocation());
             }
             toExecute.createArgument().setValue("-doclet");
             toExecute.createArgument().setValue(doclet.getName());
             if (doclet.getPath() != null) {
-                final Path docletPath
-                    = doclet.getPath().concatSystemClasspath("ignore");
+                final Path docletPath = doclet.getPath().concatSystemClasspath("ignore");
                 if (docletPath.size() != 0) {
                     toExecute.createArgument().setValue("-docletpath");
                     toExecute.createArgument().setPath(docletPath);
                 }
             }
-            for (final Enumeration<DocletParam> e = doclet.getParams();
-                 e.hasMoreElements();) {
-                final DocletParam param = e.nextElement();
+            for (final DocletParam param : Collections.list(doclet.getParams())) {
                 if (param.getName() == null) {
-                    throw new BuildException(
-                        "Doclet parameters must have a name");
+                    throw new BuildException("Doclet parameters must have a name");
                 }
-
                 toExecute.createArgument().setValue(param.getName());
                 if (param.getValue() != null) {
-                    toExecute.createArgument()
-                        .setValue(param.getValue());
+                    toExecute.createArgument().setValue(param.getValue());
                 }
             }
         }
@@ -2123,23 +2115,17 @@ public class Javadoc extends Task {
                     // -tag arguments.
                     final DirectoryScanner tagDefScanner =
                         ta.getDirectoryScanner(getProject());
-                    final String[] files = tagDefScanner.getIncludedFiles();
-                    for (String file : files) {
+                    for (String file : tagDefScanner.getIncludedFiles()) {
                         final File tagDefFile = new File(tagDir, file);
-                        try (final BufferedReader in =
-                            new BufferedReader(new FileReader(tagDefFile))) {
-                            String line;
-                            while ((line = in.readLine()) != null) {
-                                toExecute.createArgument()
-                                    .setValue("-tag");
-                                toExecute.createArgument()
-                                    .setValue(line);
-                            }
+                        try (final BufferedReader in = new BufferedReader(
+                                new FileReader(tagDefFile))) {
+                            in.lines().forEach(line -> {
+                                toExecute.createArgument().setValue("-tag");
+                                toExecute.createArgument().setValue(line);
+                            });
                         } catch (final IOException ioe) {
-                            throw new BuildException(
-                                "Couldn't read tag file from "
-                                    + tagDefFile.getAbsolutePath(),
-                                ioe);
+                            throw new BuildException("Couldn't read tag file from "
+                                    + tagDefFile.getAbsolutePath(), ioe);
                         }
                     }
                 }
@@ -2179,8 +2165,7 @@ public class Javadoc extends Task {
     private void doDocFilesSubDirs(final Commandline toExecute) {
         if (docFilesSubDirs) {
             toExecute.createArgument().setValue("-docfilessubdirs");
-            if (!(excludeDocFilesSubDir == null
-                || excludeDocFilesSubDir.trim().isEmpty())) {
+            if (excludeDocFilesSubDir != null && !excludeDocFilesSubDir.trim().isEmpty()) {
                 toExecute.createArgument().setValue("-excludedocfilessubdir");
                 toExecute.createArgument().setValue(excludeDocFilesSubDir);
             }
@@ -2209,7 +2194,7 @@ public class Javadoc extends Task {
             if (useExternalFile) {
                 // TODO what is the following doing?
                 //     should it run if !javadoc4 && executable != null?
-                if (sourceFileName.indexOf(' ') > -1) {
+                if (sourceFileName.contains(" ")) {
                     String name = sourceFileName;
                     if (File.separatorChar == '\\') {
                         name = sourceFileName.replace(File.separatorChar, '/');
@@ -2233,20 +2218,18 @@ public class Javadoc extends Task {
      */
     private String quoteString(final String str) {
         if (!containsWhitespace(str)
-            && str.indexOf('\'') == -1
-            && str.indexOf('"') == -1) {
+            && !str.contains("'") && !str.contains("\"")) {
             return str;
         }
-        if (str.indexOf('\'') == -1) {
+        if (!str.contains("'")) {
             return quoteString(str, '\'');
         }
         return quoteString(str, '"');
     }
 
     private boolean containsWhitespace(final String s) {
-        final int len = s.length();
-        for (int i = 0; i < len; i++) {
-            if (Character.isWhitespace(s.charAt(i))) {
+        for (char c : s.toCharArray()) {
+            if (Character.isWhitespace(c)) {
                 return true;
             }
         }
@@ -2256,10 +2239,8 @@ public class Javadoc extends Task {
     private String quoteString(final String str, final char delim) {
         final StringBuilder buf = new StringBuilder(str.length() * 2);
         buf.append(delim);
-        final int len = str.length();
         boolean lastCharWasCR = false;
-        for (int i = 0; i < len; i++) {
-            final char c = str.charAt(i);
+        for (final char c : str.toCharArray()) {
             if (c == delim) { // can't put the non-constant delim into a case
                 buf.append('\\').append(c);
                 lastCharWasCR = false;
@@ -2311,7 +2292,7 @@ public class Javadoc extends Task {
             if (rc instanceof FileSet) {
                 final FileSet fs = (FileSet) rc;
                 if (!fs.hasPatterns() && !fs.hasSelectors()) {
-                    final FileSet fs2 = fs.clone();
+                    final FileSet fs2 = (FileSet) fs.clone();
                     fs2.createInclude().setName("**/*.java");
                     if (includeNoSourcePackages) {
                         fs2.createInclude().setName("**/package.html");
@@ -2376,24 +2357,23 @@ public class Javadoc extends Task {
             final File baseDir = ds.getDir(getProject());
             log("scanning " + baseDir + " for packages.", Project.MSG_DEBUG);
             final DirectoryScanner dsc = ds.getDirectoryScanner(getProject());
-            final String[] dirs = dsc.getIncludedDirectories();
             boolean containsPackages = false;
-            for (int i = 0; i < dirs.length; i++) {
+            for (String dir : dsc.getIncludedDirectories()) {
                 // are there any java files in this directory?
-                final File pd = new File(baseDir, dirs[i]);
-                final String[] files = pd.list((dir1,
+                final File pd = new File(baseDir, dir);
+                final String[] files = pd.list((directory,
                     name) -> name.endsWith(".java") || (includeNoSourcePackages
                         && name.equals("package.html")));
 
                 if (files.length > 0) {
-                    if ("".equals(dirs[i])) {
+                    if (dir.isEmpty()) {
                         log(baseDir
                             + " contains source files in the default package, you must specify them as source files not packages.",
                             Project.MSG_WARN);
                     } else {
                         containsPackages = true;
                         final String packageName =
-                            dirs[i].replace(File.separatorChar, '.');
+                                dir.replace(File.separatorChar, '.');
                         if (!addedPackages.contains(packageName)) {
                             addedPackages.add(packageName);
                             pn.add(packageName);
@@ -2468,7 +2448,7 @@ public class Javadoc extends Task {
 
         // check if file may be vulnerable because it was not
         // patched with "validURL(url)":
-        if (fileContents.indexOf("function validURL(url) {") < 0) {
+        if (!fileContents.contains("function validURL(url) {")) {
             // we need to patch the file!
             final String patchedFileContents = patchContent(fileContents, fixData);
             if (!patchedFileContents.equals(fileContents)) {
@@ -2485,7 +2465,7 @@ public class Javadoc extends Task {
 
     private String fixLineFeeds(final String orig) {
         return orig.replace("\r\n", "\n")
-            .replace("\n", StringUtils.LINE_SEP);
+            .replace("\n", System.lineSeparator());
     }
 
     private String patchContent(final String fileContents, final String fixData) {

@@ -39,10 +39,7 @@ public class TypeSelector extends BaseExtendSelector {
      * @return a string describing this object
      */
     public String toString() {
-        StringBuilder buf = new StringBuilder("{typeselector type: ");
-        buf.append(type);
-        buf.append("}");
-        return buf.toString();
+        return "{typeselector type: " + type + "}";
     }
 
     /**
@@ -63,11 +60,11 @@ public class TypeSelector extends BaseExtendSelector {
     public void setParameters(Parameter... parameters) {
         super.setParameters(parameters);
         if (parameters != null) {
-            for (int i = 0; i < parameters.length; i++) {
-                String paramname = parameters[i].getName();
+            for (Parameter parameter : parameters) {
+                String paramname = parameter.getName();
                 if (TYPE_KEY.equalsIgnoreCase(paramname)) {
                     FileType t = new FileType();
-                    t.setValue(parameters[i].getValue());
+                    t.setValue(parameter.getValue());
                     setType(t);
                 } else {
                     setError("Invalid parameter " + paramname);

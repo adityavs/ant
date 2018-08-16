@@ -17,16 +17,18 @@
  */
 package org.apache.tools.ant.util;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Vector;
 
 import org.junit.Test;
+
+import static org.hamcrest.Matchers.endsWith;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Test for StringUtils
@@ -96,14 +98,14 @@ public class StringUtilsTest {
 
     @Test
     public void testEndsWithEmptyBuffer() {
-        assertFalse(StringUtils.endsWith(new StringBuffer(""), "12345667"));
+        assertFalse(StringUtils.endsWith(new StringBuffer(), "12345667"));
     }
 
     @Test
     public void testEndsWithJDKPerf() {
         StringBuffer buf = getFilledBuffer(1024 * 300, 'a');
         for (int i = 0; i < 1000; i++) {
-            assertTrue(buf.toString().endsWith("aa"));
+            assertThat(buf.toString(), endsWith("aa"));
         }
     }
 

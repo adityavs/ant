@@ -31,7 +31,6 @@ import org.apache.tools.ant.types.EnumeratedAttribute;
 import org.apache.tools.ant.types.Path;
 import org.apache.tools.ant.types.Reference;
 import org.apache.tools.ant.util.FileUtils;
-import org.apache.tools.ant.util.StringUtils;
 
 /**
  * Will set the given property if the requested resource is available at
@@ -160,7 +159,7 @@ public class Available extends Task implements Condition {
      * @param classname the name of the class required.
      */
     public void setClassname(String classname) {
-        if (!"".equals(classname)) {
+        if (!classname.isEmpty()) {
             this.classname = classname;
         }
     }
@@ -240,11 +239,8 @@ public class Available extends Task implements Condition {
                 PropertyHelper ph = PropertyHelper.getPropertyHelper(getProject());
                 Object oldvalue = ph.getProperty(property);
                 if (null != oldvalue && !oldvalue.equals(value)) {
-                    log("DEPRECATED - <available> used to override an existing"
-                        + " property."
-                        + StringUtils.LINE_SEP
-                        + "  Build file should not reuse the same property"
-                        + " name for different values.",
+                    log(String.format("DEPRECATED - <available> used to override an existing property.%n"
+                            + "  Build file should not reuse the same property name for different values."),
                         Project.MSG_WARN);
                 }
                 // NB: this makes use of Project#setProperty rather than Project#setNewProperty
@@ -287,12 +283,12 @@ public class Available extends Task implements Condition {
             } else {
                 setTaskName("available");
             }
-            if (!(classname == null || checkClass(classname))) {
+            if (classname != null && !checkClass(classname)) {
                 log("Unable to load class " + classname + appendix,
                     Project.MSG_VERBOSE);
                 return false;
             }
-            if ((file != null) && !checkFile()) {
+            if (file != null && !checkFile()) {
                 StringBuilder buf = new StringBuilder("Unable to find ");
                 if (type != null) {
                     buf.append(type).append(' ');
@@ -301,7 +297,7 @@ public class Available extends Task implements Condition {
                 log(buf.toString(), Project.MSG_VERBOSE);
                 return false;
             }
-            if ((resource != null) && !checkResource(resource)) {
+            if (resource != null && !checkResource(resource)) {
                 log("Unable to load resource " + resource + appendix,
                     Project.MSG_VERBOSE);
                 return false;

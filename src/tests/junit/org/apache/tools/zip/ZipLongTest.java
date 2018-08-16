@@ -22,7 +22,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotEquals;
 
 /**
  * JUnit testcases for org.apache.tools.zip.ZipLong.
@@ -63,15 +63,15 @@ public class ZipLongTest {
         ZipLong zl2 = new ZipLong(0x12345678);
         ZipLong zl3 = new ZipLong(0x87654321);
 
-        assertTrue("reflexive", zl.equals(zl));
+        assertEquals("reflexive", zl, zl);
 
-        assertTrue("works", zl.equals(zl2));
-        assertTrue("works, part two", !zl.equals(zl3));
+        assertEquals("works", zl, zl2);
+        assertNotEquals("works, part two", zl, zl3);
 
-        assertTrue("symmetric", zl2.equals(zl));
+        assertEquals("symmetric", zl2, zl);
 
-        assertTrue("null handling", !zl.equals(null));
-        assertTrue("non ZipLong handling", !zl.equals(Integer.valueOf(0x1234)));
+        assertNotEquals("null handling", null, zl);
+        assertNotEquals("non ZipLong handling", 0x1234, zl);
     }
 
     /**

@@ -18,18 +18,21 @@
 
 package org.apache.tools.ant.types;
 
-
 import org.apache.tools.ant.MagicNames;
 import org.apache.tools.ant.Project;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
+
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.endsWith;
+import static org.hamcrest.Matchers.hasKey;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
 
 /**
  * JUnit testcases for org.apache.tools.ant.CommandlineJava
@@ -41,15 +44,20 @@ public class CommandlineJavaTest {
 
     private Project project;
 
+    private CommandlineJava c;
+
     @Before
     public void setUp() {
         project = new Project();
-        project.setBasedir(System.getProperty("root"));
+        if (System.getProperty("root") != null) {
+            project.setBasedir(System.getProperty("root"));
+        }
         project.setProperty("build.sysclasspath", "ignore");
         cloneVm = System.getProperty("ant.build.clonevm");
         if (cloneVm != null) {
             System.setProperty("ant.build.clonevm", "false");
         }
+        c = new CommandlineJava();
     }
 
     @After
@@ -59,9 +67,14 @@ public class CommandlineJavaTest {
         }
     }
 
+    /**
+     * NullPointerException may break the build
+     *
+     * @throws CloneNotSupportedException if clone() fails
+     */
     @Test
-    public void testGetCommandline() throws Exception {
-        CommandlineJava c = new CommandlineJava();
+    public void testGetCommandline() throws CloneNotSupportedException {
+        assertNotNull("Ant home not set", System.getProperty("ant.home"));
         c.createArgument().setValue("org.apache.tools.ant.CommandlineJavaTest");
         c.setClassname("junit.textui.TestRunner");
         c.createVmArgument().setValue("-Djava.compiler=NONE");
@@ -79,31 +92,24 @@ public class CommandlineJavaTest {
         assertEquals("no classpath", "junit.textui.TestRunner", s[2]);
         assertEquals("no classpath",
                      "org.apache.tools.ant.CommandlineJavaTest", s[3]);
-        try {
-            c.clone();
-        } catch (NullPointerException ex) {
-            fail("cloning should work without classpath specified");
-        }
-
+        c.clone();
         c.createClasspath(project).setLocation(project.resolveFile("build.xml"));
         c.createClasspath(project).setLocation(project.resolveFile(
             System.getProperty(MagicNames.ANT_HOME) + "/lib/ant.jar"));
         s = c.getCommandline();
         assertEquals("with classpath", 6, s.length);
-        //        assertEquals("with classpath", "java", s[0]);
+        // assertEquals("with classpath", "java", s[0]);
         assertEquals("with classpath", "-Djava.compiler=NONE", s[1]);
         assertEquals("with classpath", "-classpath", s[2]);
-        assertTrue("build.xml contained",
-               s[3].indexOf("build.xml"+java.io.File.pathSeparator) >= 0);
-        assertTrue("ant.jar contained", s[3].endsWith("ant.jar"));
+        assertThat("build.xml contained", s[3], containsString("build.xml" + File.pathSeparator));
+        assertThat("ant.jar contained", s[3], endsWith("ant.jar"));
         assertEquals("with classpath", "junit.textui.TestRunner", s[4]);
         assertEquals("with classpath",
                      "org.apache.tools.ant.CommandlineJavaTest", s[5]);
     }
 
     @Test
-    public void testJarOption() throws Exception {
-        CommandlineJava c = new CommandlineJava();
+    public void testJarOption() {
         c.createArgument().setValue("arg1");
         c.setJar("myfile.jar");
         c.createVmArgument().setValue("-classic");
@@ -121,7 +127,6 @@ public class CommandlineJavaTest {
         String currentClasspath = System.getProperty("java.class.path");
         assertNotNull(currentClasspath);
         assertNull(System.getProperty("key"));
-        CommandlineJava c = new CommandlineJava();
         Environment.Variable v = new Environment.Variable();
         v.setKey("key");
         v.setValue("value");
@@ -140,7 +145,7 @@ public class CommandlineJavaTest {
             assertEquals(currentClasspath, newClasspath);
             assertNotNull(System.getProperty("key"));
             assertEquals("value", System.getProperty("key"));
-            assertTrue(System.getProperties().containsKey("java.class.path"));
+            assertThat(System.getProperties(), hasKey("java.class.path"));
             assertNotNull(System.getProperty("key2"));
             assertEquals("value2", System.getProperty("key2"));
         } finally {
@@ -152,7 +157,6 @@ public class CommandlineJavaTest {
 
     @Test
     public void testAssertions() throws Exception {
-        CommandlineJava c = new CommandlineJava();
         c.createArgument().setValue("org.apache.tools.ant.CommandlineJavaTest");
         c.setClassname("junit.textui.TestRunner");
         c.createVmArgument().setValue("-Djava.compiler=NONE");

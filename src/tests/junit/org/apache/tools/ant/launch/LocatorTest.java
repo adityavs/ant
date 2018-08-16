@@ -22,11 +22,12 @@ import java.io.File;
 import org.apache.tools.ant.taskdefs.condition.Os;
 import org.junit.Before;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
-import static junit.framework.Assert.assertEquals;
-import static org.apache.tools.ant.AntAssert.assertContains;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assume.assumeTrue;
 
 /** Test the locator in the ant-launch JAR */
 public class LocatorTest {
@@ -36,9 +37,11 @@ public class LocatorTest {
     private static final String SHARED_JAR_URI = "jar:file:" + LAUNCHER_JAR
             + "!/org/apache/tools/ant/launch/Launcher.class";
 
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         windows = Os.isFamily(Os.FAMILY_DOS);
         unix = Os.isFamily(Os.FAMILY_UNIX);
     }
@@ -65,7 +68,7 @@ public class LocatorTest {
      * @param enabled is the test enabled?
      */
     private void assertResolved(String uri, String expectedResult, String result, boolean enabled) {
-        if (enabled && expectedResult != null && expectedResult.length() > 0) {
+        if (enabled && expectedResult != null && !expectedResult.isEmpty()) {
             assertEquals("Expected " + uri + " to resolve to \n" + expectedResult + "\n but got\n"
                     + result + "\n", expectedResult, result);
         }
@@ -86,9 +89,8 @@ public class LocatorTest {
 
     /**
      * this isn't really a valid URI, except maybe in IE
-     * @throws Exception if something goes wrong
      */
-    public void testNetworkURI() throws Exception {
+    public void testNetworkURI() {
         resolveTo("file:\\\\PC03\\jclasses\\lib\\ant-1.7.0.jar", ""
                 + "\\\\PC03\\jclasses\\lib\\ant-1.7.0.jar",
                 "\\\\PC03\\jclasses\\lib\\ant-1.7.0.jar");
@@ -96,26 +98,26 @@ public class LocatorTest {
 
     @Ignore("We don't appear to generate paths like this in the launcher")
     @Test
-    public void testTripleForwardSlashNetworkURI() throws Exception {
+    public void testTripleForwardSlashNetworkURI() {
         resolveTo("file:///PC03/jclasses/lib/ant-1.7.0.jar",
                 "///PC03/jclasses/lib/ant-1.7.0.jar",
                 "\\\\PC03\\jclasses\\lib\\ant-1.7.0.jar");
     }
 
     @Test
-    public void testUnixNetworkPath() throws Exception {
+    public void testUnixNetworkPath() {
         resolveTo("file://cluster/home/ant/lib",
                 "//cluster/home/ant/lib",
                 "\\\\cluster\\home\\ant\\lib");
     }
 
     @Test
-    public void testUnixPath() throws Exception {
+    public void testUnixPath() {
         resolveTo("file:/home/ant/lib", "/home/ant/lib", null);
     }
 
     @Test
-    public void testSpacedURI() throws Exception {
+    public void testSpacedURI() {
         resolveTo("file:C:\\Program Files\\Ant\\lib",
                 "C:\\Program Files\\Ant\\lib",
                 "C:\\Program Files\\Ant\\lib");
@@ -123,10 +125,9 @@ public class LocatorTest {
 
     /**
      * Bug 42275; Ant failing to run off a remote share
-     * @throws Throwable if desired
      */
     @Test
-    public void testAntOnRemoteShare() throws Throwable {
+    public void testAntOnRemoteShare() {
         String resolved = Locator.fromJarURI(SHARED_JAR_URI);
         assertResolved(SHARED_JAR_URI, LAUNCHER_JAR, resolved, unix);
         assertResolved(SHARED_JAR_URI, LAUNCHER_JAR.replace('/', '\\'),
@@ -135,30 +136,22 @@ public class LocatorTest {
 
     /**
      * Bug 42275; Ant failing to run off a remote share
-     *
-     * @throws Throwable if desired
      */
     @Test
-    public void testFileFromRemoteShare() throws Throwable {
+    public void testFileFromRemoteShare() {
+        assumeTrue("not Windows", windows);
         String resolved = Locator.fromJarURI(SHARED_JAR_URI);
         File f = new File(resolved);
         String path = f.getAbsolutePath();
-        if (windows) {
-            assertEquals(0, path.indexOf("\\\\"));
-        }
+        assertEquals(0, path.indexOf("\\\\"));
     }
 
     @Test
-    public void testHttpURI() throws Exception {
+    public void testHttpURI() {
         String url = "http://ant.apache.org";
-        try {
-            Locator.fromURI(url);
-            fail("Exception should have been thrown");
-        } catch (IllegalArgumentException e) {
-            String message = e.getMessage();
-            assertContains(Locator.ERROR_NOT_FILE_URI, message);
-            assertContains(url, message);
-        }
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage(Locator.ERROR_NOT_FILE_URI + url);
+        Locator.fromURI(url);
     }
 
     @Test
@@ -174,7 +167,7 @@ public class LocatorTest {
     }
 
     @Test
-    public void testOddLowAsciiURI() throws Exception {
+    public void testOddLowAsciiURI() {
         assertResolves("hash# and percent%");
     }
 

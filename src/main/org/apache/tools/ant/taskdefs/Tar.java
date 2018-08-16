@@ -399,20 +399,20 @@ public class Tar extends MatchingTask {
 
         if (tarFileSet != null) {
             final String fullpath = tarFileSet.getFullpath(this.getProject());
-            if (fullpath.length() > 0) {
-                vPath = fullpath;
-            } else {
+            if (fullpath.isEmpty()) {
                 // don't add "" to the archive
-                if (vPath.length() <= 0) {
+                if (vPath.isEmpty()) {
                     return;
                 }
 
                 String prefix = tarFileSet.getPrefix(this.getProject());
                 // '/' is appended for compatibility with the zip task.
-                if (prefix.length() > 0 && !prefix.endsWith("/")) {
-                    prefix = prefix + "/";
+                if (!prefix.isEmpty() && !prefix.endsWith("/")) {
+                    prefix += "/";
                 }
                 vPath = prefix + vPath;
+            } else {
+                vPath = fullpath;
             }
 
             preserveLeadingSlashes = tarFileSet.getPreserveLeadingSlashes();
@@ -461,9 +461,9 @@ public class Tar extends MatchingTask {
             if (r instanceof TarResource) {
                 final TarResource tr = (TarResource) r;
                 te.setUserName(tr.getUserName());
-                te.setUserId(tr.getUid());
+                te.setUserId(tr.getLongUid());
                 te.setGroupName(tr.getGroup());
-                te.setGroupId(tr.getGid());
+                te.setGroupId(tr.getLongGid());
             }
         }
 
@@ -605,11 +605,7 @@ public class Tar extends MatchingTask {
                     base = Copy.NULL_FILE_PLACEHOLDER;
                 }
                 basedirs.add(base);
-                List<String> files = basedirToFilesMap.get(base);
-                if (files == null) {
-                    files = new Vector<>();
-                    basedirToFilesMap.put(base, files);
-                }
+                List<String> files = basedirToFilesMap.computeIfAbsent(base, k -> new Vector<>());
                 if (base == Copy.NULL_FILE_PLACEHOLDER) {
                     files.add(r.getFile().getAbsolutePath());
                 } else {
@@ -750,7 +746,7 @@ public class Tar extends MatchingTask {
      */
     protected TarFileSet asTarFileSet(final ArchiveFileSet archiveFileSet) {
         TarFileSet tfs;
-        if (archiveFileSet != null && archiveFileSet instanceof TarFileSet) {
+        if (archiveFileSet instanceof TarFileSet) {
             tfs = (TarFileSet) archiveFileSet;
         } else {
             tfs = new TarFileSet();

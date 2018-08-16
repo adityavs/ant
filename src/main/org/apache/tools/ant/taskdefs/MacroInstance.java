@@ -19,7 +19,7 @@
 package org.apache.tools.ant.taskdefs;
 
 import java.util.ArrayList;
-import java.util.Enumeration;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -174,8 +174,7 @@ public class MacroInstance extends Task implements DynamicAttribute, TaskContain
         StringBuilder macroName = null;
 
         int state = STATE_NORMAL;
-        for (int i = 0; i < s.length(); ++i) {
-            char ch = s.charAt(i);
+        for (final char ch : s.toCharArray()) {
             switch (state) {
                 case STATE_NORMAL:
                     if (ch == '@') {
@@ -278,9 +277,7 @@ public class MacroInstance extends Task implements DynamicAttribute, TaskContain
         rc.addText(macroSubs(ue.getWrapper().getText().toString(),
                              localAttributes));
 
-        Enumeration<RuntimeConfigurable> e = ue.getWrapper().getChildren();
-        while (e.hasMoreElements()) {
-            RuntimeConfigurable r = e.nextElement();
+        for (RuntimeConfigurable r : Collections.list(ue.getWrapper().getChildren())) {
             UnknownElement unknownElement = (UnknownElement) r.getProxy();
             String tag = unknownElement.getTaskType();
             if (tag != null) {
@@ -375,7 +372,7 @@ public class MacroInstance extends Task implements DynamicAttribute, TaskContain
                 text = text.trim();
             }
             localAttributes.put(macroDef.getText().getName(), text);
-        } else if (!(text == null || text.trim().isEmpty())) {
+        } else if (text != null && !text.trim().isEmpty()) {
             throw new BuildException(
                 "The \"%s\" macro does not support nested text data.",
                 getTaskName());

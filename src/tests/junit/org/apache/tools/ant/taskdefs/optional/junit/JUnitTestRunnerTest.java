@@ -17,20 +17,22 @@
  */
 package org.apache.tools.ant.taskdefs.optional.junit;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+
+import org.apache.tools.ant.BuildException;
+import org.junit.Test;
 
 import junit.framework.AssertionFailedError;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
-import org.apache.tools.ant.BuildException;
-import org.junit.Test;
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Small testcase for the runner, tests are very very very basics.
@@ -54,7 +56,7 @@ public class JUnitTestRunnerTest {
         runner.run();
         String error = runner.getFormatter().getError();
         // might be FAILURES or ERRORS depending on JUnit version?
-        assertTrue(error, runner.getRetCode() != JUnitTestRunner.SUCCESS);
+        assertNotEquals(error, JUnitTestRunner.SUCCESS, runner.getRetCode());
     }
 
     // check that having no suite generates no errors
@@ -80,7 +82,7 @@ public class JUnitTestRunnerTest {
         runner.run();
         String error = runner.getFormatter().getError();
         assertEquals(error, JUnitTestRunner.ERRORS, runner.getRetCode());
-        assertTrue(error, error.indexOf("thrown on purpose") != -1);
+        assertThat(error, error, containsString("thrown on purpose"));
     }
 
     // check that something which is not a testcase generates no errors
@@ -91,12 +93,38 @@ public class JUnitTestRunnerTest {
         runner.run();
         // On junit3 this is a FAILURE, on junit4 this is an ERROR
         int ret = runner.getRetCode();
-
-        if (ret != JUnitTestRunner.FAILURES && ret != JUnitTestRunner.ERRORS) {
-            fail("Unexpected result " + ret + " from junit runner");
-        }
+        assertTrue("Unexpected result " + ret + " from junit runner",
+                ret == JUnitTestRunner.FAILURES || ret == JUnitTestRunner.ERRORS);
         // JUnit3 test
         //assertEquals(runner.getFormatter().getError(), JUnitTestRunner.FAILURES, runner.getRetCode());
+    }
+
+    // check that something which is not a testcase doesn't generate an error
+    // when skipping non-test classes
+    @Test
+    public void testSkipNonTestsNoTestCase() {
+        TestRunner runner = createRunner(NoTestCase.class, true);
+        runner.run();
+        assertEquals(runner.getFormatter().getError(), JUnitTestRunner.SUCCESS, runner.getRetCode());
+    }
+
+    // check that something which is not a testcase with a failing static init doesn't generate an error
+    // when skipping non-test classes
+    @Test
+    public void testSkipNonTestsNoTestCaseFailingStaticInit() {
+        TestRunner runner = createRunner(NoTestCaseStaticInitializerError.class, true);
+        runner.run();
+        assertEquals(runner.getFormatter().getError(), JUnitTestRunner.SUCCESS, runner.getRetCode());
+    }
+
+    @Test
+    public void testStaticInitializerErrorTestCase() {
+        TestRunner runner = createRunner(StaticInitializerErrorTestCase.class);
+        runner.run();
+        // For JUnit 3 this is a FAILURE, for JUnit 4 this is an ERROR
+        int ret = runner.getRetCode();
+        assertTrue("Unexpected result " + ret + " from junit runner",
+                ret == JUnitTestRunner.FAILURES || ret == JUnitTestRunner.ERRORS);
     }
 
     // check that an exception in the constructor is noticed
@@ -104,15 +132,14 @@ public class JUnitTestRunnerTest {
     public void testInvalidTestCase() {
         TestRunner runner = createRunner(InvalidTestCase.class);
         runner.run();
-        // On junit3 this is a FAILURE, on junit4 this is an ERROR
+        // For JUnit 3 this is a FAILURE, for JUnit 4 this is an ERROR
         int ret = runner.getRetCode();
-        if (ret != JUnitTestRunner.FAILURES && ret != JUnitTestRunner.ERRORS) {
-            fail("Unexpected result " + ret + " from junit runner");
-        }
+        assertTrue("Unexpected result " + ret + " from junit runner",
+                ret == JUnitTestRunner.FAILURES || ret == JUnitTestRunner.ERRORS);
         // JUNIT3 test
         //assertEquals(error, JUnitTestRunner.FAILURES, runner.getRetCode());
         //@fixme as of now does not report the original stacktrace.
-        //assertTrue(error, error.indexOf("thrown on purpose") != -1);
+        //assertThat(error, error, containsString("thrown on purpose"));
     }
 
     // check that JUnit 4 synthetic AssertionFailedError gets message and cause from AssertionError
@@ -132,6 +159,12 @@ public class JUnitTestRunnerTest {
     protected TestRunner createRunner(Class<?> clazz) {
         return new TestRunner(new JUnitTest(clazz.getName()), null,
                                             true, true, true);
+    }
+
+    protected TestRunner createRunner(Class<?> clazz, boolean skipNonTests) {
+        JUnitTest test = new JUnitTest(clazz.getName());
+        test.setSkipNonTests(skipNonTests);
+        return new TestRunner(test, null, true, true, true);
     }
 
     protected TestRunner createRunnerForTestMethod(Class<?> clazz, String method) {
@@ -196,6 +229,15 @@ public class JUnitTestRunnerTest {
     public static class NoTestCase {
     }
 
+    public static class NoTestCaseStaticInitializerError {
+        static {
+            error();
+        }
+        private static void error() {
+            throw new NullPointerException("thrown on purpose");
+        }
+    }
+
     public static class InvalidMethodTestCase extends TestCase {
         public InvalidMethodTestCase(String name) {
             super(name);
@@ -248,6 +290,17 @@ public class JUnitTestRunnerTest {
         }
         public static junit.framework.Test suite() {
             throw new NullPointerException("thrown on purpose");
+        }
+    }
+
+    public static class StaticInitializerErrorTestCase extends TestCase {
+        static {
+            error();
+        }
+        private static void error() {
+            throw new NullPointerException("thrown on purpose");
+        }
+        public void testA() {
         }
     }
 

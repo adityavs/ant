@@ -115,7 +115,7 @@ import org.apache.tools.ant.util.ResourceUtils;
  * comparison.</p>
  *
  * <p>A useful scenario for this selector is inside a build environment
- * for homepage generation (e.g. with <a href="http://forrest.apache.org/">
+ * for homepage generation (e.g. with <a href="https://forrest.apache.org/">
  * Apache Forrest</a>).</p><pre>
  * &lt;target name="generate-and-upload-site"&gt;
  *     &lt;echo&gt; generate the site using forrest &lt;/echo&gt;
@@ -325,6 +325,8 @@ public class ModifiedSelector extends BaseExtendSelector
                 algorithm = new DigestAlgorithm();
             } else if ("checksum".equals(algoName.getValue())) {
                 algorithm = new ChecksumAlgorithm();
+            } else if ("lastmodified".equals(algoName.getValue())) {
+                algorithm = new LastModifiedAlgorithm();
             }
         } else if (algorithmClass != null) {
             // use Algorithm specified by classname
@@ -393,6 +395,7 @@ public class ModifiedSelector extends BaseExtendSelector
      * @param type the type to check against
      * @return a castable object
      */
+    @SuppressWarnings("unchecked")
     protected <T> T loadClass(String classname, String msg, Class<? extends T> type) {
         try {
             // load the specified class
@@ -404,13 +407,12 @@ public class ModifiedSelector extends BaseExtendSelector
                 clazz = Class.forName(classname);
             }
 
-            @SuppressWarnings("unchecked")
-            T rv = (T) clazz.newInstance();
+            Object rv = clazz.newInstance();
 
             if (!type.isInstance(rv)) {
                 throw new BuildException("Specified class (%s) %s", classname, msg);
             }
-            return rv;
+            return (T) rv;
         } catch (ClassNotFoundException e) {
             throw new BuildException("Specified class (%s) not found.", classname);
         } catch (Exception e) {
@@ -693,9 +695,7 @@ public class ModifiedSelector extends BaseExtendSelector
     @Override
     public void setParameters(Parameter... parameters) {
         if (parameters != null) {
-            for (Parameter p : parameters) {
-                configParameter.add(p);
-            }
+            Collections.addAll(configParameter, parameters);
         }
     }
 
@@ -777,14 +777,8 @@ public class ModifiedSelector extends BaseExtendSelector
      */
     @Override
     public String toString() {
-        StringBuilder buf = new StringBuilder("{modifiedselector");
-        buf.append(" update=").append(update);
-        buf.append(" seldirs=").append(selectDirectories);
-        buf.append(" cache=").append(cache);
-        buf.append(" algorithm=").append(algorithm);
-        buf.append(" comparator=").append(comparator);
-        buf.append("}");
-        return buf.toString();
+        return String.format("{modifiedselector update=%s seldirs=%s cache=%s algorithm=%s comparator=%s}",
+                update, selectDirectories, cache, algorithm, comparator);
     }
 
 
@@ -921,7 +915,7 @@ public class ModifiedSelector extends BaseExtendSelector
 
     /**
      * The enumerated type for algorithm.
-     * The values are "hashValue", "digest" and "checksum".
+     * The values are "hashValue", "digest", "checksum" and "lastmodified".
      */
     public static class AlgorithmName extends EnumeratedAttribute {
         /**
@@ -930,7 +924,7 @@ public class ModifiedSelector extends BaseExtendSelector
          */
         @Override
         public String[] getValues() {
-            return new String[] {"hashvalue", "digest", "checksum"};
+            return new String[] {"hashvalue", "digest", "checksum", "lastmodified"};
         }
     }
 

@@ -82,7 +82,7 @@ public class SubAnt extends Task {
     /**
      * Get the default build file name to use when launching the task.
      * <p>
-     * This function may be overriden by providers of custom ProjectHelper so
+     * This function may be overridden by providers of custom ProjectHelper so
      * they can implement easily their sub launcher.
      * </p>
      *
@@ -203,13 +203,13 @@ public class SubAnt extends Task {
         }
 */
         BuildException buildException = null;
-        for (int i = 0; i < count; ++i) {
+        for (String filename : filenames) {
             File file = null;
             String subdirPath = null;
             Throwable thrownException = null;
             try {
                 File directory = null;
-                file = new File(filenames[i]);
+                file = new File(filename);
                 if (file.isDirectory()) {
                     if (verbose) {
                         subdirPath = file.getPath();
@@ -227,7 +227,7 @@ public class SubAnt extends Task {
                     log("Leaving directory: " + subdirPath + "\n", Project.MSG_INFO);
                 }
             } catch (RuntimeException ex) {
-                if (!(getProject().isKeepGoingMode())) {
+                if (!getProject().isKeepGoingMode()) {
                     if (verbose && subdirPath != null) {
                         log("Leaving directory: " + subdirPath + "\n", Project.MSG_INFO);
                     }
@@ -235,7 +235,7 @@ public class SubAnt extends Task {
                 }
                 thrownException = ex;
             } catch (Throwable ex) {
-                if (!(getProject().isKeepGoingMode())) {
+                if (!getProject().isKeepGoingMode()) {
                     if (verbose && subdirPath != null) {
                         log("Leaving directory: " + subdirPath + "\n", Project.MSG_INFO);
                     }
@@ -329,14 +329,7 @@ public class SubAnt extends Task {
         if (t instanceof BuildException) {
             return isHardError(t.getCause());
         }
-        if (t instanceof OutOfMemoryError) {
-            return true;
-        }
-        if (t instanceof ThreadDeath) {
-            return true;
-        }
-        // incl. t == null
-        return false;
+        return t instanceof OutOfMemoryError || t instanceof ThreadDeath;
     }
 
     /**
@@ -576,7 +569,7 @@ public class SubAnt extends Task {
     private Ant createAntTask(File directory) {
         Ant antTask = new Ant(this);
         antTask.init();
-        if (subTarget != null && subTarget.length() > 0) {
+        if (subTarget != null && !subTarget.isEmpty()) {
             antTask.setTarget(subTarget);
         }
 

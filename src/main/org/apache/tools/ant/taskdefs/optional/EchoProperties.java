@@ -184,7 +184,7 @@ public class EchoProperties extends Task {
      * @param  prefix  The new prefix value
      */
     public void setPrefix(String prefix) {
-        if (prefix != null && prefix.length() != 0) {
+        if (prefix != null && !prefix.isEmpty()) {
             this.prefix = prefix;
             PropertySet ps = new PropertySet();
             ps.setProject(getProject());
@@ -209,7 +209,7 @@ public class EchoProperties extends Task {
      * @since Ant 1.7
      */
     public void setRegex(String regex) {
-        if (!(regex == null || regex.isEmpty())) {
+        if (regex != null && !regex.isEmpty()) {
             this.regex = regex;
             PropertySet ps = new PropertySet();
             ps.setProject(getProject());

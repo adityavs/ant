@@ -19,7 +19,6 @@
 package org.apache.tools.ant.taskdefs;
 
 import java.io.File;
-import java.io.IOException;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Task;
@@ -32,7 +31,7 @@ import org.apache.tools.ant.Task;
  * @deprecated The deltree task is deprecated since Ant 1.2.  Use
  * delete instead.
  */
-
+@Deprecated
 public class Deltree extends Task {
 
     private File dir;
@@ -72,35 +71,26 @@ public class Deltree extends Task {
 
             log("Deleting: " + dir.getAbsolutePath());
 
-            try {
-                removeDir(dir);
-            } catch (IOException ioe) {
-                String msg = "Unable to delete " + dir.getAbsolutePath();
-                throw new BuildException(msg, getLocation());
-            }
+            removeDir(dir);
         }
     }
 
-    private void removeDir(File dir) throws IOException {
+    private void removeDir(File dir) {
 
         // check to make sure that the given dir isn't a symlink
         // the comparison of absolute path and canonical path
         // catches this
 
-        //        if (dir.getCanonicalPath().equals(dir.getAbsolutePath())) {
+        // if (dir.getCanonicalPath().equals(dir.getAbsolutePath())) {
         // (costin) It will not work if /home/costin is symlink to
-        // /da0/home/costin ( taz for example )
-        String[] list = dir.list();
-        for (int i = 0; i < list.length; i++) {
-            String s = list[i];
+        // /da0/home/costin (taz for example)
+        for (String s : dir.list()) {
             File f = new File(dir, s);
             if (f.isDirectory()) {
                 removeDir(f);
-            } else {
-                if (!f.delete()) {
-                    throw new BuildException("Unable to delete file "
-                                             + f.getAbsolutePath());
-                }
+            } else if (!f.delete()) {
+                throw new BuildException("Unable to delete file "
+                        + f.getAbsolutePath());
             }
         }
         if (!dir.delete()) {

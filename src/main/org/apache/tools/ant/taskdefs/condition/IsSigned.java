@@ -19,13 +19,12 @@ package org.apache.tools.ant.taskdefs.condition;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Enumeration;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.ManifestTask;
 import org.apache.tools.ant.types.DataType;
-import org.apache.tools.zip.ZipEntry;
+import org.apache.tools.ant.util.StreamUtils;
 import org.apache.tools.zip.ZipFile;
 
 /**
@@ -73,15 +72,8 @@ public class IsSigned extends DataType implements Condition {
         throws IOException {
         try (ZipFile jarFile = new ZipFile(zipFile)) {
             if (null == name) {
-                Enumeration<ZipEntry> entries = jarFile.getEntries();
-                while (entries.hasMoreElements()) {
-                    String eName = entries.nextElement().getName();
-                    if (eName.startsWith(SIG_START)
-                        && eName.endsWith(SIG_END)) {
-                        return true;
-                    }
-                }
-                return false;
+                return StreamUtils.enumerationAsStream(jarFile.getEntries())
+                        .anyMatch(e -> e.getName().startsWith(SIG_START) && e.getName().endsWith(SIG_END));
             }
             name = replaceInvalidChars(name);
             boolean shortSig = jarFile.getEntry(SIG_START
@@ -133,10 +125,8 @@ public class IsSigned extends DataType implements Condition {
 
     private static String replaceInvalidChars(final String name) {
         StringBuilder sb = new StringBuilder();
-        final int len = name.length();
         boolean changes = false;
-        for (int i = 0; i < len; i++) {
-            final char ch = name.charAt(i);
+        for (final char ch : name.toCharArray()) {
             if (ManifestTask.VALID_ATTRIBUTE_CHARS.indexOf(ch) < 0) {
                 sb.append("_");
                 changes = true;

@@ -33,7 +33,7 @@ public class BindTargets extends Task {
 
     private String extensionPoint;
 
-    private final List<String> targets = new ArrayList<String>();
+    private final List<String> targets = new ArrayList<>();
 
     private OnMissingExtensionPoint onMissingExtensionPoint;
 
@@ -65,15 +65,14 @@ public class BindTargets extends Task {
         }
 
         if (getOwningTarget() == null
-                || !"".equals(getOwningTarget().getName())) {
-            throw new BuildException(
-                    "bindtargets only allowed as a top-level task");
+                || !getOwningTarget().getName().isEmpty()) {
+            throw new BuildException("bindtargets only allowed as a top-level task");
         }
 
         if (onMissingExtensionPoint == null) {
             onMissingExtensionPoint = OnMissingExtensionPoint.FAIL;
         }
-        final ProjectHelper helper = (ProjectHelper) getProject().getReference(
+        final ProjectHelper helper = getProject().getReference(
                 ProjectHelper.PROJECTHELPER_REFERENCE);
 
         for (String target : targets) {

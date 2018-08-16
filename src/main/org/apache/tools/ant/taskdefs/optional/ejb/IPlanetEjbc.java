@@ -23,15 +23,14 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.time.Instant;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Hashtable;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -42,11 +41,11 @@ import java.util.stream.Stream;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
+import org.apache.tools.ant.util.StringUtils;
 import org.xml.sax.AttributeList;
 import org.xml.sax.HandlerBase;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
-import org.apache.tools.ant.util.StringUtils;
 
 /**
  * Compiles EJB stubs and skeletons for the iPlanet Application
@@ -94,6 +93,7 @@ public class IPlanetEjbc {
 
     /* Classpath used when the iAS ejbc is called */
     private String      classpath;
+    @SuppressWarnings("unused")
     private String[]    classpathElements;
 
     /* Options passed to the iAS ejbc */
@@ -253,7 +253,7 @@ public class IPlanetEjbc {
         boolean     retainSource  = false;
         IPlanetEjbc ejbc;
 
-        if ((args.length < MIN_NUM_ARGS) || (args.length > MAX_NUM_ARGS)) {
+        if (args.length < MIN_NUM_ARGS || args.length > MAX_NUM_ARGS) {
             usage();
             return;
         }
@@ -331,19 +331,19 @@ public class IPlanetEjbc {
     private static void usage() {
         System.out.println("java org.apache.tools.ant.taskdefs.optional.ejb.IPlanetEjbc \\");
         System.out.println("  [OPTIONS] [EJB 1.1 descriptor] [iAS EJB descriptor]");
-        System.out.println("");
+        System.out.println();
         System.out.println("Where OPTIONS are:");
         System.out.println("  -debug -- for additional debugging output");
         System.out.println("  -keepsource -- to retain Java source files generated");
         System.out.println("  -classpath [classpath] -- classpath used for compilation");
         System.out.println("  -d [destination directory] -- directory for compiled classes");
-        System.out.println("");
+        System.out.println();
         System.out.println("If a classpath is not specified, the system classpath");
         System.out.println("will be used.  If a destination directory is not specified,");
         System.out.println("the current working directory will be used (classes will");
         System.out.println("still be placed in subfolders which correspond to their");
         System.out.println("package name).");
-        System.out.println("");
+        System.out.println();
         System.out.println("The EJB home interface, remote interface, and implementation");
         System.out.println("class must be found in the destination directory.  In");
         System.out.println("addition, the destination will look for the stubs and skeletons");
@@ -436,31 +436,31 @@ public class IPlanetEjbc {
      */
     protected void checkConfiguration() throws EjbcException {
 
-        String msg = "";
+        StringBuilder msg = new StringBuilder();
 
         if (stdDescriptor == null) {
-            msg += "A standard XML descriptor file must be specified.  ";
+            msg.append("A standard XML descriptor file must be specified.  ");
         }
         if (iasDescriptor == null) {
-            msg += "An iAS-specific XML descriptor file must be specified.  ";
+            msg.append("An iAS-specific XML descriptor file must be specified.  ");
         }
         if (classpath == null) {
-            msg += "A classpath must be specified.    ";
+            msg.append("A classpath must be specified.    ");
         }
         if (parser == null) {
-            msg += "An XML parser must be specified.    ";
+            msg.append("An XML parser must be specified.    ");
         }
 
         if (destDirectory == null) {
-            msg += "A destination directory must be specified.  ";
+            msg.append("A destination directory must be specified.  ");
         } else if (!destDirectory.exists()) {
-            msg += "The destination directory specified does not exist.  ";
+            msg.append("The destination directory specified does not exist.  ");
         } else if (!destDirectory.isDirectory()) {
-            msg += "The destination specified is not a directory.  ";
+            msg.append("The destination specified is not a directory.  ");
         }
 
         if (msg.length() > 0) {
-            throw new EjbcException(msg);
+            throw new EjbcException(msg.toString());
         }
     }
 
@@ -644,6 +644,7 @@ public class IPlanetEjbc {
          *
          * @return String display-name value.
          */
+        @SuppressWarnings("unused")
         public String getDisplayName() {
             return displayName;
         }
@@ -662,7 +663,7 @@ public class IPlanetEjbc {
          */
         public void registerDTD(String publicID, String location) {
             log("Registering: " + location);
-            if ((publicID == null) || (location == null)) {
+            if (publicID == null || location == null) {
                 return;
             }
 
@@ -741,7 +742,7 @@ public class IPlanetEjbc {
                 iasDescriptor = true;
             }
 
-            if (("session".equals(name)) || ("entity".equals(name))) {
+            if ("session".equals(name) || "entity".equals(name)) {
                 ejbType = name;
             }
         }
@@ -811,11 +812,7 @@ public class IPlanetEjbc {
             String base = "\\ejb-jar\\enterprise-beans\\" + ejbType;
 
             if ((base + "\\ejb-name").equals(currentLoc)) {
-                currentEjb = ejbs.get(value);
-                if (currentEjb == null) {
-                    currentEjb = new EjbInfo(value);
-                    ejbs.put(value, currentEjb);
-                }
+                currentEjb = ejbs.computeIfAbsent(value, EjbInfo::new);
             } else if ((base + "\\home").equals(currentLoc)) {
                 currentEjb.setHome(value);
             } else if ((base + "\\remote").equals(currentLoc)) {
@@ -845,18 +842,13 @@ public class IPlanetEjbc {
             String base = "\\ias-ejb-jar\\enterprise-beans\\" + ejbType;
 
             if ((base + "\\ejb-name").equals(currentLoc)) {
-                currentEjb = ejbs.get(value);
-                if (currentEjb == null) {
-                    currentEjb = new EjbInfo(value);
-                    ejbs.put(value, currentEjb);
-                }
+                currentEjb = ejbs.computeIfAbsent(value, EjbInfo::new);
             } else if ((base + "\\iiop").equals(currentLoc)) {
                 currentEjb.setIiop(value);
             } else if ((base + "\\failover-required").equals(currentLoc)) {
                 currentEjb.setHasession(value);
             } else if ((base
-                + "\\persistence-manager\\properties-file-location")
-                    .equals(currentLoc)) {
+                + "\\persistence-manager\\properties-file-location").equals(currentLoc)) {
                 currentEjb.addCmpDescriptor(value);
             }
         }
@@ -868,15 +860,15 @@ public class IPlanetEjbc {
      *
      */
     private class EjbInfo {
-        private String     name;              // EJB's display name
-        private Classname  home;              // EJB's home interface name
-        private Classname  remote;            // EJB's remote interface name
-        private Classname  implementation;      // EJB's implementation class
-        private Classname  primaryKey;        // EJB's primary key class
-        private String  beantype = "entity";  // or "stateful" or "stateless"
-        private boolean cmp       = false;      // Does this EJB support CMP?
-        private boolean iiop      = false;      // Does this EJB support IIOP?
-        private boolean hasession = false;      // Does this EJB require failover?
+        private String    name;              // EJB's display name
+        private Classname home;              // EJB's home interface name
+        private Classname remote;            // EJB's remote interface name
+        private Classname implementation;    // EJB's implementation class
+        private Classname primaryKey;        // EJB's primary key class
+        private String  beantype = "entity"; // or "stateful" or "stateless"
+        private boolean cmp       = false;   // Does this EJB support CMP?
+        private boolean iiop      = false;   // Does this EJB support IIOP?
+        private boolean hasession = false;   // Does this EJB require failover?
         private List<String> cmpDescriptors = new ArrayList<>();  // CMP descriptor list
 
         /**
@@ -957,6 +949,7 @@ public class IPlanetEjbc {
             this.primaryKey = primaryKey;
         }
 
+        @SuppressWarnings("unused")
         public Classname getPrimaryKey() {
             return primaryKey;
         }
@@ -1040,20 +1033,20 @@ public class IPlanetEjbc {
                         + " EJB.");
             }
 
-            if ((!beantype.equals(ENTITY_BEAN))
-                && (!beantype.equals(STATELESS_SESSION))
-                && (!beantype.equals(STATEFUL_SESSION))) {
+            if (!beantype.equals(ENTITY_BEAN)
+                && !beantype.equals(STATELESS_SESSION)
+                && !beantype.equals(STATEFUL_SESSION)) {
                 throw new EjbcException("The beantype found (" + beantype
                     + ") isn't valid in the " + name + " EJB.");
             }
 
-            if (cmp && (!beantype.equals(ENTITY_BEAN))) {
+            if (cmp && !beantype.equals(ENTITY_BEAN)) {
                 System.out.println(
                     "CMP stubs and skeletons may not be generated for a Session Bean -- the \"cmp\" attribute will be ignoredfor the "
                         + name + " EJB.");
             }
 
-            if (hasession && (!beantype.equals(STATEFUL_SESSION))) {
+            if (hasession && !beantype.equals(STATEFUL_SESSION)) {
                 System.out.println(
                     "Highly available stubs and skeletons may only be generated for a Stateful Session Bean"
                         + "-- the \"hasession\" attribute will be ignored for the "
@@ -1209,9 +1202,9 @@ public class IPlanetEjbc {
              * Loop through each stub/skeleton class that must be generated, and
              * determine (if all exist) which file has the most recent timestamp
              */
-            for (int i = 0; i < classnames.length; i++) {
+            for (String classname : classnames) {
                 String pathToClass =
-                        classnames[i].replace('.', File.separatorChar) + ".class";
+                        classname.replace('.', File.separatorChar) + ".class";
                 File classFile = new File(destDir, pathToClass);
 
                 /*
@@ -1296,22 +1289,21 @@ public class IPlanetEjbc {
          */
         @Override
         public String toString() {
-            String s = "EJB name: " + name
-                        + "\n\r              home:      " + home
-                        + "\n\r              remote:    " + remote
-                        + "\n\r              impl:      " + implementation
-                        + "\n\r              primaryKey: " + primaryKey
-                        + "\n\r              beantype:  " + beantype
-                        + "\n\r              cmp:       " + cmp
-                        + "\n\r              iiop:      " + iiop
-                        + "\n\r              hasession: " + hasession;
+            StringBuilder s = new StringBuilder("EJB name: " + name
+                    + "\n\r              home:      " + home
+                    + "\n\r              remote:    " + remote
+                    + "\n\r              impl:      " + implementation
+                    + "\n\r              primaryKey: " + primaryKey
+                    + "\n\r              beantype:  " + beantype
+                    + "\n\r              cmp:       " + cmp
+                    + "\n\r              iiop:      " + iiop
+                    + "\n\r              hasession: " + hasession);
 
-            Iterator<String> i = cmpDescriptors.iterator();
-            while (i.hasNext()) {
-                s += "\n\r              CMP Descriptor: " + i.next();
+            for (String cmpDescriptor : cmpDescriptors) {
+                s.append("\n\r              CMP Descriptor: ").append(cmpDescriptor);
             }
 
-            return s;
+            return s.toString();
         }
 
     } // End of EjbInfo inner class

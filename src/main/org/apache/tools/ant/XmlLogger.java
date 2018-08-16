@@ -24,8 +24,8 @@ import java.io.PrintStream;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Enumeration;
 import java.util.Hashtable;
+import java.util.Map;
 import java.util.Stack;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -108,16 +108,16 @@ public class XmlLogger implements BuildLogger {
     private Document doc = builder.newDocument();
 
     /** Mapping for when tasks started (Task to TimedElement). */
-    private Hashtable<Task, TimedElement> tasks = new Hashtable<>();
+    private Map<Task, TimedElement> tasks = new Hashtable<>();
 
     /** Mapping for when targets started (Target to TimedElement). */
-    private Hashtable<Target, TimedElement> targets = new Hashtable<>();
+    private Map<Target, TimedElement> targets = new Hashtable<>();
 
     /**
      * Mapping of threads to stacks of elements
      * (Thread to Stack of TimedElement).
      */
-    private Hashtable<Thread, Stack<TimedElement>> threadStacks = new Hashtable<>();
+    private Map<Thread, Stack<TimedElement>> threadStacks = new Hashtable<>();
 
     /**
      * When the build started.
@@ -182,7 +182,7 @@ public class XmlLogger implements BuildLogger {
             outStream == null ? Files.newOutputStream(Paths.get(outFilename)) : outStream;
                 Writer out = new OutputStreamWriter(stream, "UTF8")) {
             out.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-            if (xslUri.length() > 0) {
+            if (!xslUri.isEmpty()) {
                 out.write("<?xml-stylesheet type=\"text/xsl\" href=\"" + xslUri
                     + "\"?>\n\n");
             }
@@ -207,16 +207,13 @@ public class XmlLogger implements BuildLogger {
      * @return the stack of timed elements for the current thread
      */
     private Stack<TimedElement> getStack() {
-        Stack<TimedElement> threadStack = threadStacks.get(Thread.currentThread());
-        if (threadStack == null) {
-            threadStack = new Stack<>();
-            threadStacks.put(Thread.currentThread(), threadStack);
-        }
         /* For debugging purposes uncomment:
-        org.w3c.dom.Comment s = doc.createComment("stack=" + threadStack);
-        buildElement.element.appendChild(s);
-         */
-        return threadStack;
+        if (threadStacks.containsKey(Thread.currentThread())) {
+            org.w3c.dom.Comment s = doc.createComment("stack=" + threadStacks(Thread.currentThread()));
+            buildElement.element.appendChild(s);
+        }
+        */
+        return threadStacks.computeIfAbsent(Thread.currentThread(), k -> new Stack<>());
     }
 
     /**
@@ -348,14 +345,9 @@ public class XmlLogger implements BuildLogger {
         if (element != null) {
             return element;
         }
-        for (Enumeration<Task> e = tasks.keys(); e.hasMoreElements();) {
-            Task key = e.nextElement();
-            if (key instanceof UnknownElement
-                && ((UnknownElement) key).getTask() == task) {
-                return tasks.get(key);
-            }
-        }
-        return null;
+        return tasks.keySet().stream().filter(UnknownElement.class::isInstance)
+                .filter(key -> ((UnknownElement) key).getTask() == task).findFirst()
+                .map(key -> tasks.get(key)).orElse(null);
     }
 
     /**

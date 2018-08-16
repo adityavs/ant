@@ -18,7 +18,6 @@
 
 package org.apache.tools.ant.taskdefs;
 
-import org.apache.tools.ant.AntAssert;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.BuildFileRule;
 import org.junit.Before;
@@ -27,8 +26,9 @@ import org.junit.Test;
 
 import java.util.Vector;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertThat;
 
 /**
  */
@@ -47,7 +47,7 @@ public class CallTargetTest {
     @Test
     public void testInheritRefFileSet() {
         buildRule.executeTarget("testinheritreffileset");
-        AntAssert.assertContains("calltarget.xml", buildRule.getLog());
+        assertThat(buildRule.getLog(), containsString("calltarget.xml"));
     }
 
     // see bugrep 21724 (references not passing through with antcall)
@@ -60,21 +60,19 @@ public class CallTargetTest {
     // params will not be passed in)
     @Test
     public void testMultiCall() {
-        Vector<String> v = new Vector<String>();
+        Vector<String> v = new Vector<>();
         v.add("call-multi");
         v.add("call-multi");
         buildRule.getProject().executeTargets(v);
-        AntAssert.assertContains("multi is SETmulti is SET", buildRule.getLog());
+        assertThat(buildRule.getLog(), containsString("multi is SETmulti is SET"));
     }
 
-    @Test
+    /**
+     * Expected failure due to empty target name
+     */
+    @Test(expected = BuildException.class)
     public void testBlankTarget() {
-        try {
-            buildRule.executeTarget("blank-target");
-            fail("target name must not be empty");
-        } catch (BuildException ex) {
-            //TODO assert exception contents
-        }
+        buildRule.executeTarget("blank-target");
     }
 
     @Test

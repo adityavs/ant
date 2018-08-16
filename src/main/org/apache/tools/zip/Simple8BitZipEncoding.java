@@ -26,19 +26,19 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * This ZipEncoding implementation implements a simple 8bit character
- * set, which mets the following restrictions:
+ * This ZipEncoding implementation implements a simple 8 bit character
+ * set, which meets the following restrictions:
  *
  * <ul>
  * <li>Characters 0x0000 to 0x007f are encoded as the corresponding
  *        byte values 0x00 to 0x7f.</li>
- * <li>All byte codes from 0x80 to 0xff are mapped to a unique unicode
+ * <li>All byte codes from 0x80 to 0xff are mapped to a unique Unicode
  *       character in the range 0x0080 to 0x7fff. (No support for
  *       UTF-16 surrogates)
  * </ul>
  *
  * <p>These restrictions most notably apply to the most prominent
- * omissions of java-1.4's {@link java.nio.charset.Charset Charset}
+ * omissions of Java 1.4 {@link java.nio.charset.Charset Charset}
  * implementation, Cp437 and Cp850.</p>
  *
  * <p>The methods of this class are reentrant.</p>
@@ -103,12 +103,12 @@ class Simple8BitZipEncoding implements ZipEncoding {
     public Simple8BitZipEncoding(final char[] highChars) {
         this.highChars = highChars.clone();
         final List<Simple8BitChar> temp =
-            new ArrayList<Simple8BitChar>(this.highChars.length);
+                new ArrayList<>(this.highChars.length);
 
         byte code = 127;
 
-        for (int i = 0; i < this.highChars.length; ++i) {
-            temp.add(new Simple8BitChar(++code, this.highChars[i]));
+        for (char highChar : this.highChars) {
+            temp.add(new Simple8BitChar(++code, highChar));
         }
 
         Collections.sort(temp);

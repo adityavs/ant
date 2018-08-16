@@ -105,7 +105,7 @@ public final class HeadFilter extends BaseParamFilterReader
             setInitialized(true);
         }
 
-        while (line == null || line.length() == 0) {
+        while (line == null || line.isEmpty()) {
             line = lineTokenizer.getToken(in);
             if (line == null) {
                 return -1;
@@ -187,14 +187,12 @@ public final class HeadFilter extends BaseParamFilterReader
     private void initialize() {
         Parameter[] params = getParameters();
         if (params != null) {
-            for (int i = 0; i < params.length; i++) {
-                if (LINES_KEY.equals(params[i].getName())) {
-                    lines = Long.parseLong(params[i].getValue());
-                    continue;
-                }
-                if (SKIP_KEY.equals(params[i].getName())) {
-                    skip = Long.parseLong(params[i].getValue());
-                    continue;
+            for (Parameter param : params) {
+                final String paramName = param.getName();
+                if (LINES_KEY.equals(paramName)) {
+                    lines = Long.parseLong(param.getValue());
+                } else if (SKIP_KEY.equals(paramName)) {
+                    skip = Long.parseLong(param.getValue());
                 }
             }
         }

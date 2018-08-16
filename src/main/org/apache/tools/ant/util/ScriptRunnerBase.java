@@ -92,13 +92,8 @@ public abstract class ScriptRunnerBase {
      * @param bean the object to be stored in the script context.
      */
     public void addBean(String key, Object bean) {
-        boolean isValid = key.length() > 0
-            && Character.isJavaIdentifierStart(key.charAt(0));
-
-        for (int i = 1; isValid && i < key.length(); i++) {
-            isValid = Character.isJavaIdentifierPart(key.charAt(i));
-        }
-        if (isValid) {
+        if (!key.isEmpty() && Character.isJavaIdentifierStart(key.charAt(0))
+                && key.chars().skip(1).allMatch(Character::isJavaIdentifierPart)) {
             beans.put(key, bean);
         }
     }
@@ -222,6 +217,9 @@ public abstract class ScriptRunnerBase {
      */
     public void setSrc(File file) {
         String filename = file.getPath();
+        if (!file.exists()) {
+            throw new BuildException("file " + filename + " not found.");
+        }
 
         try (InputStream in = Files.newInputStream(file.toPath())) {
             final Charset charset = null == encoding ? Charset.defaultCharset()

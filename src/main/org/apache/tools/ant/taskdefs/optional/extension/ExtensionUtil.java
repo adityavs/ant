@@ -20,6 +20,7 @@ package org.apache.tools.ant.taskdefs.optional.extension;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
@@ -66,9 +67,7 @@ public final class ExtensionUtil {
                                    final List<FileSet> fileset)
         throws BuildException {
         if (!fileset.isEmpty()) {
-            for (Extension extension : getExtensions(project, fileset)) {
-                libraries.add(extension);
-            }
+            Collections.addAll(libraries, getExtensions(project, fileset));
         }
     }
 
@@ -96,9 +95,8 @@ public final class ExtensionUtil {
 
             final DirectoryScanner scanner = fileSet.getDirectoryScanner(project);
             final File basedir = scanner.getBasedir();
-            final String[] files = scanner.getIncludedFiles();
-            for (int i = 0; i < files.length; i++) {
-                final File file = new File(basedir, files[ i ]);
+            for (String fileName : scanner.getIncludedFiles()) {
+                final File file = new File(basedir, fileName);
                 loadExtensions(file, extensions, includeImpl, includeURL);
             }
         }

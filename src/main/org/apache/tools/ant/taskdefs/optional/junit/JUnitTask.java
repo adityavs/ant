@@ -43,6 +43,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Vector;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.tools.ant.AntClassLoader;
 import org.apache.tools.ant.BuildException;
@@ -133,8 +135,6 @@ import org.apache.tools.ant.util.StringUtils;
  */
 public class JUnitTask extends Task {
 
-    private static final String LINE_SEP
-        = System.getProperty("line.separator");
     private static final String CLASSPATH = "CLASSPATH";
 
     private static final int STRING_BUFFER_SIZE = 128;
@@ -963,18 +963,12 @@ public class JUnitTask extends Task {
             /* I assume we don't want to do this with "per batch" forking. */
             List<List<JUnitTest>> newlist = new ArrayList<>();
             if (forkMode.getValue().equals(ForkMode.PER_TEST)) {
-                final Iterator<List<JUnitTest>> i1 = testList.iterator();
-                while (i1.hasNext()) {
-                    final List<JUnitTest> l = i1.next();
-                    if (l.size() == 1) {
-                        newlist.add(l);
+                for (List<JUnitTest> list : testList) {
+                    if (list.size() == 1) {
+                        newlist.add(list);
                     } else {
-                        final Iterator<JUnitTest> i2 = l.iterator();
-                        while (i2.hasNext()) {
-                            final List<JUnitTest> tmpSingleton =
-                                new ArrayList<>();
-                            tmpSingleton.add(i2.next());
-                            newlist.add(tmpSingleton);
+                        for (JUnitTest test : list) {
+                            newlist.add(Collections.singletonList(test));
                         }
                     }
                 }
@@ -995,7 +989,7 @@ public class JUnitTask extends Task {
 
                 try {
                     for (i = 0; i < numThreads; i++) {
-                         threads[i].join();
+                        threads[i].join();
                     }
                 } catch (final InterruptedException e) {
                     exceptionOccurred = true;
@@ -1022,7 +1016,7 @@ public class JUnitTask extends Task {
     protected void execute(final JUnitTest arg, final int thread) throws BuildException {
         validateTestName(arg.getName());
 
-        final JUnitTest test = arg.clone();
+        final JUnitTest test = (JUnitTest) arg.clone();
         test.setThread(thread);
 
         // set the default values if not specified
@@ -1165,7 +1159,7 @@ public class JUnitTask extends Task {
 
         CommandlineJava cmd;
         try {
-            cmd = getCommandline().clone();
+            cmd = (CommandlineJava) getCommandline().clone();
         } catch (final CloneNotSupportedException e) {
             throw new BuildException("This shouldn't happen", e, getLocation());
         }
@@ -1203,8 +1197,7 @@ public class JUnitTask extends Task {
 
         StringBuilder formatterArg = new StringBuilder(STRING_BUFFER_SIZE);
         final FormatterElement[] feArray = mergeFormatters(test);
-        for (int i = 0; i < feArray.length; i++) {
-            final FormatterElement fe = feArray[i];
+        for (final FormatterElement fe : feArray) {
             if (fe.shouldUse(this)) {
                 formatterArg.append(Constants.FORMATTER);
                 formatterArg.append(fe.getClassname());
@@ -1251,9 +1244,9 @@ public class JUnitTask extends Task {
 
         final String[] environment = env.getVariables();
         if (environment != null) {
-            for (int i = 0; i < environment.length; i++) {
-                log("Setting environment variable: " + environment[i],
-                    Project.MSG_VERBOSE);
+            for (String variable : environment) {
+                log("Setting environment variable: " + variable,
+                        Project.MSG_VERBOSE);
             }
         }
         execute.setNewenvironment(newEnvironment);
@@ -1377,22 +1370,20 @@ public class JUnitTask extends Task {
             return;
         }
         try (AntClassLoader loader =
-             AntClassLoader.newAntClassLoader(null, getProject(),
-                                              cmd.createClasspath(getProject()),
-                                              true)) {
+            AntClassLoader.newAntClassLoader(null, getProject(),
+                                             cmd.createClasspath(getProject()),
+                                             false)) {
+            loader.setIsolated(true);
             final String projectResourceName =
                 LoaderUtils.classNameToResource(Project.class.getName());
             URL previous = null;
             try {
-                for (final Enumeration<URL> e = loader.getResources(projectResourceName);
-                     e.hasMoreElements();) {
-                    final URL current = e.nextElement();
+                for (final URL current : Collections.list(loader.getResources(projectResourceName))) {
                     if (previous != null && !urlEquals(current, previous)) {
-                        log("WARNING: multiple versions of ant detected "
-                            + "in path for junit "
-                            + LINE_SEP + "         " + previous
-                            + LINE_SEP + "     and " + current,
-                            Project.MSG_WARN);
+                        log(String.format(
+                                "WARNING: multiple versions of ant detected in path for junit%n"
+                                        + "         %s%n     and %s", previous, current),
+                                Project.MSG_WARN);
                         return;
                     }
                     previous = current;
@@ -1436,10 +1427,8 @@ public class JUnitTask extends Task {
      * @return created file
      */
     private File createTempPropertiesFile(final String prefix) {
-        final File propsFile =
-            FILE_UTILS.createTempFile(prefix, ".properties",
-                tmpDir != null ? tmpDir : getProject().getBaseDir(), true, true);
-        return propsFile;
+        return FILE_UTILS.createTempFile(prefix, ".properties",
+            tmpDir != null ? tmpDir : getProject().getBaseDir(), true, true);
     }
 
 
@@ -1563,7 +1552,7 @@ public class JUnitTask extends Task {
             setupJUnitDelegate();
         }
 
-        final JUnitTest test = arg.clone();
+        final JUnitTest test = (JUnitTest) arg.clone();
         test.setProperties(getProject().getProperties());
         if (dir != null) {
             log("dir attribute ignored if running in the same VM",
@@ -1613,9 +1602,7 @@ public class JUnitTask extends Task {
 
             runner.setPermissions(perm);
 
-            final FormatterElement[] feArray = mergeFormatters(test);
-            for (int i = 0; i < feArray.length; i++) {
-                final FormatterElement fe = feArray[i];
+            for (final FormatterElement fe : mergeFormatters(test)) {
                 if (fe.shouldUse(this)) {
                     final File outFile = getOutput(fe, test);
                     if (outFile != null) {
@@ -1652,7 +1639,7 @@ public class JUnitTask extends Task {
         if (timeout == null) {
             return null;
         }
-        return new ExecuteWatchdog((long) timeout.intValue());
+        return new ExecuteWatchdog((long) timeout);
     }
 
     /**
@@ -1673,16 +1660,9 @@ public class JUnitTask extends Task {
      * @since Ant 1.3
      */
     protected Enumeration<JUnitTest> getIndividualTests() {
-        final int count = batchTests.size();
-        @SuppressWarnings("unchecked")
-        final Enumeration<JUnitTest>[] enums = new Enumeration[ count + 1];
-
-        for (int i = 0; i < count; i++) {
-            final BatchTest batchtest = batchTests.get(i);
-            enums[i] = batchtest.elements();
-        }
-        enums[enums.length - 1] = Collections.enumeration(tests);
-        return Enumerations.fromCompound(enums);
+        return Collections.enumeration(Stream.concat(batchTests.stream()
+                .flatMap(b -> Collections.list(b.elements()).stream()), tests.stream())
+                .collect(Collectors.toList()));
     }
 
     /**
@@ -1698,11 +1678,8 @@ public class JUnitTask extends Task {
         if (tests.isEmpty()) {
             return;
         }
-        for (JUnitTest test : tests) {
-            if (test.hasMethodsSpecified() && test.shouldRun(getProject())) {
-                test.resolveMethods();
-            }
-        }
+        tests.stream().filter(test -> test.hasMethodsSpecified() && test.shouldRun(getProject()))
+                .forEach(JUnitTest::resolveMethods);
     }
 
     /**
@@ -1710,10 +1687,10 @@ public class JUnitTask extends Task {
      * @since 1.9.8
      */
     private void checkModules() {
-        if (hasPath(getCommandline().getModulepath()) ||
-            hasPath(getCommandline().getUpgrademodulepath())) {
-            if (!(batchTests.stream().allMatch(BaseTest::getFork)
-                && tests.stream().allMatch(BaseTest::getFork))) {
+        if (hasPath(getCommandline().getModulepath())
+                || hasPath(getCommandline().getUpgrademodulepath())) {
+            if (!batchTests.stream().allMatch(BaseTest::getFork)
+                    || !tests.stream().allMatch(BaseTest::getFork)) {
                 throw new BuildException(
                     "The module path requires fork attribute to be set to true.");
             }
@@ -1776,8 +1753,8 @@ public class JUnitTask extends Task {
      * @since Ant 1.3
      */
     protected Enumeration<BaseTest> allTests() {
-        return Enumerations.fromCompound(Collections.enumeration(tests),
-            Collections.enumeration(batchTests));
+        return Collections.enumeration(Stream.concat(tests.stream(), batchTests.stream())
+                .collect(Collectors.toList()));
     }
 
     /**
@@ -1922,8 +1899,7 @@ public class JUnitTask extends Task {
 
             test.setCounts(1, 0, 1, 0);
             test.setProperties(getProject().getProperties());
-            for (int i = 0; i < feArray.length; i++) {
-                final FormatterElement fe = feArray[i];
+            for (final FormatterElement fe : feArray) {
                 if (fe.shouldUse(this)) {
                     final JUnitTaskMirror.JUnitResultFormatterMirror formatter =
                         fe.createFormatter(classLoader);
@@ -2178,12 +2154,11 @@ public class JUnitTask extends Task {
         final Enumeration<JUnitTest> testList, final boolean runIndividual) {
         final Map<ForkedTestConfiguration, List<JUnitTest>> testConfigurations =
             new HashMap<>();
-        while (testList.hasMoreElements()) {
-            final JUnitTest test = testList.nextElement();
+        for (final JUnitTest test : Collections.list(testList)) {
             if (test.shouldRun(getProject())) {
                 /* with multi-threaded runs need to defer execution of even */
                 /* individual tests so the threads can pick tests off the queue. */
-                if ((runIndividual || !test.getFork()) && (threads == 1)) {
+                if ((runIndividual || !test.getFork()) && threads == 1) {
                     execute(test, 0);
                 } else {
                     testConfigurations
@@ -2337,7 +2312,7 @@ public class JUnitTask extends Task {
      * @see "https://issues.apache.org/bugzilla/show_bug.cgi?id=45227"
      */
     private static JUnitTest createDummyTestForBatchTest(final JUnitTest test) {
-        final JUnitTest t = test.clone();
+        final JUnitTest t = (JUnitTest) test.clone();
         final int index = test.getName().lastIndexOf('.');
         // make sure test looks as if it was in the same "package" as
         // the last test of the batch
@@ -2371,7 +2346,7 @@ public class JUnitTask extends Task {
 
     /**
      * Checks if a given folder is an unpacked module.
-     * @param root the fodler to be checked
+     * @param root the folder to be checked
      * @return true if the root is an unpacked module
      * @since 1.9.8
      */

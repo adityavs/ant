@@ -46,11 +46,11 @@ public class JUnitVersionHelper {
 
     static {
         try {
-            testCaseName = TestCase.class.getMethod("getName", new Class[0]);
+            testCaseName = TestCase.class.getMethod("getName");
         } catch (NoSuchMethodException e) {
             // pre JUnit 3.7
             try {
-                testCaseName = TestCase.class.getMethod("name", new Class[0]);
+                testCaseName = TestCase.class.getMethod("name");
             } catch (NoSuchMethodException ignored) {
                 // ignore
             }
@@ -155,7 +155,7 @@ public class JUnitVersionHelper {
                 if (annotation != null) {
                     Method valueMethod = annotation.annotationType().getMethod("value");
                     String value = (String) valueMethod.invoke(annotation);
-                    if (value != null && value.length() > 0) {
+                    if (value != null && !value.isEmpty()) {
                         message = value;
                     }
                 }

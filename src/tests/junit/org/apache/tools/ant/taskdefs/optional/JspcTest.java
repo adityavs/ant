@@ -30,10 +30,13 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
+import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 /**
  * Tests the Jspc task.
@@ -44,14 +47,15 @@ import static org.junit.Assert.fail;
  */
 public class JspcTest {
 
-    private static final String TASKDEFS_DIR = "src/etc/testcases/taskdefs/optional/";
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
 
     @Before
     public void setUp() {
-        buildRule.configureProject(TASKDEFS_DIR + "jspc.xml");
+        buildRule.configureProject("src/etc/testcases/taskdefs/optional/jspc.xml");
      }
 
     @Test
@@ -60,12 +64,12 @@ public class JspcTest {
     }
 
     @Test
-    public void testUriroot() throws Exception {
+    public void testUriroot() {
         executeJspCompile("testUriroot", "uriroot_jsp.java");
     }
 
     @Test
-    public void testXml() throws Exception {
+    public void testXml() {
         executeJspCompile("testXml", "xml_jsp.java");
     }
 
@@ -73,7 +77,7 @@ public class JspcTest {
      * try a keyword in a file
      */
     @Test
-    public void testKeyword() throws Exception {
+    public void testKeyword() {
         executeJspCompile("testKeyword", "default_jsp.java");
     }
 
@@ -81,23 +85,20 @@ public class JspcTest {
      * what happens to 1nvalid-classname
      */
     @Test
-    public void testInvalidClassname() throws Exception {
+    public void testInvalidClassname() {
         executeJspCompile("testInvalidClassname",
                 "_1nvalid_0002dclassname_jsp.java");
     }
 
     @Test
-    public void testNoTld() throws Exception {
-        try {
-            buildRule.executeTarget("testNoTld");
-            fail("Not found");
-        } catch (BuildException ex) {
-            assertEquals("Java returned: 9", ex.getMessage());
-        }
+    public void testNoTld() {
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("Java returned: 9");
+        buildRule.executeTarget("testNoTld");
     }
 
     @Test
-    public void testNotAJspFile()  throws Exception {
+    public void testNotAJspFile() {
         buildRule.executeTarget("testNotAJspFile");
     }
 
@@ -107,7 +108,7 @@ public class JspcTest {
      */
     @Ignore("picks up on the missing_tld file, and incorrectly bails")
     @Test
-    public void testWebapp()  throws Exception {
+    public void testWebapp() {
         buildRule.executeTarget("testWebapp");
     }
 
@@ -130,7 +131,7 @@ public class JspcTest {
     protected void assertJavaFileCreated(String filename) {
         File file = getOutputFile(filename);
         assertTrue("file " + filename + " not found", file.exists());
-        assertTrue("file " + filename + " is empty", file.length() > 0);
+        assertNotEquals("file " + filename + " is empty", 0, file.length());
     }
 
     /**
@@ -151,10 +152,10 @@ public class JspcTest {
         JspCompilerAdapter adapter =
                 JspCompilerAdapterFactory.getCompiler("jasper", null, null);
         JspMangler mangler = adapter.createMangler();
-        assertTrue(mangler instanceof JspNameMangler);
+        assertThat(mangler, instanceOf(JspNameMangler.class));
         adapter = JspCompilerAdapterFactory.getCompiler("jasper41", null, null);
         mangler = adapter.createMangler();
-        assertTrue(mangler instanceof Jasper41Mangler);
+        assertThat(mangler, instanceOf(Jasper41Mangler.class));
     }
 
     @Test
@@ -181,9 +182,8 @@ public class JspcTest {
      */
     protected void assertMapped(JspMangler mangler, String filename, String classname) {
         String mappedname = mangler.mapJspToJavaName(new File(filename));
-        assertTrue(filename + " should have mapped to " + classname
-                    + " but instead mapped to " + mappedname,
-                    classname.equals(mappedname));
+        assertEquals(filename + " should have mapped to " + classname
+                + " but instead mapped to " + mappedname, classname, mappedname);
     }
 
 }

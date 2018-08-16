@@ -41,6 +41,7 @@ import org.apache.tools.ant.DynamicConfigurator;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.ProjectComponent;
 import org.apache.tools.ant.PropertyHelper;
+import org.apache.tools.ant.taskdefs.optional.TraXLiaison;
 import org.apache.tools.ant.types.CommandlineJava;
 import org.apache.tools.ant.types.Environment;
 import org.apache.tools.ant.types.Mapper;
@@ -697,7 +698,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
      */
     private void resolveProcessor(final String proc) throws Exception {
         if (PROCESSOR_TRAX.equals(proc)) {
-            liaison = new org.apache.tools.ant.taskdefs.optional.TraXLiaison();
+            liaison = new TraXLiaison();
         } else {
             //anything else is a classname
             final Class<? extends XSLTLiaison> clazz = loadClass(proc).asSubclass(XSLTLiaison.class);
@@ -888,11 +889,9 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
      */
     private void ensureDirectoryFor(final File targetFile) throws BuildException {
         final File directory = targetFile.getParentFile();
-        if (!directory.exists()) {
-            if (!(directory.mkdirs() || directory.isDirectory())) {
-                handleError("Unable to create directory: "
-                            + directory.getAbsolutePath());
-            }
+        if (!directory.exists() && !directory.mkdirs() && !directory.isDirectory()) {
+            handleError("Unable to create directory: "
+                    + directory.getAbsolutePath());
         }
     }
 
@@ -1148,7 +1147,7 @@ public class XSLTProcess extends MatchingTask implements XSLTLogger {
         public static final Map<ParamType, QName> XPATH_TYPES;
 
         static {
-            final Map<ParamType, QName> m = new EnumMap<ParamType, QName>(ParamType.class);
+            final Map<ParamType, QName> m = new EnumMap<>(ParamType.class);
             m.put(XPATH_STRING, XPathConstants.STRING);
             m.put(XPATH_BOOLEAN, XPathConstants.BOOLEAN);
             m.put(XPATH_NUMBER, XPathConstants.NUMBER);

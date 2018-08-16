@@ -54,12 +54,7 @@ public abstract class Definer extends DefBase {
      */
     private static final String ANTLIB_XML = "/antlib.xml";
 
-    private static final ThreadLocal<Map<URL, Location>> RESOURCE_STACK = new ThreadLocal<Map<URL, Location>>() {
-        @Override
-        protected Map<URL, Location> initialValue() {
-            return new HashMap<>();
-        }
-    };
+    private static final ThreadLocal<Map<URL, Location>> RESOURCE_STACK = ThreadLocal.withInitial(HashMap::new);
 
     private String name;
     private String classname;
@@ -301,7 +296,7 @@ public abstract class Definer extends DefBase {
             resource = path.substring("//".length());
             if (!resource.endsWith(".xml")) {
                 //if we haven't already named an XML file, it gets antlib.xml
-                resource = resource + ANTLIB_XML;
+                resource += ANTLIB_XML;
             }
         } else {
             //convert from a package to a path
@@ -320,7 +315,7 @@ public abstract class Definer extends DefBase {
      */
     private URL fileToURL() {
         String message = null;
-        if (!(file.exists())) {
+        if (!file.exists()) {
             message = "File " + file + " does not exist";
         }
         if (message == null && !(file.isFile())) {

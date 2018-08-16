@@ -43,10 +43,6 @@ public class RuntimeConfigurable implements Serializable {
     /** Serialization version */
     private static final long serialVersionUID = 1L;
 
-    /** Empty Hashtable. */
-    private static final Hashtable<String, Object> EMPTY_HASHTABLE =
-            new Hashtable<>(0);
-
     /** Name of the element to configure. */
     private String elementTag = null;
 
@@ -63,6 +59,7 @@ public class RuntimeConfigurable implements Serializable {
      * XML attributes for the element.
      * @deprecated since 1.6.x
      */
+    @Deprecated
     private transient AttributeList attributes;
 
     // The following is set to true if any of the attributes are namespaced
@@ -118,6 +115,7 @@ public class RuntimeConfigurable implements Serializable {
     }
 
     private static class EnableAttributeConsumer {
+        @SuppressWarnings("unused")
         public void add(EnableAttribute b) {
             // Ignore
         }
@@ -153,7 +151,7 @@ public class RuntimeConfigurable implements Serializable {
      * @return AttributeComponentInformation instance
      */
     private AttributeComponentInformation isRestrictedAttribute(String name, ComponentHelper componentHelper) {
-        if (name.indexOf(':') == -1) {
+        if (!name.contains(":")) {
             return new AttributeComponentInformation(null, false);
         }
         String componentName = attrToComponent(name);
@@ -175,6 +173,7 @@ public class RuntimeConfigurable implements Serializable {
      *              false.
      * @since 1.9.1
      */
+    @SuppressWarnings("deprecation")
     public boolean isEnabled(UnknownElement owner) {
         if (!namespacedAttribute) {
             return true;
@@ -182,16 +181,15 @@ public class RuntimeConfigurable implements Serializable {
         ComponentHelper componentHelper = ComponentHelper
             .getComponentHelper(owner.getProject());
 
-        IntrospectionHelper ih
-            = IntrospectionHelper.getHelper(
-                owner.getProject(), EnableAttributeConsumer.class);
-        for (int i = 0; i < attributeMap.keySet().size(); ++i) {
-            String name = (String) attributeMap.keySet().toArray()[i];
-            AttributeComponentInformation attributeComponentInformation = isRestrictedAttribute(name, componentHelper);
+        IntrospectionHelper ih = IntrospectionHelper.getHelper(owner.getProject(),
+                EnableAttributeConsumer.class);
+        for (Map.Entry<String, Object> entry : attributeMap.entrySet()) {
+            AttributeComponentInformation attributeComponentInformation
+                    = isRestrictedAttribute(entry.getKey(), componentHelper);
             if (!attributeComponentInformation.isRestricted())  {
                 continue;
             }
-            String value = (String) attributeMap.get(name);
+            String value = (String) entry.getValue();
             EnableAttribute enable = null;
             try {
                 enable = (EnableAttribute)
@@ -285,7 +283,7 @@ public class RuntimeConfigurable implements Serializable {
      * @param value the attribute's value.
      */
     public synchronized void setAttribute(String name, String value) {
-        if (name.indexOf(':') != -1) {
+        if (name.contains(":")) {
             namespacedAttribute = true;
         }
         setAttribute(name, (Object) value);
@@ -334,8 +332,7 @@ public class RuntimeConfigurable implements Serializable {
      * @since Ant 1.6
      */
     public synchronized Hashtable<String, Object> getAttributeMap() {
-        return (attributeMap == null)
-            ? EMPTY_HASHTABLE : new Hashtable<>(attributeMap);
+        return new Hashtable<>(attributeMap == null ? Collections.emptyMap() : attributeMap);
     }
 
     /**
@@ -390,7 +387,7 @@ public class RuntimeConfigurable implements Serializable {
      *        Should not be <code>null</code>.
      */
     public synchronized void addText(String data) {
-        if (data.length() == 0) {
+        if (data.isEmpty()) {
             return;
         }
         characters = (characters == null)
@@ -530,23 +527,22 @@ public class RuntimeConfigurable implements Serializable {
                     ih.setAttribute(p, target, name, attrValue);
                 } catch (UnsupportedAttributeException be) {
                     // id attribute must be set externally
-                    if ("id".equals(name)) {
-                        // Do nothing
-                    } else if (getElementTag() == null) {
-                        throw be;
-                    } else {
-                        throw new BuildException(
-                            getElementTag() + " doesn't support the \""
-                            + be.getAttribute() + "\" attribute", be);
+                    if (!"id".equals(name)) {
+                        if (getElementTag() == null) {
+                            throw be;
+                        } else {
+                            throw new BuildException(
+                                getElementTag() + " doesn't support the \""
+                                + be.getAttribute() + "\" attribute", be);
+                        }
                     }
                 } catch (BuildException be) {
-                    if ("id".equals(name)) {
-                        // Assume that this is an not supported attribute type
-                        // thrown for example by a dynamic attribute task
-                        // Do nothing
-                    } else {
+                    if (!"id".equals(name)) {
                         throw be;
                     }
+                    // Assume that this is an not supported attribute type
+                    // thrown for example by a dynamic attribute task --
+                    // do nothing
                 }
             }
         }

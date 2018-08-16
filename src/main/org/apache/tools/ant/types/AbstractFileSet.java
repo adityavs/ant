@@ -37,8 +37,8 @@ import org.apache.tools.ant.types.selectors.DateSelector;
 import org.apache.tools.ant.types.selectors.DependSelector;
 import org.apache.tools.ant.types.selectors.DepthSelector;
 import org.apache.tools.ant.types.selectors.DifferentSelector;
-import org.apache.tools.ant.types.selectors.ExtendSelector;
 import org.apache.tools.ant.types.selectors.ExecutableSelector;
+import org.apache.tools.ant.types.selectors.ExtendSelector;
 import org.apache.tools.ant.types.selectors.FileSelector;
 import org.apache.tools.ant.types.selectors.FilenameSelector;
 import org.apache.tools.ant.types.selectors.MajoritySelector;
@@ -46,6 +46,8 @@ import org.apache.tools.ant.types.selectors.NoneSelector;
 import org.apache.tools.ant.types.selectors.NotSelector;
 import org.apache.tools.ant.types.selectors.OrSelector;
 import org.apache.tools.ant.types.selectors.OwnedBySelector;
+import org.apache.tools.ant.types.selectors.PosixGroupSelector;
+import org.apache.tools.ant.types.selectors.PosixPermissionsSelector;
 import org.apache.tools.ant.types.selectors.PresentSelector;
 import org.apache.tools.ant.types.selectors.ReadableSelector;
 import org.apache.tools.ant.types.selectors.SelectSelector;
@@ -195,7 +197,7 @@ public abstract class AbstractFileSet extends DataType
 
     /**
      * Add a name entry to the include files list.
-     * @return <code>PatternSet.NameEntry</code>.
+     * @return <code>PatternSet.PatternFileNameEntry</code>.
      */
     public synchronized PatternSet.NameEntry createIncludesFile() {
         if (isReference()) {
@@ -219,7 +221,7 @@ public abstract class AbstractFileSet extends DataType
 
     /**
      * Add a name entry to the excludes files list.
-     * @return <code>PatternSet.NameEntry</code>.
+     * @return <code>PatternSet.PatternFileNameEntry</code>.
      */
     public synchronized PatternSet.NameEntry createExcludesFile() {
         if (isReference()) {
@@ -238,7 +240,16 @@ public abstract class AbstractFileSet extends DataType
         if (isReference()) {
             throw tooManyAttributes();
         }
-        if (getDir() != null) {
+        if (fileAttributeUsed) {
+            if (getDir().equals(file.getParentFile())) {
+                String[] includes = defaultPatterns.getIncludePatterns(getProject());
+                if (includes.length == 1 && includes[0].equals(file.getName())) {
+                    // NOOP, setFile has been invoked twice with the same parameter
+                    return;
+                }
+            }
+            throw new BuildException("setFile cannot be called twice with different arguments");
+        } else if (getDir() != null) {
             throw dirAndFileAreMutuallyExclusive();
         }
         setDir(file.getParentFile());
@@ -274,8 +285,8 @@ public abstract class AbstractFileSet extends DataType
             throw tooManyAttributes();
         }
         if (includes != null) {
-            for (int i = 0; i < includes.length; i++) {
-                defaultPatterns.createInclude().setName(includes[i]);
+            for (String include : includes) {
+                defaultPatterns.createInclude().setName(include);
             }
             directoryScanner = null;
         }
@@ -298,7 +309,7 @@ public abstract class AbstractFileSet extends DataType
     }
 
     /**
-     * Appends <code>excludes</code> to the current list of include
+     * Appends <code>excludes</code> to the current list of exclude
      * patterns.
      *
      * @param excludes array containing the exclude patterns.
@@ -309,8 +320,8 @@ public abstract class AbstractFileSet extends DataType
             throw tooManyAttributes();
         }
         if (excludes != null) {
-            for (int i = 0; i < excludes.length; i++) {
-                defaultPatterns.createExclude().setName(excludes[i]);
+            for (String exclude : excludes) {
+                defaultPatterns.createExclude().setName(exclude);
             }
             directoryScanner = null;
         }
@@ -583,7 +594,7 @@ public abstract class AbstractFileSet extends DataType
             return getRef(getProject()).hasSelectors();
         }
         dieOnCircularReference();
-        return !(selectors.isEmpty());
+        return !selectors.isEmpty();
     }
 
     /**
@@ -596,10 +607,8 @@ public abstract class AbstractFileSet extends DataType
             return getRef(getProject()).hasPatterns();
         }
         dieOnCircularReference();
-        if (defaultPatterns.hasPatterns(getProject())) {
-            return true;
-        }
-        return additionalPatterns.stream().anyMatch(ps -> ps.hasPatterns(getProject()));
+        return defaultPatterns.hasPatterns(getProject())
+                || additionalPatterns.stream().anyMatch(ps -> ps.hasPatterns(getProject()));
     }
 
     /**
@@ -817,7 +826,7 @@ public abstract class AbstractFileSet extends DataType
     /**
      * Add the modified selector.
      * @param selector the <code>ModifiedSelector</code> to add.
-     * @since ant 1.6
+     * @since Ant 1.6
      */
     @Override
     public void addModified(ModifiedSelector selector) {
@@ -857,6 +866,22 @@ public abstract class AbstractFileSet extends DataType
     }
 
     /**
+     * @param o PosixGroupSelector
+     * @since 1.10.4
+     */
+    public void addPosixGroup(PosixGroupSelector o) {
+        appendSelector(o);
+    }
+
+    /**
+     * @param o PosixPermissionsSelector
+     * @since 1.10.4
+     */
+    public void addPosixPermissions(PosixPermissionsSelector o) {
+        appendSelector(o);
+    }
+
+    /**
      * Add an arbitrary selector.
      * @param selector the <code>FileSelector</code> to add.
      * @since Ant 1.6
@@ -878,7 +903,7 @@ public abstract class AbstractFileSet extends DataType
         }
         dieOnCircularReference();
         DirectoryScanner ds = getDirectoryScanner(getProject());
-        return Stream.of(ds.getIncludedFiles()).collect(Collectors.joining(File.pathSeparator));
+        return Stream.of(ds.getIncludedFiles()).collect(Collectors.joining(";"));
     }
 
     /**
@@ -889,15 +914,15 @@ public abstract class AbstractFileSet extends DataType
      * @since Ant 1.6
      */
     @Override
-    public synchronized AbstractFileSet clone() {
+    public synchronized Object clone() {
         if (isReference()) {
             return (getRef(getProject())).clone();
         }
         try {
             AbstractFileSet fs = (AbstractFileSet) super.clone();
-            fs.defaultPatterns = defaultPatterns.clone();
-            fs.additionalPatterns = additionalPatterns.stream().map(
-                    PatternSet::clone).map(PatternSet.class::cast).collect(Collectors.toList());
+            fs.defaultPatterns = (PatternSet) defaultPatterns.clone();
+            fs.additionalPatterns = additionalPatterns.stream().map(PatternSet::clone)
+                    .map(PatternSet.class::cast).collect(Collectors.toList());
             fs.selectors = new ArrayList<>(selectors);
             return fs;
         } catch (CloneNotSupportedException e) {
@@ -942,7 +967,7 @@ public abstract class AbstractFileSet extends DataType
             return getRef(p).mergePatterns(p);
         }
         dieOnCircularReference();
-        PatternSet ps = defaultPatterns.clone();
+        PatternSet ps = (PatternSet) defaultPatterns.clone();
         additionalPatterns.forEach(pat -> ps.append(pat, p));
         return ps;
     }
@@ -956,12 +981,9 @@ public abstract class AbstractFileSet extends DataType
         if (isReference()) {
             super.dieOnCircularReference(stk, p);
         } else {
-            selectors.stream().filter(DataType.class::isInstance).forEach(fileSelector ->
-                pushAndInvokeCircularReferenceCheck((DataType) fileSelector, stk, p)
-            );
-            for (PatternSet ps : additionalPatterns) {
-                pushAndInvokeCircularReferenceCheck(ps, stk, p);
-            }
+            selectors.stream().filter(DataType.class::isInstance).map(DataType.class::cast)
+                    .forEach(type -> pushAndInvokeCircularReferenceCheck(type, stk, p));
+            additionalPatterns.forEach(ps -> pushAndInvokeCircularReferenceCheck(ps, stk, p));
             setChecked(true);
         }
     }

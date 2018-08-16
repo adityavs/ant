@@ -28,10 +28,11 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.StringTokenizer;
+import java.util.stream.Collectors;
+
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.AbstractCvsTask;
-import org.apache.tools.ant.util.CollectionUtils;
 import org.apache.tools.ant.util.DOMElementWriter;
 import org.apache.tools.ant.util.DOMUtils;
 import org.apache.tools.ant.util.FileUtils;
@@ -420,18 +421,17 @@ public class CvsTagDiff extends AbstractCvsTask {
 
             root.setAttribute("cvsroot", getCvsRoot());
             root.setAttribute("package",
-                              CollectionUtils.flattenToString(packageNames));
+                    packageNames.stream().collect(Collectors.joining(",")));
             DOM_WRITER.openElement(root, writer, 0, "\t");
             writer.println();
-            for (int i = 0, c = entries.length; i < c; i++) {
-                writeTagEntry(doc, writer, entries[i]);
+            for (CvsTagEntry entry : entries) {
+                writeTagEntry(doc, writer, entry);
             }
             DOM_WRITER.closeElement(root, writer, 0, "\t", true);
             writer.flush();
             if (writer.checkError()) {
                 throw new IOException("Encountered an error writing tagdiff");
             }
-            writer.close();
         } catch (UnsupportedEncodingException uee) {
             log(uee.toString(), Project.MSG_ERR);
         } catch (IOException ioe) {
@@ -468,7 +468,7 @@ public class CvsTagDiff extends AbstractCvsTask {
      * @exception BuildException if a parameter is not correctly set
      */
     private void validate() throws BuildException {
-        if (null == mypackage && getModules().size() == 0) {
+        if (null == mypackage && getModules().isEmpty()) {
             throw new BuildException("Package/module must be set.");
         }
 

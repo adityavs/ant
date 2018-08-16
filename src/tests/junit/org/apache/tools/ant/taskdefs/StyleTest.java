@@ -27,10 +27,12 @@ import org.apache.tools.ant.FileUtilities;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
-import static org.junit.Assert.assertEquals;
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 
 /**
@@ -43,21 +45,23 @@ public class StyleTest {
     @Rule
     public final BuildFileRule buildRule = new BuildFileRule();
 
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         buildRule.configureProject("src/etc/testcases/taskdefs/style/build.xml");
     }
 
+    /**
+     * Expected failure: no stylesheet specified
+     */
     @Test
-    public void testStyleIsSet() throws Exception {
-
-        try {
-            buildRule.executeTarget("testStyleIsSet");
-            fail("Must throws a BuildException: no stylesheet specified");
-        } catch (BuildException ex) {
-            assertEquals("specify the stylesheet either as a filename in style attribute or as a nested resource",
-                    ex.getMessage());
-        }
+    public void testStyleIsSet() {
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("specify the stylesheet either as a filename in style attribute or "
+                + "as a nested resource");
+        buildRule.executeTarget("testStyleIsSet");
     }
 
     @Test
@@ -106,8 +110,7 @@ public class StyleTest {
     }
 
     public void testDefaultMapper(String target) throws Exception {
-        assertTrue(!(
-                new File(buildRule.getOutputDir().getAbsoluteFile(), "data.html").exists()));
+        assertFalse(new File(buildRule.getOutputDir().getAbsoluteFile(), "data.html").exists());
         expectFileContains(target,
                            buildRule.getOutputDir().getAbsoluteFile() + "/data.html",
                            "set='myvalue'");
@@ -115,7 +118,7 @@ public class StyleTest {
 
     @Test
     public void testCustomMapper() throws Exception {
-        assertTrue(!new File(buildRule.getOutputDir().getAbsoluteFile(),  "out.xml").exists());
+        assertFalse(new File(buildRule.getOutputDir().getAbsoluteFile(), "out.xml").exists());
         expectFileContains("testCustomMapper",
                            buildRule.getOutputDir().getAbsoluteFile() + "/out.xml",
                            "set='myvalue'");
@@ -123,35 +126,35 @@ public class StyleTest {
 
     @Test
     public void testTypedMapper() throws Exception {
-        assertTrue(!new File(buildRule.getOutputDir().getAbsoluteFile(),  "out.xml").exists());
+        assertFalse(new File(buildRule.getOutputDir().getAbsoluteFile(), "out.xml").exists());
         expectFileContains("testTypedMapper",
                            buildRule.getOutputDir().getAbsoluteFile() + "/out.xml",
                            "set='myvalue'");
     }
 
     @Test
-    public void testDirectoryHierarchyWithDirMatching() throws Exception {
+    public void testDirectoryHierarchyWithDirMatching() {
         buildRule.executeTarget("testDirectoryHierarchyWithDirMatching");
         assertTrue(new File(buildRule.getOutputDir().getAbsoluteFile(),  "dest/level1/data.html")
                    .exists());
     }
 
     @Test
-    public void testDirsWithSpaces() throws Exception {
+    public void testDirsWithSpaces() {
         buildRule.executeTarget("testDirsWithSpaces");
         assertTrue(new File(buildRule.getOutputDir().getAbsoluteFile(),  "d est/data.html")
                    .exists());
     }
 
+    /**
+     * Expected failure: stylesheet specified twice
+     */
     @Test
     public void testWithStyleAttrAndResource() {
-        try {
-            buildRule.executeTarget("testWithStyleAttrAndResource");
-            fail("Must throws a BuildException");
-        } catch (BuildException ex) {
-            assertEquals("specify the stylesheet either as a filename in style attribute or as a "
-                    + "nested resource but not as both", ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("specify the stylesheet either as a filename in style attribute or "
+                + "as a nested resource but not as both");
+        buildRule.executeTarget("testWithStyleAttrAndResource");
     }
 
     @Test
@@ -228,11 +231,8 @@ public class StyleTest {
 
     private void assertFileContains(String filename, String contains) throws IOException {
         String content = getFileString(filename);
-        assertTrue(
-              "expecting file " + filename
-            + " to contain " + contains
-            + " but got " + content,
-            content.indexOf(contains) > -1);
+        assertThat("expecting file " + filename + " to contain " + contains + " but got " + content,
+                content, containsString(contains));
     }
 
 }

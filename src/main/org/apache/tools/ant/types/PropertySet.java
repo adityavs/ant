@@ -19,18 +19,17 @@
 package org.apache.tools.ant.types;
 
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Stack;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.tools.ant.BuildException;
@@ -276,17 +275,12 @@ public class PropertySet extends DataType implements ResourceCollection {
 
     /**
      * Convert the system properties to a Map.
-     * Use propertynames to get the list of properties (including
+     * Use stringPropertyNames to get the list of properties (including
      * default ones).
      */
     private Map<String, Object> getAllSystemProperties() {
-        Map<String, Object>  ret = new HashMap<>();
-        for (Enumeration<?> e = System.getProperties().propertyNames();
-             e.hasMoreElements();) {
-            String name = (String) e.nextElement();
-            ret.put(name, System.getProperties().getProperty(name));
-        }
-        return ret;
+        return System.getProperties().stringPropertyNames().stream()
+                .collect(Collectors.toMap(name -> name, name -> System.getProperties().getProperty(name), (a, b) -> b));
     }
 
     /**
@@ -405,17 +399,19 @@ public class PropertySet extends DataType implements ResourceCollection {
                     }
                 }
             } else if (r.builtin != null) {
-
-                if (r.builtin.equals(BuiltinPropertySetName.ALL)) {
-                    names.addAll(props.keySet());
-                } else if (r.builtin.equals(BuiltinPropertySetName.SYSTEM)) {
-                    names.addAll(getAllSystemProperties().keySet());
-                } else if (r.builtin.equals(BuiltinPropertySetName
-                                              .COMMANDLINE)) {
-                    names.addAll(getProject().getUserProperties().keySet());
-                } else {
-                    throw new BuildException("Impossible: Invalid builtin "
-                                             + "attribute!");
+                switch (r.builtin) {
+                    case BuiltinPropertySetName.ALL:
+                        names.addAll(props.keySet());
+                        break;
+                    case BuiltinPropertySetName.SYSTEM:
+                        names.addAll(getAllSystemProperties().keySet());
+                        break;
+                    case BuiltinPropertySetName.COMMANDLINE:
+                        names.addAll(getProject().getUserProperties().keySet());
+                        break;
+                    default:
+                        throw new BuildException("Impossible: Invalid builtin "
+                                + "attribute!");
                 }
             } else {
                 throw new BuildException("Impossible: Invalid PropertyRef!");
@@ -497,17 +493,8 @@ public class PropertySet extends DataType implements ResourceCollection {
             return getRef().toString();
         }
         dieOnCircularReference();
-        StringBuilder b = new StringBuilder();
-        TreeMap<String, Object> sorted = new TreeMap<>(getPropertyMap());
-        for (Entry<String, Object> e : sorted.entrySet()) {
-            if (b.length() != 0) {
-                b.append(", ");
-            }
-            b.append(e.getKey());
-            b.append("=");
-            b.append(e.getValue());
-        }
-        return b.toString();
+        return new TreeMap<>(getPropertyMap()).entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue()).collect(Collectors.joining(", "));
     }
 
     /**
@@ -566,8 +553,7 @@ public class PropertySet extends DataType implements ResourceCollection {
                 pushAndInvokeCircularReferenceCheck(mapper, stk, p);
             }
             for (PropertySet propertySet : setRefs) {
-                pushAndInvokeCircularReferenceCheck(propertySet, stk,
-                                                    p);
+                pushAndInvokeCircularReferenceCheck(propertySet, stk, p);
             }
             setChecked(true);
         }

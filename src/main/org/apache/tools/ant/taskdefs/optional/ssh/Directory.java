@@ -61,9 +61,7 @@ public class Directory {
      * @param directory a Directory
      */
     public void addDirectory(Directory directory) {
-        if (!childDirectories.contains(directory)) {
-            childDirectories.add(directory);
-        }
+        childDirectories.add(directory);
     }
 
     /**
@@ -140,13 +138,12 @@ public class Directory {
             return true;
         }
 
-        if (!(obj instanceof Directory)) {
-            return false;
+        if (obj instanceof Directory) {
+            Directory d = (Directory) obj;
+            return this.directory.equals(d.directory);
         }
 
-        Directory d = (Directory) obj;
-
-        return this.directory.equals(d.directory);
+        return false;
     }
 
     /**
@@ -175,7 +172,7 @@ public class Directory {
     public static String[] getPath(String thePath) {
         StringTokenizer tokenizer = new StringTokenizer(thePath,
                 File.separator);
-        String[] path = new String[ tokenizer.countTokens() ];
+        String[] path = new String[tokenizer.countTokens()];
 
         int i = 0;
         while (tokenizer.hasMoreTokens()) {

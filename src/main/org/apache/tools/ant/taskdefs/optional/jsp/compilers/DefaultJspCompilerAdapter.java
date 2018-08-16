@@ -35,8 +35,6 @@ import org.apache.tools.ant.types.CommandlineJava;
 public abstract class DefaultJspCompilerAdapter
     implements JspCompilerAdapter {
 
-    private static String lSep = System.lineSeparator();
-
     /**
      * Logs the compilation parameters, adds the files to compile and logs the
      * &quot;niceSourceList&quot;
@@ -50,15 +48,12 @@ public abstract class DefaultJspCompilerAdapter
         jspc.log("Compilation " + cmd.describeJavaCommand(),
                  Project.MSG_VERBOSE);
 
-        StringBuilder niceSourceList =
-            new StringBuilder(compileList.size() == 1 ? "File" : "Files")
-                .append(" to be compiled:").append(lSep)
-                .append(compileList.stream()
-                    .peek(arg -> cmd.createArgument().setValue(arg))
-                    .map(arg -> "    " + arg)
-                    .collect(Collectors.joining(lSep)));
-
-        jspc.log(niceSourceList.toString(), Project.MSG_VERBOSE);
+        String niceSourceList = compileList.stream()
+                        .peek(arg -> cmd.createArgument().setValue(arg))
+                        .map(arg -> String.format("    %s%n", arg))
+                        .collect(Collectors.joining(""));
+        jspc.log(String.format("File%s to be compiled:%n%s",
+                compileList.size() == 1 ? "" : "s", niceSourceList), Project.MSG_VERBOSE);
     }
 
     // CheckStyle:VisibilityModifier OFF - bc
@@ -87,19 +82,19 @@ public abstract class DefaultJspCompilerAdapter
     }
 
     /**
-     * add a single argument to the argument list, if the value aint null
+     * add a single argument to the argument list, if the value isn't null
      * @param cmd the command line
      * @param  argument  The argument
      */
     protected void addArg(CommandlineJava cmd, String argument) {
-        if (argument != null && argument.length() != 0) {
+        if (argument != null && !argument.isEmpty()) {
            cmd.createArgument().setValue(argument);
         }
     }
 
 
     /**
-     *  add an argument tuple to the argument list, if the value aint null
+     *  add an argument tuple to the argument list, if the value isn't null
      * @param cmd the command line
      * @param  argument  The argument
      * @param  value     the parameter
@@ -112,7 +107,7 @@ public abstract class DefaultJspCompilerAdapter
     }
 
     /**
-     *  add an argument tuple to the arg list, if the file parameter aint null
+     *  add an argument tuple to the arg list, if the file parameter isn't null
      * @param cmd the command line
      * @param  argument  The argument
      * @param  file     the parameter

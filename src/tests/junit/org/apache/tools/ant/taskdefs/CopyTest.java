@@ -23,22 +23,26 @@ import org.apache.tools.ant.BuildFileRule;
 import org.apache.tools.ant.FileUtilities;
 import org.apache.tools.ant.taskdefs.condition.Os;
 import org.apache.tools.ant.util.FileUtils;
-import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 
-import static org.apache.tools.ant.AntAssert.assertContains;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.endsWith;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 
 /**
  * Tests FileSet using the Copy task.
@@ -49,6 +53,8 @@ public class CopyTest {
     @Rule
     public final BuildFileRule buildRule = new BuildFileRule();
 
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     @Before
     public void setUp() {
@@ -60,70 +66,62 @@ public class CopyTest {
     public void test1() {
         buildRule.executeTarget("test1");
         File f = new File(buildRule.getProject().getProperty("output"), "copytest1.tmp");
-        if (!f.exists()) {
-            fail("Copy failed");
-        }
+        assertTrue("Copy failed", f.exists());
     }
 
     @Test
     public void test2() {
         buildRule.executeTarget("test2");
         File f = new File(buildRule.getProject().getProperty("output"), "copytest1dir/copy.xml");
-        if (!f.exists()) {
-            fail("Copy failed");
-        }
+        assertTrue("Copy failed", f.exists());
     }
 
     @Test
     public void test3() {
         buildRule.executeTarget("test3");
-        File file3  = new File(buildRule.getProject().getProperty("output"), "copytest3.tmp");
-        //rollback file timestamp instead of delaying test
+        final String output = buildRule.getProject().getProperty("output");
+        final File file3 = new File(output, "copytest3.tmp");
+        // rollback file timestamp instead of delaying test
         FileUtilities.rollbackTimestamps(file3, 3);
         buildRule.executeTarget("test3Part2");
         assertTrue(file3.exists());
 
-        File file3a = new File(buildRule.getProject().getProperty("output"), "copytest3a.tmp");
+        File file3a = new File(output, "copytest3a.tmp");
         assertTrue(file3a.exists());
-        File file3b = new File(buildRule.getProject().getProperty("output"), "copytest3b.tmp");
+        File file3b = new File(output, "copytest3b.tmp");
         assertTrue(file3b.exists());
-        File file3c = new File(buildRule.getProject().getProperty("output"), "copytest3c.tmp");
+        File file3c = new File(output, "copytest3c.tmp");
         assertTrue(file3c.exists());
 
-        //file length checks rely on touch generating a zero byte file
-        if (file3.length()==0) {
-            fail("could not overwrite an existing, older file");
-        }
-        if (file3c.length()!=0) {
-            fail("could not force overwrite an existing, newer file");
-        }
-        if (file3b.length()==0) {
-            fail("unexpectedly overwrote an existing, newer file");
-        }
+        // file length checks rely on touch generating a zero byte file
 
-        //file time checks for java1.2+
-        assertTrue(file3a.lastModified() == file3.lastModified());
+        assertNotEquals("could not overwrite an existing, older file", 0, file3.length());
+        assertEquals("could not force overwrite an existing, newer file", 0, file3c.length());
+        assertNotEquals("unexpectedly overwrote an existing, newer file", 0, file3b.length());
+
+        // file time checks for java1.2+
+        assertEquals(file3a.lastModified(), file3.lastModified());
         assertTrue(file3c.lastModified() < file3a.lastModified());
-
     }
 
     @Test
     public void testFilterTest() {
         buildRule.executeTarget("filtertest");
-        assertTrue(buildRule.getLog().indexOf("loop in tokens") == -1);
+        assertThat(buildRule.getLog(), not(containsString("loop in tokens")));
     }
 
     @Test
     public void testInfiniteFilter() {
         buildRule.executeTarget("infinitetest");
-        assertContains("loop in tokens", buildRule.getOutput());
+        assertThat(buildRule.getOutput(), containsString("loop in tokens"));
     }
 
     @Test
     public void testFilterSet() throws IOException {
         buildRule.executeTarget("testFilterSet");
-        File tmp  = new File(buildRule.getProject().getProperty("output"), "copy.filterset.tmp");
-        File check  = new File(buildRule.getProject().getBaseDir(), "expected/copy.filterset.filtered");
+        File tmp = new File(buildRule.getProject().getProperty("output"), "copy.filterset.tmp");
+        File check = new File(buildRule.getProject().getBaseDir(),
+                "expected/copy.filterset.filtered");
         assertTrue(tmp.exists());
         assertEquals(FileUtilities.getFileContents(tmp), FileUtilities.getFileContents(check));
     }
@@ -131,8 +129,9 @@ public class CopyTest {
     @Test
     public void testFilterChain() throws IOException {
         buildRule.executeTarget("testFilterChain");
-        File tmp  = new File(buildRule.getProject().getProperty("output"), "copy.filterchain.tmp");
-        File check  = new File(buildRule.getProject().getBaseDir(), "expected/copy.filterset.filtered");
+        File tmp = new File(buildRule.getProject().getProperty("output"), "copy.filterchain.tmp");
+        File check = new File(buildRule.getProject().getBaseDir(),
+                "expected/copy.filterset.filtered");
         assertTrue(tmp.exists());
         assertEquals(FileUtilities.getFileContents(tmp), FileUtilities.getFileContents(check));
     }
@@ -140,16 +139,16 @@ public class CopyTest {
     @Test
     public void testSingleFileFileset() {
         buildRule.executeTarget("test_single_file_fileset");
-        File file  = new File(buildRule.getProject().getProperty("output"),
-                                        "copytest_single_file_fileset.tmp");
+        File file = new File(buildRule.getProject().getProperty("output"),
+                "copytest_single_file_fileset.tmp");
         assertTrue(file.exists());
     }
 
     @Test
     public void testSingleFilePath() {
         buildRule.executeTarget("test_single_file_path");
-        File file  = new File(buildRule.getProject().getProperty("output"),
-                                        "copytest_single_file_path.tmp");
+        File file = new File(buildRule.getProject().getProperty("output"),
+                "copytest_single_file_path.tmp");
         assertTrue(file.exists());
     }
 
@@ -164,57 +163,46 @@ public class CopyTest {
     @Test
     public void testMissingFileIgnore() {
         buildRule.executeTarget("testMissingFileIgnore");
-        assertContains("Warning: Could not find file", buildRule.getLog());
+        assertThat(buildRule.getLog(), containsString("Warning: Could not find file"));
     }
 
     @Test
     public void testMissingFileBail() {
-        try {
-            buildRule.executeTarget("testMissingFileBail");
-            fail("not-there doesn't exist");
-        } catch (BuildException ex) {
-            assertTrue(ex.getMessage()
-                    .startsWith("Warning: Could not find file "));
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage(startsWith("Warning: Could not find file "));
+        buildRule.executeTarget("testMissingFileBail");
     }
 
     @Test
     public void testMissingDirIgnore() {
         buildRule.executeTarget("testMissingDirIgnore");
-        assertContains("Warning: ", buildRule.getLog());
+        assertThat(buildRule.getLog(), containsString("Warning: "));
     }
 
     @Test
     public void testMissingDirBail() {
-        try {
-            buildRule.executeTarget("testMissingDirBail");
-            fail("not-there doesn't exist");
-        } catch (BuildException ex) {
-            assertTrue(ex.getMessage().endsWith(" does not exist."));
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage(endsWith(" does not exist."));
+        buildRule.executeTarget("testMissingDirBail");
     }
 
     @Test
     public void testFileResourcePlain() {
         buildRule.executeTarget("testFileResourcePlain");
-        File file1 = new File(buildRule.getProject().getProperty("to.dir") + "/file1.txt");
-        File file2 = new File(buildRule.getProject().getProperty("to.dir") + "/file2.txt");
-        File file3 = new File(buildRule.getProject().getProperty("to.dir") + "/file3.txt");
-        assertTrue(file1.exists());
-        assertTrue(file2.exists());
-        assertTrue(file3.exists());
+        final String toDir = buildRule.getProject().getProperty("to.dir");
+        assertTrue(new File(toDir + "/file1.txt").exists());
+        assertTrue(new File(toDir + "/file2.txt").exists());
+        assertTrue(new File(toDir + "/file3.txt").exists());
     }
 
     @Ignore("Previously ignored by naming convention")
     @Test
     public void testFileResourceWithMapper() {
         buildRule.executeTarget("testFileResourceWithMapper");
-        File file1 = new File(buildRule.getProject().getProperty("to.dir") + "/file1.txt.bak");
-        File file2 = new File(buildRule.getProject().getProperty("to.dir") + "/file2.txt.bak");
-        File file3 = new File(buildRule.getProject().getProperty("to.dir") + "/file3.txt.bak");
-        assertTrue(file1.exists());
-        assertTrue(file2.exists());
-        assertTrue(file3.exists());
+        final String toDir = buildRule.getProject().getProperty("to.dir");
+        assertTrue(new File(toDir + "/file1.txt.bak").exists());
+        assertTrue(new File(toDir + "/file2.txt.bak").exists());
+        assertTrue(new File(toDir + "/file3.txt.bak").exists());
     }
 
     @Test
@@ -222,11 +210,9 @@ public class CopyTest {
         buildRule.executeTarget("testFileResourceWithFilter");
         File file1 = new File(buildRule.getProject().getProperty("to.dir") + "/fileNR.txt");
         assertTrue(file1.exists());
-        try {
-            try (FileReader f = new FileReader(file1)) {
-                String file1Content = FileUtils.readFully(f);
-                assertEquals("This is file 42", file1Content);
-            }
+        try (FileReader f = new FileReader(file1)) {
+            String file1Content = FileUtils.readFully(f);
+            assertEquals("This is file 42", file1Content);
         } catch (IOException e) {
             // no-op: not a real business error
         }
@@ -235,23 +221,19 @@ public class CopyTest {
     @Test
     public void testPathAsResource() {
         buildRule.executeTarget("testPathAsResource");
-        File file1 = new File(buildRule.getProject().getProperty("to.dir") + "/file1.txt");
-        File file2 = new File(buildRule.getProject().getProperty("to.dir") + "/file2.txt");
-        File file3 = new File(buildRule.getProject().getProperty("to.dir") + "/file3.txt");
-        assertTrue(file1.exists());
-        assertTrue(file2.exists());
-        assertTrue(file3.exists());
+        final String toDir = buildRule.getProject().getProperty("to.dir");
+        assertTrue(new File(toDir + "/file1.txt").exists());
+        assertTrue(new File(toDir + "/file2.txt").exists());
+        assertTrue(new File(toDir + "/file3.txt").exists());
     }
 
     @Test
     public void testZipfileset() {
         buildRule.executeTarget("testZipfileset");
-        File file1 = new File(buildRule.getProject().getProperty("to.dir") + "/file1.txt");
-        File file2 = new File(buildRule.getProject().getProperty("to.dir") + "/file2.txt");
-        File file3 = new File(buildRule.getProject().getProperty("to.dir") + "/file3.txt");
-        assertTrue(file1.exists());
-        assertTrue(file2.exists());
-        assertTrue(file3.exists());
+        final String toDir = buildRule.getProject().getProperty("to.dir");
+        assertTrue(new File(toDir + "/file1.txt").exists());
+        assertTrue(new File(toDir + "/file2.txt").exists());
+        assertTrue(new File(toDir + "/file3.txt").exists());
     }
 
     @Test
@@ -293,49 +275,43 @@ public class CopyTest {
     @Test
     public void testCopyToSymlinkedSelf() throws Exception {
         // we are only going to test against systems that support symlinks
-        Assume.assumeTrue("Symlinks not supported on this operating system", Os.isFamily(Os.FAMILY_UNIX));
+        assumeTrue("Symlinks not supported on this operating system", Os.isFamily(Os.FAMILY_UNIX));
 
         // setup the source files to run copying against
         buildRule.executeTarget("setupSelfCopyTesting");
         final File testDir = new File(buildRule.getProject().getProperty("self.copy.test.root.dir"));
-        Assert.assertTrue(testDir + " was expected to be a directory", testDir.isDirectory());
+        assertTrue(testDir + " was expected to be a directory", testDir.isDirectory());
         final File srcFile = new File(testDir, "file.txt");
-        Assert.assertTrue("Source file " + srcFile + " was expected to be a file", srcFile.isFile());
+        assertTrue("Source file " + srcFile + " was expected to be a file", srcFile.isFile());
         final long originalFileSize = srcFile.length();
         final String originalContent;
-        final BufferedReader reader = new BufferedReader(new FileReader(srcFile));
-        try {
+        try (BufferedReader reader = new BufferedReader(new FileReader(srcFile))) {
             originalContent = FileUtils.readFully(reader);
-        } finally {
-            reader.close();
         }
-        Assert.assertTrue("Content missing in file " + srcFile, originalContent != null && originalContent.length() > 0);
+        assertTrue("Content missing in file " + srcFile, originalContent != null && !originalContent.isEmpty());
 
         // run the copy tests
         buildRule.executeTarget("testSelfCopy");
         // make sure the source file hasn't been impacted by the copy
         assertSizeAndContent(srcFile, originalFileSize, originalContent);
         final File symlinkedFile = new File(testDir, "sylmink-file.txt");
-        Assert.assertTrue(symlinkedFile + " was expected to be a file", symlinkedFile.isFile());
+        assertTrue(symlinkedFile + " was expected to be a file", symlinkedFile.isFile());
         assertSizeAndContent(symlinkedFile, originalFileSize, originalContent);
 
         final File symlinkedTestDir = new File(buildRule.getProject().getProperty("self.copy.test.symlinked.dir"));
-        Assert.assertTrue(symlinkedTestDir + " was expected to be a directory", symlinkedTestDir.isDirectory());
+        assertTrue(symlinkedTestDir + " was expected to be a directory", symlinkedTestDir.isDirectory());
         assertSizeAndContent(new File(symlinkedTestDir, "file.txt"), originalFileSize, originalContent);
         assertSizeAndContent(new File(symlinkedTestDir, "sylmink-file.txt"), originalFileSize, originalContent);
 
     }
 
     private void assertSizeAndContent(final File file, final long expectedSize, final String expectedContent) throws IOException {
-        Assert.assertTrue(file + " was expected to be a file", file.isFile());
-        Assert.assertEquals("Unexpected size of file " + file, expectedSize, file.length());
-        final BufferedReader reader = new BufferedReader(new FileReader(file));
+        assertTrue(file + " was expected to be a file", file.isFile());
+        assertEquals("Unexpected size of file " + file, expectedSize, file.length());
         final String content;
-        try {
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             content = FileUtils.readFully(reader);
-        } finally {
-            reader.close();
         }
-        Assert.assertEquals("Unexpected content in file " + file, expectedContent, content);
+        assertEquals("Unexpected content in file " + file, expectedContent, content);
     }
 }

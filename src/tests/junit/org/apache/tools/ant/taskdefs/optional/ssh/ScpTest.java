@@ -22,7 +22,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import org.apache.tools.ant.BuildException;
@@ -40,7 +39,6 @@ import org.junit.Test;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 /**
  * This is a unit test for the Scp task in Ant.  It must be
@@ -66,7 +64,7 @@ public class ScpTest {
     private int port = Integer.parseInt(System.getProperty("scp.port", "22"));
     private String knownHosts = System.getProperty("scp.known.hosts");
 
-    private List cleanUpList = new ArrayList();
+    private List<File> cleanUpList = new ArrayList<>();
 
     @Before
     public void setUp() {
@@ -79,10 +77,7 @@ public class ScpTest {
 
     @After
     public void tearDown() {
-        for (Iterator i = cleanUpList.iterator(); i.hasNext();) {
-            File file = (File) i.next();
-            file.delete();
-        }
+        cleanUpList.forEach(File::delete);
     }
 
     @Test
@@ -113,7 +108,7 @@ public class ScpTest {
     @Test
     public void testMultiUploadAndDownload() throws IOException {
         assertNotNull("system property scp.tmp must be set", tempDir);
-        List uploadList = new ArrayList();
+        List<File> uploadList = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
             uploadList.add(createTemporaryFile());
         }
@@ -137,8 +132,7 @@ public class ScpTest {
         scpTask.execute();
 
         FilesMatch match = new FilesMatch();
-        for (Iterator i = uploadList.iterator(); i.hasNext();) {
-            File f = (File) i.next();
+        for (File f : uploadList) {
             match.setFile1(f);
             File f2 = new File(multi, f.getName());
             match.setFile2(f2);
@@ -175,22 +169,17 @@ public class ScpTest {
         scpTask.execute();
     }
 
+    /**
+     * Expected failure due to invalid remoteToDir
+     */
+    @Test(expected = BuildException.class)
+    public void testInvalidRemoteToDir() {
+        scpTask.setRemoteTodir("host:/a/path/without/an/at");
+    }
+
     @Test
-    public void testRemoteToDir() throws IOException {
-
-        // first try an invalid URI
-        try {
-            scpTask.setRemoteTodir("host:/a/path/without/an/at");
-            fail("Expected a BuildException to be thrown due to invalid"
-                    + " remoteToDir");
-        } catch (BuildException e) {
-            // expected
-            //TODO we should be asserting a value in here
-        }
-
-        // And this one should work
+    public void testRemoteToDir() {
         scpTask.setRemoteTodir("user:password@host:/a/path/with/an/at");
-        // no exception
     }
 
     private void addCleanup(File file) {

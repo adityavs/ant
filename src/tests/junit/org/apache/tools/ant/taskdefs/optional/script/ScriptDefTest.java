@@ -17,7 +17,6 @@
  */
 package org.apache.tools.ant.taskdefs.optional.script;
 
-import org.apache.tools.ant.AntAssert;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.BuildFileRule;
 import org.apache.tools.ant.Project;
@@ -25,12 +24,14 @@ import org.apache.tools.ant.types.FileSet;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import java.io.File;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 /**
  * Tests the examples of the &lt;scriptdef&gt; task.
@@ -42,6 +43,9 @@ public class ScriptDefTest {
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
 
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
     @Before
     public void setUp() {
         buildRule.configureProject("src/etc/testcases/taskdefs/optional/script/scriptdef.xml");
@@ -52,34 +56,33 @@ public class ScriptDefTest {
         buildRule.executeTarget("simple");
         // get the fileset and its basedir
         Project p = buildRule.getProject();
-        FileSet fileset = (FileSet) p.getReference("testfileset");
+        FileSet fileset = p.getReference("testfileset");
         File baseDir = fileset.getDir(p);
         String log = buildRule.getLog();
-        assertTrue("Expecting attribute value printed",
-            log.indexOf("Attribute attr1 = test") != -1);
-
-        assertTrue("Expecting nested element value printed",
-            log.indexOf("Fileset basedir = " + baseDir.getAbsolutePath()) != -1);
+        assertThat("Expecting attribute value printed", log,
+                containsString("Attribute attr1 = test"));
+        assertThat("Expecting nested element value printed", log,
+                containsString("Fileset basedir = " + baseDir.getAbsolutePath()));
     }
 
+    /**
+     * Expected failure due to lacking language attribute
+     */
     @Test
     public void testNoLang() {
-        try {
-            buildRule.executeTarget("nolang");
-            fail("Absence of language attribute not detected");
-        } catch(BuildException ex) {
-            AntAssert.assertContains("requires a language attribute", ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("requires a language attribute");
+        buildRule.executeTarget("nolang");
     }
 
+    /**
+     * Expected failure due to lacking name attribute
+     */
     @Test
     public void testNoName() {
-        try {
-            buildRule.executeTarget("noname");
-            fail("Absence of name attribute not detected");
-        } catch(BuildException ex) {
-            AntAssert.assertContains("scriptdef requires a name attribute", ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("scriptdef requires a name attribute");
+        buildRule.executeTarget("noname");
     }
 
     @Test
@@ -87,14 +90,13 @@ public class ScriptDefTest {
         buildRule.executeTarget("nestedbyclassname");
         // get the fileset and its basedir
         Project p = buildRule.getProject();
-        FileSet fileset = (FileSet) p.getReference("testfileset");
+        FileSet fileset = p.getReference("testfileset");
         File baseDir = fileset.getDir(p);
         String log = buildRule.getLog();
-        assertTrue("Expecting attribute value to be printed",
-            log.indexOf("Attribute attr1 = test") != -1);
-
-        assertTrue("Expecting nested element value to be printed",
-            log.indexOf("Fileset basedir = " + baseDir.getAbsolutePath()) != -1);
+        assertThat("Expecting attribute value to be printed", log,
+                containsString("Attribute attr1 = test"));
+        assertThat("Expecting nested element value to be printed", log,
+                containsString("Fileset basedir = " + baseDir.getAbsolutePath()));
     }
 
     @Test
@@ -105,39 +107,34 @@ public class ScriptDefTest {
 
     @Test
     public void testException() {
-        try {
-            buildRule.executeTarget("exception");
-            fail("Should have thrown an exception in the script");
-        } catch(BuildException ex) {
-            AntAssert.assertContains("TypeError", ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("TypeError");
+        buildRule.executeTarget("exception");
     }
 
     @Test
     public void testDoubleDef() {
         buildRule.executeTarget("doubledef");
         String log = buildRule.getLog();
-        assertTrue("Task1 did not execute", log.indexOf("Task1") != -1);
-        assertTrue("Task2 did not execute", log.indexOf("Task2") != -1);
+        assertThat("Task1 did not execute", log, containsString("Task1"));
+        assertThat("Task2 did not execute", log, containsString("Task2"));
     }
 
+    /**
+     * Expected failure due to duplicate attribute definition
+     */
     @Test
     public void testDoubleAttribute() {
-        try {
-            buildRule.executeTarget("doubleAttributeDef");
-            fail("Should have detected duplicate attirbute definition");
-        } catch(BuildException ex) {
-            AntAssert.assertContains("attr1 attribute more than once", ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("attr1 attribute more than once");
+        buildRule.executeTarget("doubleAttributeDef");
     }
 
     @Test
     public void testProperty() {
         buildRule.executeTarget("property");
-        // get the fileset and its basedir
-        String log = buildRule.getLog();
-        assertTrue("Expecting property in attribute value replaced",
-            log.indexOf("Attribute value = test") != -1);
+        assertThat("Expecting property in attribute value replaced",
+                buildRule.getLog(), containsString("Attribute value = test"));
     }
 
     @Test
@@ -149,17 +146,11 @@ public class ScriptDefTest {
 
     @Test
     public void testUseSrcAndEncodingFailure() {
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("expected <eacute [\u00e9]> but was <eacute [\u00c3\u00a9]>");
         final String readerEncoding = "ISO-8859-1";
         buildRule.getProject().setProperty("useSrcAndEncoding.reader.encoding", readerEncoding);
-        try {
-            buildRule.executeTarget("useSrcAndEncoding");
-            fail("should have failed with reader's encoding [" + readerEncoding +
-                "] different from the writer's encoding [" +
-                buildRule.getProject().getProperty("useSrcAndEncoding.encoding") + "]");
-        } catch(BuildException e) {
-            assertTrue(e.getMessage().matches(
-                    "expected <eacute \\[\u00e9]> but was <eacute \\[\u00c3\u00a9]>"));
-        }
+        buildRule.executeTarget("useSrcAndEncoding");
     }
 
     @Test

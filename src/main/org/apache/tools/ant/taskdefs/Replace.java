@@ -30,11 +30,9 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 import java.util.Properties;
 
 import org.apache.tools.ant.BuildException;
@@ -46,7 +44,7 @@ import org.apache.tools.ant.types.resources.FileProvider;
 import org.apache.tools.ant.types.resources.FileResource;
 import org.apache.tools.ant.types.resources.Union;
 import org.apache.tools.ant.util.FileUtils;
-import org.apache.tools.ant.util.StringUtils;
+import org.apache.tools.ant.util.StreamUtils;
 
 /**
  * Replaces all occurrences of one or more string tokens with given
@@ -150,18 +148,18 @@ public class Replace extends MatchingTask {
                     "token is a mandatory for replacefilter.");
             }
 
-            if ("".equals(token.getText())) {
+            if (token.getText().isEmpty()) {
                 throw new BuildException(
                     "The token must not be an empty string.");
             }
 
             //value and property are mutually exclusive attributes
-            if ((value != null) && (property != null)) {
+            if (value != null && property != null) {
                 throw new BuildException(
                     "Either value or property can be specified, but a replacefilter element cannot have both.");
             }
 
-            if ((property != null)) {
+            if (property != null) {
                 //the property attribute must have access to a property file
                 if (propertyResource == null) {
                     throw new BuildException(
@@ -287,7 +285,7 @@ public class Replace extends MatchingTask {
          * The filter expects from the component providing the input that data
          * is only added by that component to the end of this StringBuffer.
          * This StringBuffer will be modified by this filter, and expects that
-         * another component will only added to this StringBuffer.
+         * another component will only append to this StringBuffer.
          * @param input The input for this filter.
          */
         void setInputBuffer(StringBuffer input) {
@@ -306,7 +304,7 @@ public class Replace extends MatchingTask {
             String t = getToken();
             if (inputBuffer.length() > t.length()) {
                 int pos = replace();
-                pos = Math.max((inputBuffer.length() - t.length()), pos);
+                pos = Math.max(inputBuffer.length() - t.length(), pos);
                 outputBuffer.append(inputBuffer.substring(0, pos));
                 inputBuffer.delete(0, pos);
                 return true;
@@ -502,10 +500,10 @@ public class Replace extends MatchingTask {
             // as needed
             StringBuilder val = new StringBuilder(value.getText());
             stringReplace(val, "\r\n", "\n");
-            stringReplace(val, "\n", StringUtils.LINE_SEP);
+            stringReplace(val, "\n", System.lineSeparator());
             StringBuilder tok = new StringBuilder(token.getText());
             stringReplace(tok, "\r\n", "\n");
-            stringReplace(tok, "\n", StringUtils.LINE_SEP);
+            stringReplace(tok, "\n", System.lineSeparator());
             Replacefilter firstFilter = createPrimaryfilter();
             firstFilter.setToken(tok.toString());
             firstFilter.setValue(val.toString());
@@ -513,14 +511,12 @@ public class Replace extends MatchingTask {
 
         try {
             if (replaceFilterResource != null) {
-                Properties props = getProperties(replaceFilterResource);
-                Iterator<Object> e = getOrderedIterator(props);
-                while (e.hasNext()) {
-                    String tok = e.next().toString();
+                final Properties properties = getProperties(replaceFilterResource);
+                StreamUtils.iteratorAsStream(getOrderedIterator(properties)).forEach(tok -> {
                     Replacefilter replaceFilter = createReplacefilter();
                     replaceFilter.setToken(tok);
-                    replaceFilter.setValue(props.getProperty(tok));
-                }
+                    replaceFilter.setValue(properties.getProperty(tok));
+                });
             }
 
             validateAttributes();
@@ -587,7 +583,7 @@ public class Replace extends MatchingTask {
                 "Either token or a nested replacefilter must be specified",
                 getLocation());
         }
-        if (token != null && "".equals(token.getText())) {
+        if (token != null && token.getText().isEmpty()) {
             throw new BuildException(
                 "The token attribute must not be an empty string.",
                 getLocation());
@@ -626,9 +622,7 @@ public class Replace extends MatchingTask {
         throws BuildException {
         Properties props = new Properties();
 
-        try (
-            InputStream
-            in = propertyResource.getInputStream()){
+        try (InputStream in = propertyResource.getInputStream()) {
             props.load(in);
         } catch (IOException e) {
             throw new BuildException("Property resource (%s) cannot be loaded.",
@@ -716,9 +710,7 @@ public class Replace extends MatchingTask {
      */
     private StringBuffer buildFilterChain(StringBuffer inputBuffer) {
         StringBuffer buf = inputBuffer;
-        final int size = replacefilters.size();
-        for (int i = 0; i < size; i++) {
-            Replacefilter filter = replacefilters.get(i);
+        for (Replacefilter filter : replacefilters) {
             filter.setInputBuffer(buf);
             buf = filter.getOutputBuffer();
         }
@@ -942,10 +934,9 @@ public class Replace extends MatchingTask {
      *
      * @param props Properties
      */
-    private Iterator<Object> getOrderedIterator(Properties props) {
-        List<Object> keys = new ArrayList<>(props.keySet());
-        Collections.sort(keys, Comparator
-            .comparingInt(o -> Objects.toString(o, "").length()).reversed());
+    private Iterator<String> getOrderedIterator(Properties props) {
+        List<String> keys = new ArrayList<>(props.stringPropertyNames());
+        keys.sort(Comparator.comparingInt(String::length).reversed());
         return keys.iterator();
     }
 }

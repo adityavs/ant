@@ -25,7 +25,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.util.function.UnaryOperator;
@@ -61,11 +60,11 @@ public class BuiltinNative2Ascii implements Native2AsciiAdapter {
 
     private BufferedReader getReader(File srcFile, String encoding,
                                      boolean reverse) throws IOException {
-        if (!reverse && encoding != null) {
-            return new BufferedReader(new InputStreamReader(
-                Files.newInputStream(srcFile.toPath()), encoding));
+        if (reverse || encoding == null) {
+            return new BufferedReader(new FileReader(srcFile));
         }
-        return new BufferedReader(new FileReader(srcFile));
+        return new BufferedReader(new InputStreamReader(
+            Files.newInputStream(srcFile.toPath()), encoding));
     }
 
     private Writer getWriter(File destFile, String encoding,
@@ -73,21 +72,19 @@ public class BuiltinNative2Ascii implements Native2AsciiAdapter {
         if (!reverse) {
             encoding = "ASCII";
         }
-        if (encoding != null) {
-            return new BufferedWriter(
-                new OutputStreamWriter(Files.newOutputStream(destFile.toPath()),
-                                       encoding));
+        if (encoding == null) {
+            return new BufferedWriter(new FileWriter(destFile));
         }
-        return new BufferedWriter(new FileWriter(destFile));
+        return new BufferedWriter(
+            new OutputStreamWriter(Files.newOutputStream(destFile.toPath()),
+                                   encoding));
     }
 
     private void translate(BufferedReader input, Writer output,
         UnaryOperator<String> translation) throws IOException {
-        PrintWriter pw = new PrintWriter(output);
-
         for (String line : (Iterable<String>) () -> input.lines()
             .map(translation).iterator()) {
-            pw.println(line);
+            output.write(String.format("%s%n", line));
         }
     }
 }

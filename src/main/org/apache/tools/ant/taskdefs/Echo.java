@@ -31,7 +31,6 @@ import org.apache.tools.ant.types.resources.FileResource;
 import org.apache.tools.ant.types.resources.LogOutputResource;
 import org.apache.tools.ant.types.resources.StringResource;
 import org.apache.tools.ant.util.ResourceUtils;
-import org.apache.tools.ant.util.StringUtils;
 
 /**
  * Writes a message to the Ant logging facilities.
@@ -61,15 +60,12 @@ public class Echo extends Task {
      * @exception BuildException if something goes wrong with the build
      */
     public void execute() throws BuildException {
-        final String msg = "".equals(message) ? StringUtils.LINE_SEP : message;
         try {
-            ResourceUtils
-                    .copyResource(new StringResource(msg), output == null
-                                  ? new LogOutputResource(this, logLevel)
-                                  : output,
-                                  null, null, false, false, append, null,
-                                  "".equals(encoding) ? null : encoding,
-                                  getProject(), force);
+            ResourceUtils.copyResource(
+                    new StringResource(message.isEmpty() ? System.lineSeparator() : message),
+                    output == null ? new LogOutputResource(this, logLevel) : output,
+                    null, null, false, false, append, null,
+                    encoding.isEmpty() ? null : encoding, getProject(), force);
         } catch (IOException ioe) {
             throw new BuildException(ioe, getLocation());
         }

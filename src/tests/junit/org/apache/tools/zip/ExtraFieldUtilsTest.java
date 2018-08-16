@@ -18,12 +18,16 @@
 
 package org.apache.tools.zip;
 
-import org.junit.Before;
-import org.junit.Test;
-
+import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertThat;
+
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
+
+import java.util.zip.ZipException;
 
 /**
  * JUnit 4 testcases for org.apache.tools.zip.ExtraFieldUtils.
@@ -42,6 +46,9 @@ public class ExtraFieldUtilsTest implements UnixStat {
     private UnrecognizedExtraField dummy;
     private byte[] data;
     private byte[] aLocal;
+
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     @Before
     public void setUp() {
@@ -73,26 +80,22 @@ public class ExtraFieldUtilsTest implements UnixStat {
      */
     @Test
     public void testParse() throws Exception {
+        thrown.expect(ZipException.class);
+        thrown.expectMessage("bad extra field starting at " + (4 + aLocal.length)
+                        + ".  Block length of 1 bytes exceeds remaining data of 0 bytes.");
+
         ZipExtraField[] ze = ExtraFieldUtils.parse(data);
         assertEquals("number of fields", 2, ze.length);
-        assertTrue("type field 1", ze[0] instanceof AsiExtraField);
+        assertThat("type field 1", ze[0], instanceOf(AsiExtraField.class));
         assertEquals("mode field 1", 040755,
                      ((AsiExtraField) ze[0]).getMode());
-        assertTrue("type field 2", ze[1] instanceof UnrecognizedExtraField);
+        assertThat("type field 2", ze[1], instanceOf(UnrecognizedExtraField.class));
         assertEquals("data length field 2", 1,
                      ze[1].getLocalFileDataLength().getValue());
 
         byte[] data2 = new byte[data.length - 1];
         System.arraycopy(data, 0, data2, 0, data2.length);
-        try {
-            ExtraFieldUtils.parse(data2);
-            fail("data should be invalid");
-        } catch (Exception e) {
-            assertEquals("message",
-                         "bad extra field starting at " + (4 + aLocal.length)
-                         + ".  Block length of 1 bytes exceeds remaining data of 0 bytes.",
-                         e.getMessage());
-        }
+        ExtraFieldUtils.parse(data2);
     }
 
     @Test
@@ -101,10 +104,10 @@ public class ExtraFieldUtilsTest implements UnixStat {
             ExtraFieldUtils.parse(data, true,
                                   ExtraFieldUtils.UnparseableExtraField.READ);
         assertEquals("number of fields", 2, ze.length);
-        assertTrue("type field 1", ze[0] instanceof AsiExtraField);
+        assertThat("type field 1", ze[0], instanceOf(AsiExtraField.class));
         assertEquals("mode field 1", 040755,
                      ((AsiExtraField) ze[0]).getMode());
-        assertTrue("type field 2", ze[1] instanceof UnrecognizedExtraField);
+        assertThat("type field 2", ze[1], instanceOf(UnrecognizedExtraField.class));
         assertEquals("data length field 2", 1,
                      ze[1].getLocalFileDataLength().getValue());
 
@@ -113,10 +116,10 @@ public class ExtraFieldUtilsTest implements UnixStat {
         ze = ExtraFieldUtils.parse(data2, true,
                                    ExtraFieldUtils.UnparseableExtraField.READ);
         assertEquals("number of fields", 2, ze.length);
-        assertTrue("type field 1", ze[0] instanceof AsiExtraField);
+        assertThat("type field 1", ze[0], instanceOf(AsiExtraField.class));
         assertEquals("mode field 1", 040755,
                      ((AsiExtraField) ze[0]).getMode());
-        assertTrue("type field 2", ze[1] instanceof UnparseableExtraFieldData);
+        assertThat("type field 2", ze[1], instanceOf(UnparseableExtraFieldData.class));
         assertEquals("data length field 2", 4,
                      ze[1].getLocalFileDataLength().getValue());
         for (int i = 0; i < 4; i++) {
@@ -132,10 +135,10 @@ public class ExtraFieldUtilsTest implements UnixStat {
             ExtraFieldUtils.parse(data, true,
                                   ExtraFieldUtils.UnparseableExtraField.SKIP);
         assertEquals("number of fields", 2, ze.length);
-        assertTrue("type field 1", ze[0] instanceof AsiExtraField);
+        assertThat("type field 1", ze[0], instanceOf(AsiExtraField.class));
         assertEquals("mode field 1", 040755,
                      ((AsiExtraField) ze[0]).getMode());
-        assertTrue("type field 2", ze[1] instanceof UnrecognizedExtraField);
+        assertThat("type field 2", ze[1], instanceOf(UnrecognizedExtraField.class));
         assertEquals("data length field 2", 1,
                      ze[1].getLocalFileDataLength().getValue());
 
@@ -144,7 +147,7 @@ public class ExtraFieldUtilsTest implements UnixStat {
         ze = ExtraFieldUtils.parse(data2, true,
                                    ExtraFieldUtils.UnparseableExtraField.SKIP);
         assertEquals("number of fields", 1, ze.length);
-        assertTrue("type field 1", ze[0] instanceof AsiExtraField);
+        assertThat("type field 1", ze[0], instanceOf(AsiExtraField.class));
         assertEquals("mode field 1", 040755,
                      ((AsiExtraField) ze[0]).getMode());
     }

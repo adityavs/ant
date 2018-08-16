@@ -20,7 +20,6 @@ package org.apache.tools.ant.types;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Map;
 import java.util.Properties;
@@ -219,12 +218,11 @@ public class FilterSet extends DataType implements Cloneable {
             return getRef().getFilters();
         }
         dieOnCircularReference();
-        //silly hack to avoid stack overflow...
+        // silly hack to avoid stack overflow...
         if (!readingFiles) {
             readingFiles = true;
-            final int size = filtersFiles.size();
-            for (int i = 0; i < size; i++) {
-                readFiltersFromFile(filtersFiles.get(i));
+            for (File filtersFile : filtersFiles) {
+                readFiltersFromFile(filtersFile);
             }
             filtersFiles.clear();
             readingFiles = false;
@@ -253,10 +251,7 @@ public class FilterSet extends DataType implements Cloneable {
         dieOnCircularReference();
         if (filterHash == null) {
             filterHash = new Hashtable<>(getFilters().size());
-            for (Enumeration<Filter> e = getFilters().elements(); e.hasMoreElements();) {
-               Filter filter = e.nextElement();
-               filterHash.put(filter.getToken(), filter.getValue());
-            }
+            getFilters().forEach(filter -> filterHash.put(filter.getToken(), filter.getValue()));
         }
         return filterHash;
     }
@@ -284,7 +279,7 @@ public class FilterSet extends DataType implements Cloneable {
         if (isReference()) {
             throw tooManyAttributes();
         }
-        if (startOfToken == null || "".equals(startOfToken)) {
+        if (startOfToken == null || startOfToken.isEmpty()) {
             throw new BuildException("beginToken must not be empty");
         }
         this.startOfToken = startOfToken;
@@ -311,7 +306,7 @@ public class FilterSet extends DataType implements Cloneable {
         if (isReference()) {
             throw tooManyAttributes();
         }
-        if (endOfToken == null || "".equals(endOfToken)) {
+        if (endOfToken == null || endOfToken.isEmpty()) {
             throw new BuildException("endToken must not be empty");
         }
         this.endOfToken = endOfToken;
@@ -537,7 +532,7 @@ public class FilterSet extends DataType implements Cloneable {
                     }
                     String token =
                         line.substring(index + beginToken.length(), endIndex);
-                    b.append(line.substring(i, index));
+                    b.append(line, i, index);
                     if (tokens.containsKey(token)) {
                         String value = tokens.get(token);
                         if (recurse && !value.equals(token)) {
@@ -592,14 +587,13 @@ public class FilterSet extends DataType implements Cloneable {
                 "Infinite loop in tokens. Currently known tokens : "
                 + passedTokens.toString() + "\nProblem token : " + beginToken
                 + parent + endToken + " called from " + beginToken
-                + passedTokens.lastElement().toString() + endToken);
+                + passedTokens.lastElement() + endToken);
             recurseDepth--;
             return parent;
         }
         passedTokens.addElement(parent);
         String value = iReplaceTokens(line);
-        if (value.indexOf(beginToken) == -1 && !duplicateToken
-                && recurseDepth == 1) {
+        if (!value.contains(beginToken) && !duplicateToken && recurseDepth == 1) {
             passedTokens = null;
         } else if (duplicateToken) {
             // should always be the case...

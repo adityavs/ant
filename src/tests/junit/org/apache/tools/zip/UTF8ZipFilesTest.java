@@ -22,7 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.Enumeration;
+import java.util.Collections;
 import java.util.zip.CRC32;
 import org.junit.Test;
 
@@ -126,25 +126,23 @@ public class UTF8ZipFilesTest {
 
         ZipEncoding zipEncoding = ZipEncodingHelper.getZipEncoding(encoding);
 
-        ZipOutputStream zos = null;
-        try {
-            zos = new ZipOutputStream(file);
+        try (ZipOutputStream zos = new ZipOutputStream(file)) {
             zos.setEncoding(encoding);
             zos.setUseLanguageEncodingFlag(withEFS);
             zos.setCreateUnicodeExtraFields(withExplicitUnicodeExtra
-                                            ? ZipOutputStream.UnicodeExtraFieldPolicy.NEVER
-                                            : ZipOutputStream.UnicodeExtraFieldPolicy.ALWAYS);
+                    ? ZipOutputStream.UnicodeExtraFieldPolicy.NEVER
+                    : ZipOutputStream.UnicodeExtraFieldPolicy.ALWAYS);
 
             ZipEntry ze = new ZipEntry(OIL_BARREL_TXT);
             if (withExplicitUnicodeExtra
-                && !zipEncoding.canEncode(ze.getName())) {
+                    && !zipEncoding.canEncode(ze.getName())) {
 
                 ByteBuffer en = zipEncoding.encode(ze.getName());
 
                 ze.addExtraField(new UnicodePathExtraField(ze.getName(),
-                                                           en.array(),
-                                                           en.arrayOffset(),
-                                                           en.limit()));
+                        en.array(),
+                        en.arrayOffset(),
+                        en.limit()));
             }
 
             zos.putNextEntry(ze);
@@ -153,14 +151,14 @@ public class UTF8ZipFilesTest {
 
             ze = new ZipEntry(EURO_FOR_DOLLAR_TXT);
             if (withExplicitUnicodeExtra
-                && !zipEncoding.canEncode(ze.getName())) {
+                    && !zipEncoding.canEncode(ze.getName())) {
 
                 ByteBuffer en = zipEncoding.encode(ze.getName());
 
                 ze.addExtraField(new UnicodePathExtraField(ze.getName(),
-                                                           en.array(),
-                                                           en.arrayOffset(),
-                                                           en.limit()));
+                        en.array(),
+                        en.arrayOffset(),
+                        en.limit()));
             }
 
             zos.putNextEntry(ze);
@@ -170,27 +168,19 @@ public class UTF8ZipFilesTest {
             ze = new ZipEntry(ASCII_TXT);
 
             if (withExplicitUnicodeExtra
-                && !zipEncoding.canEncode(ze.getName())) {
+                    && !zipEncoding.canEncode(ze.getName())) {
 
                 ByteBuffer en = zipEncoding.encode(ze.getName());
 
                 ze.addExtraField(new UnicodePathExtraField(ze.getName(),
-                                                           en.array(),
-                                                           en.arrayOffset(),
-                                                           en.limit()));
+                        en.array(),
+                        en.arrayOffset(),
+                        en.limit()));
             }
 
             zos.putNextEntry(ze);
             zos.write("ascii".getBytes("US-ASCII"));
             zos.closeEntry();
-        } finally {
-            if (zos != null) {
-                try {
-                    zos.close();
-                } catch (IOException e) {
-                    /* swallow */
-                }
-            }
         }
     }
 
@@ -199,11 +189,7 @@ public class UTF8ZipFilesTest {
         ZipFile zf = null;
         try {
             zf = new ZipFile(file, encoding, false);
-
-            Enumeration e = zf.getEntries();
-            while (e.hasMoreElements()) {
-                ZipEntry ze = (ZipEntry) e.nextElement();
-
+            for (ZipEntry ze : Collections.list(zf.getEntries())) {
                 if (ze.getName().endsWith("sser.txt")) {
                     assertUnicodeName(ze, OIL_BARREL_TXT, encoding);
 
@@ -247,12 +233,9 @@ public class UTF8ZipFilesTest {
     private static void assertCanRead(ZipFile zf, String fileName) throws IOException {
         ZipEntry entry = zf.getEntry(fileName);
         assertNotNull("Entry " + fileName + " doesn't exist", entry);
-        InputStream is = zf.getInputStream(entry);
-        assertNotNull("InputStream is null", is);
-        try {
+        try (InputStream is = zf.getInputStream(entry)) {
+            assertNotNull("InputStream is null", is);
             is.read();
-        } finally {
-            is.close();
         }
     }
 

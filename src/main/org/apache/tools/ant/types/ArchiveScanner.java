@@ -61,22 +61,22 @@ public abstract class ArchiveScanner extends DirectoryScanner {
     /**
      * record list of all file zip entries
      */
-    private Map<String, Resource> fileEntries = new TreeMap<String, Resource>();
+    private Map<String, Resource> fileEntries = new TreeMap<>();
 
     /**
      * record list of all directory zip entries
      */
-    private Map<String, Resource> dirEntries = new TreeMap<String, Resource>();
+    private Map<String, Resource> dirEntries = new TreeMap<>();
 
     /**
      * record list of matching file zip entries
      */
-    private Map<String, Resource> matchFileEntries = new TreeMap<String, Resource>();
+    private Map<String, Resource> matchFileEntries = new TreeMap<>();
 
     /**
      * record list of matching directory zip entries
      */
-    private Map<String, Resource> matchDirEntries = new TreeMap<String, Resource>();
+    private Map<String, Resource> matchDirEntries = new TreeMap<>();
 
     /**
      * encoding of file names.
@@ -256,9 +256,9 @@ public abstract class ArchiveScanner extends DirectoryScanner {
      */
     public boolean match(String path) {
         String vpath = path;
-        if (path.length() > 0) {
-            vpath = path.replace('/', File.separatorChar).
-                replace('\\', File.separatorChar);
+        if (!path.isEmpty()) {
+            vpath = path.replace('/', File.separatorChar)
+                    .replace('\\', File.separatorChar);
             if (vpath.charAt(0) == File.separatorChar) {
                 vpath = vpath.substring(1);
             }
@@ -277,7 +277,7 @@ public abstract class ArchiveScanner extends DirectoryScanner {
         if (src == null) {
             return super.getResource(name);
         }
-        if ("".equals(name)) {
+        if (name.isEmpty()) {
             // special case in ZIPs, we do not want this thing included
             return new Resource("", true, Long.MAX_VALUE, true);
         }

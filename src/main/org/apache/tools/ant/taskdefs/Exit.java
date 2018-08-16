@@ -117,7 +117,7 @@ public class Exit extends Task {
      * @param i   the <code>int</code> status
      */
     public void setStatus(int i) {
-        status = Integer.valueOf(i);
+        status = i;
     }
 
     /**
@@ -138,15 +138,13 @@ public class Exit extends Task {
                      : (testIfCondition() && testUnlessCondition());
         if (fail) {
             String text = null;
-            if (!(message == null || message.trim().isEmpty())) {
+            if (message != null && !message.trim().isEmpty()) {
                 text = message.trim();
             } else {
-                if (ifCondition != null && !"".equals(ifCondition)
-                    && testIfCondition()) {
+                if (!isNullOrEmpty(ifCondition) && testIfCondition()) {
                     text = "if=" + ifCondition;
                 }
-                if (unlessCondition != null && !"".equals(unlessCondition)
-                    && testUnlessCondition()) {
+                if (!isNullOrEmpty(unlessCondition) && testUnlessCondition()) {
                     if (text == null) {
                         text = "";
                     } else {
@@ -162,8 +160,12 @@ public class Exit extends Task {
             }
             log("failing due to " + text, Project.MSG_DEBUG);
             throw status == null ? new BuildException(text)
-                : new ExitStatusException(text, status.intValue());
+                : new ExitStatusException(text, status);
         }
+    }
+
+    private boolean isNullOrEmpty(Object value) {
+        return value == null || "".equals(value);
     }
 
     /**

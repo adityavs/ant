@@ -20,7 +20,7 @@ package org.apache.tools.ant;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Enumeration;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -503,8 +503,7 @@ public class UnknownElement extends Task {
      * @return the name to use in logging messages.
      */
     public String getTaskName() {
-        return realThing == null
-            || !(realThing instanceof Task) ? super.getTaskName()
+        return !(realThing instanceof Task) ? super.getTaskName()
                                             : ((Task) realThing).getTaskName();
     }
 
@@ -597,7 +596,7 @@ public class UnknownElement extends Task {
     /**
      * like contents equals, but ignores project
      * @param obj the object to check against
-     * @return true if this unknownelement has the same contents the other
+     * @return true if this UnknownElement has the same contents the other
      */
     public boolean similar(Object obj) {
         if (obj == null) {
@@ -643,7 +642,7 @@ public class UnknownElement extends Task {
         }
         for (int i = 0; i < childrenSize; ++i) {
             // children cannot be null childrenSize would have been 0
-            UnknownElement child = (UnknownElement) children.get(i); //NOSONAR
+            UnknownElement child = children.get(i); //NOSONAR
             if (!child.similar(other.children.get(i))) {
                 return false;
             }
@@ -680,8 +679,7 @@ public class UnknownElement extends Task {
         }
         copyRC.addText(getWrapper().getText().toString());
 
-        for (Enumeration<RuntimeConfigurable> e = getWrapper().getChildren(); e.hasMoreElements();) {
-            RuntimeConfigurable r = e.nextElement();
+        for (RuntimeConfigurable r : Collections.list(getWrapper().getChildren())) {
             UnknownElement ueChild = (UnknownElement) r.getProxy();
             UnknownElement copyChild = ueChild.copy(newProject);
             copyRC.addChild(copyChild.getWrapper());

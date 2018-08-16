@@ -78,7 +78,7 @@ public abstract class MatchingTask extends Task implements SelectorContainer {
 
     /**
      * add a name entry on the include files list
-     * @return an NameEntry object to be configured
+     * @return an PatternFileNameEntry object to be configured
      */
     public PatternSet.NameEntry createIncludesFile() {
         return fileset.createIncludesFile();
@@ -94,7 +94,7 @@ public abstract class MatchingTask extends Task implements SelectorContainer {
 
     /**
      * add a name entry on the include files list
-     * @return an NameEntry object to be configured
+     * @return an PatternFileNameEntry object to be configured
      */
     public PatternSet.NameEntry createExcludesFile() {
         return fileset.createExcludesFile();
@@ -136,7 +136,7 @@ public abstract class MatchingTask extends Task implements SelectorContainer {
             StringTokenizer tok = new StringTokenizer(itemString, ", ");
             while (tok.hasMoreTokens()) {
                 String pattern = tok.nextToken().trim();
-                if (pattern.length() > 0) {
+                if (!pattern.isEmpty()) {
                     createInclude().setName(pattern + "/**");
                 }
             }
@@ -162,7 +162,7 @@ public abstract class MatchingTask extends Task implements SelectorContainer {
     public void XsetIgnore(String ignoreString) {
         log("The ignore attribute is deprecated."
             + "Please use the excludes attribute.", Project.MSG_WARN);
-        if (!(ignoreString == null || ignoreString.isEmpty())) {
+        if (ignoreString != null && !ignoreString.isEmpty()) {
             StringTokenizer tok = new StringTokenizer(ignoreString, ", ",
                                                       false);
             while (tok.hasMoreTokens()) {

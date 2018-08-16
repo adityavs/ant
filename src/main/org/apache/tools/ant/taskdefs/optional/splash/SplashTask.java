@@ -182,8 +182,8 @@ public class SplashTask extends Task {
                 sp.setProxyPassword(password);
                 sp.applyWebProxySettings();
 
-                if (useProxy && (proxy != null && proxy.length() > 0)
-                    && (port != null && port.length() > 0)) {
+                if (useProxy && (proxy != null && !proxy.isEmpty())
+                    && (port != null && !port.isEmpty())) {
 
                     log("Using proxied Connection",  Project.MSG_DEBUG);
                     System.getProperties().put("http.proxySet", "true");
@@ -191,7 +191,7 @@ public class SplashTask extends Task {
                     URL url = new URL(imgurl);
 
                     conn = url.openConnection();
-                    if (user != null && user.length() > 0) {
+                    if (user != null && !user.isEmpty()) {
                         // converted from sun internal classes to
                         // new Base64Converter
                         // utility class extracted from Get task
@@ -236,9 +236,8 @@ public class SplashTask extends Task {
 
         boolean success = false;
         if (in != null) {
-            try (
-                DataInputStream din = new DataInputStream(in);
-                ByteArrayOutputStream bout = new ByteArrayOutputStream()){
+            try (DataInputStream din = new DataInputStream(in);
+                 ByteArrayOutputStream bout = new ByteArrayOutputStream()) {
                 int data;
                 while ((data = din.read()) != -1) {
                     bout.write((byte) data);

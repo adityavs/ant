@@ -43,6 +43,7 @@ import org.xml.sax.DocumentHandler;
 import org.xml.sax.HandlerBase;
 import org.xml.sax.InputSource;
 import org.xml.sax.Locator;
+import org.xml.sax.Parser;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 import org.xml.sax.helpers.XMLReaderAdapter;
@@ -62,7 +63,7 @@ public class ProjectHelperImpl extends ProjectHelper {
      * SAX 1 style parser used to parse the given file. This may
      * in fact be a SAX 2 XMLReader wrapped in an XMLReaderAdapter.
      */
-    private org.xml.sax.Parser parser;
+    private Parser parser;
 
     /** The project to configure. */
     private Project project;
@@ -245,7 +246,7 @@ public class ProjectHelperImpl extends ProjectHelper {
         public void characters(char[] buf, int start, int count) throws SAXParseException {
             String s = new String(buf, start, count).trim();
 
-            if (s.length() > 0) {
+            if (!s.isEmpty()) {
                 throw new SAXParseException("Unexpected text \"" + s + "\"", helperImpl.locator);
             }
         }
@@ -328,7 +329,7 @@ public class ProjectHelperImpl extends ProjectHelper {
          *                              <code>"project"</code>
          */
         public void startElement(String tag, AttributeList attrs) throws SAXParseException {
-            if (tag.equals("project")) {
+            if ("project".equals(tag)) {
                 new ProjectHandler(helperImpl, this).init(tag, attrs);
             } else {
                 throw new SAXParseException("Config file is not of expected " + "XML type",
@@ -388,23 +389,26 @@ public class ProjectHelperImpl extends ProjectHelper {
             for (int i = 0; i < attrs.getLength(); i++) {
                 String key = attrs.getName(i);
                 String value = attrs.getValue(i);
-
-                if (key.equals("default")) {
-                    def = value;
-                } else if (key.equals("name")) {
-                    name = value;
-                } else if (key.equals("id")) {
-                    id = value;
-                } else if (key.equals("basedir")) {
-                    baseDir = value;
-                } else {
-                    throw new SAXParseException(
-                            "Unexpected attribute \"" + attrs.getName(i)
-                            + "\"", helperImpl.locator);
+                switch (key) {
+                    case "default":
+                        def = value;
+                        break;
+                    case "name":
+                        name = value;
+                        break;
+                    case "id":
+                        id = value;
+                        break;
+                    case "basedir":
+                        baseDir = value;
+                        break;
+                    default:
+                        throw new SAXParseException("Unexpected attribute \"" + key + "\"",
+                                helperImpl.locator);
                 }
             }
 
-            if (def != null && !def.equals("")) {
+            if (def != null && !def.isEmpty()) {
                 helperImpl.project.setDefault(def);
             } else {
                 throw new BuildException("The default attribute is required");
@@ -455,7 +459,7 @@ public class ProjectHelperImpl extends ProjectHelper {
          *            or a data type definition
          */
         public void startElement(String name, AttributeList attrs) throws SAXParseException {
-            if (name.equals("target")) {
+            if ("target".equals(name)) {
                 handleTarget(name, attrs);
             } else {
                 handleElement(helperImpl, this, helperImpl.implicitTarget, name, attrs);
@@ -524,26 +528,32 @@ public class ProjectHelperImpl extends ProjectHelper {
             for (int i = 0; i < attrs.getLength(); i++) {
                 String key = attrs.getName(i);
                 String value = attrs.getValue(i);
-
-                if (key.equals("name")) {
-                    name = value;
-                    if (name.equals("")) {
-                        throw new BuildException("name attribute must not" + " be empty",
-                                new Location(helperImpl.locator));
-                    }
-                } else if (key.equals("depends")) {
-                    depends = value;
-                } else if (key.equals("if")) {
-                    ifCond = value;
-                } else if (key.equals("unless")) {
-                    unlessCond = value;
-                } else if (key.equals("id")) {
-                    id = value;
-                } else if (key.equals("description")) {
-                    description = value;
-                } else {
-                    throw new SAXParseException("Unexpected attribute \"" + key + "\"",
-                            helperImpl.locator);
+                switch (key) {
+                    case "name":
+                        name = value;
+                        if (name.isEmpty()) {
+                            throw new BuildException("name attribute must not be empty",
+                                    new Location(helperImpl.locator));
+                        }
+                        break;
+                    case "depends":
+                        depends = value;
+                        break;
+                    case "if":
+                        ifCond = value;
+                        break;
+                    case "unless":
+                        unlessCond = value;
+                        break;
+                    case "id":
+                        id = value;
+                        break;
+                    case "description":
+                        description = value;
+                        break;
+                    default:
+                        throw new SAXParseException("Unexpected attribute \"" + key + "\"",
+                                helperImpl.locator);
                 }
             }
 
@@ -563,13 +573,13 @@ public class ProjectHelperImpl extends ProjectHelper {
             target.setDescription(description);
             helperImpl.project.addTarget(name, target);
 
-            if (id != null && !id.equals("")) {
+            if (id != null && !id.isEmpty()) {
                 helperImpl.project.addReference(id, target);
             }
 
             // take care of dependencies
 
-            if (depends.length() > 0) {
+            if (!depends.isEmpty()) {
                 target.setDepends(depends);
             }
         }
@@ -600,7 +610,7 @@ public class ProjectHelperImpl extends ProjectHelper {
      */
     private static void handleElement(ProjectHelperImpl helperImpl, DocumentHandler parent,
             Target target, String elementName, AttributeList attrs) throws SAXParseException {
-        if (elementName.equals("description")) {
+        if ("description".equals(elementName)) {
             // created for side effect
             new DescriptionHandler(helperImpl, parent); //NOSONAR
         } else if (helperImpl.project.getDataTypeDefinitions().get(elementName) != null) {

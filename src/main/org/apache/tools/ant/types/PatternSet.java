@@ -19,8 +19,11 @@ package org.apache.tools.ant.types;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -41,13 +44,13 @@ import org.apache.tools.ant.PropertyHelper;
 public class PatternSet extends DataType implements Cloneable {
     private List<NameEntry> includeList = new ArrayList<>();
     private List<NameEntry> excludeList = new ArrayList<>();
-    private List<NameEntry> includesFileList = new ArrayList<>();
-    private List<NameEntry> excludesFileList = new ArrayList<>();
+    private List<PatternFileNameEntry> includesFileList = new ArrayList<>();
+    private List<PatternFileNameEntry> excludesFileList = new ArrayList<>();
 
     /**
      * inner class to hold a name on list.  "If" and "Unless" attributes
      * may be used to invalidate the entry based on the existence of a
-     * property (typically set thru the use of the Available task)
+     * property (typically set through the use of the Available task)
      * or value of an expression.
      */
     public class NameEntry {
@@ -159,7 +162,7 @@ public class PatternSet extends DataType implements Cloneable {
             } else {
                 buf.append(name);
             }
-            if ((ifCond != null) || (unlessCond != null)) {
+            if (ifCond != null || unlessCond != null) {
                 buf.append(":");
                 String connector = "";
 
@@ -175,6 +178,47 @@ public class PatternSet extends DataType implements Cloneable {
                 }
             }
             return buf.toString();
+        }
+    }
+
+    /**
+     * Adds encoding support to {@link NameEntry}.
+     * @since Ant 1.10.4
+     */
+    public class PatternFileNameEntry extends NameEntry {
+        private String encoding;
+
+        /**
+         * Encoding to use when reading the file, defaults to the platform's default
+         * encoding.
+         *
+         * <p>
+         * For a list of possible values see
+         * <a href="https://docs.oracle.com/javase/1.5.0/docs/guide/intl/encoding.doc.html">
+         * https://docs.oracle.com/javase/1.5.0/docs/guide/intl/encoding.doc.html</a>.
+         * </p>
+         *
+         * @param encoding String
+         */
+        public final void setEncoding(String encoding) {
+            this.encoding = encoding;
+        }
+
+        /**
+         * Encoding to use when reading the file, defaults to the platform's default
+         * encoding.
+         *
+         * @return the encoding name
+         */
+        public final String getEncoding() {
+            return encoding;
+        }
+
+        @Override
+        public String toString() {
+            String baseString = super.toString();
+            return encoding == null ? baseString
+                : new StringBuilder(baseString).append(";encoding->").append(encoding).toString();
         }
     }
 
@@ -230,13 +274,13 @@ public class PatternSet extends DataType implements Cloneable {
         String[] nestedExcludes = p.getExcludePatterns(getProject());
 
         if (nestedIncludes != null) {
-            for (int i = 0; i < nestedIncludes.length; i++) {
-                createInclude().setName(nestedIncludes[i]);
+            for (String nestedInclude : nestedIncludes) {
+                createInclude().setName(nestedInclude);
             }
         }
         if (nestedExcludes != null) {
-            for (int i = 0; i < nestedExcludes.length; i++) {
-                createExclude().setName(nestedExcludes[i]);
+            for (String nestedExclude : nestedExcludes) {
+                createExclude().setName(nestedExclude);
             }
         }
     }
@@ -260,7 +304,7 @@ public class PatternSet extends DataType implements Cloneable {
         if (isReference()) {
             throw noChildrenAllowed();
         }
-        return addPatternToList(includesFileList);
+        return addPatternFileToList(includesFileList);
     }
 
     /**
@@ -282,7 +326,7 @@ public class PatternSet extends DataType implements Cloneable {
         if (isReference()) {
             throw noChildrenAllowed();
         }
-        return addPatternToList(excludesFileList);
+        return addPatternFileToList(excludesFileList);
     }
 
     /**
@@ -331,6 +375,15 @@ public class PatternSet extends DataType implements Cloneable {
     }
 
     /**
+     * add a pattern file name entry to the given list
+     */
+    private PatternFileNameEntry addPatternFileToList(List<PatternFileNameEntry> list) {
+        PatternFileNameEntry result = new PatternFileNameEntry();
+        list.add(result);
+        return result;
+    }
+
+    /**
      * Sets the name of the file containing the includes patterns.
      *
      * @param includesFile The file to fetch the include patterns from.
@@ -360,11 +413,12 @@ public class PatternSet extends DataType implements Cloneable {
      *  Reads path matching patterns from a file and adds them to the
      *  includes or excludes list (as appropriate).
      */
-    private void readPatterns(File patternfile, List<NameEntry> patternlist, Project p)
+    private void readPatterns(File patternfile, String encoding, List<NameEntry> patternlist, Project p)
             throws BuildException {
 
-        try (BufferedReader patternReader =
-            new BufferedReader(new FileReader(patternfile))) {
+        try (Reader r = encoding == null ? new FileReader(patternfile)
+             : new InputStreamReader(new FileInputStream(patternfile), encoding);
+             BufferedReader patternReader = new BufferedReader(r)) {
 
             // Create one NameEntry in the appropriate pattern list for each
             // line in the file.
@@ -391,14 +445,14 @@ public class PatternSet extends DataType implements Cloneable {
         dieOnCircularReference(p);
         String[] incl = other.getIncludePatterns(p);
         if (incl != null) {
-            for (int i = 0; i < incl.length; i++) {
-                createInclude().setName(incl[i]);
+            for (String include : incl) {
+                createInclude().setName(include);
             }
         }
         String[] excl = other.getExcludePatterns(p);
         if (excl != null) {
-            for (int i = 0; i < excl.length; i++) {
-                createExclude().setName(excl[i]);
+            for (String exclude : excl) {
+                createExclude().setName(exclude);
             }
         }
     }
@@ -470,7 +524,7 @@ public class PatternSet extends DataType implements Cloneable {
      */
     private void readFiles(Project p) {
         if (!includesFileList.isEmpty()) {
-            for (NameEntry ne : includesFileList) {
+            for (PatternFileNameEntry ne : includesFileList) {
                 String fileName = ne.evalName(p);
                 if (fileName != null) {
                     File inclFile = p.resolveFile(fileName);
@@ -478,13 +532,13 @@ public class PatternSet extends DataType implements Cloneable {
                         throw new BuildException("Includesfile " + inclFile.getAbsolutePath()
                                 + " not found.");
                     }
-                    readPatterns(inclFile, includeList, p);
+                    readPatterns(inclFile, ne.getEncoding(), includeList, p);
                 }
             }
             includesFileList.clear();
         }
         if (!excludesFileList.isEmpty()) {
-            for (NameEntry ne : excludesFileList) {
+            for (PatternFileNameEntry ne : excludesFileList) {
                 String fileName = ne.evalName(p);
                 if (fileName != null) {
                     File exclFile = p.resolveFile(fileName);
@@ -492,7 +546,7 @@ public class PatternSet extends DataType implements Cloneable {
                         throw new BuildException("Excludesfile " + exclFile.getAbsolutePath()
                                 + " not found.");
                     }
-                    readPatterns(exclFile, excludeList, p);
+                    readPatterns(exclFile, ne.getEncoding(), excludeList, p);
                 }
             }
             excludesFileList.clear();
@@ -513,7 +567,7 @@ public class PatternSet extends DataType implements Cloneable {
      * @return a clone of this patternset.
      */
     @Override
-    public PatternSet clone() {
+    public Object clone() {
         try {
             PatternSet ps = (PatternSet) super.clone();
             ps.includeList = new ArrayList<>(includeList);

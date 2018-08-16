@@ -25,7 +25,6 @@ import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import junit.framework.AssertionFailedError;
@@ -150,10 +149,8 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
         // store project reference for logging
         super.setProject(project);
         // check if already registered
-        boolean alreadyRegistered = project.getBuildListeners().stream()
-            .anyMatch(FailureRecorder.class::isInstance);
         // register if needed
-        if (!alreadyRegistered) {
+        if (project.getBuildListeners().stream().noneMatch(FailureRecorder.class::isInstance)) {
             verbose("Register FailureRecorder (@" + this.hashCode() + ") as BuildListener");
             project.addBuildListener(this);
         }
@@ -270,7 +267,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
 
     private void createClassHeader() throws IOException {
         String className = getLocationName().replace('\\', '/');
-        if (className.indexOf('/') > -1) {
+        if (className.contains("/")) {
             className = className.substring(className.lastIndexOf('/') + 1);
         }
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss,SSS");
@@ -300,8 +297,7 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
         writer.newLine();
         writer.write("        TestSuite suite = new TestSuite();");
         writer.newLine();
-        for (Iterator<TestInfos> iter = failedTests.iterator(); iter.hasNext();) {
-            TestInfos testInfos = iter.next();
+        for (TestInfos testInfos : failedTests) {
             writer.write("        suite.addTest(");
             writer.write(String.valueOf(testInfos));
             writer.write(");");
@@ -354,8 +350,8 @@ public class FailureRecorder extends ProjectComponent implements JUnitResultForm
          */
         public TestInfos(Test test) {
             className = test.getClass().getName();
-            String _methodName = test.toString();
-            methodName = _methodName.substring(0, _methodName.indexOf('('));
+            String methodName = test.toString();
+            this.methodName = methodName.substring(0, methodName.indexOf('('));
         }
 
         /**

@@ -20,11 +20,11 @@ package org.apache.tools.ant.taskdefs.optional.depend;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Vector;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -51,15 +51,15 @@ public class AntAnalyzer extends AbstractAnalyzer {
     protected void determineDependencies(Vector<File> files, Vector<String> classes) {
         // we get the root classes and build up a set of
         // classes upon which they depend
+        Set<String> dependencies = new HashSet<>();
+        Set<File> containers = new HashSet<>();
         Set<String> toAnalyze = new HashSet<>(Collections.list(getRootClasses()));
+        Set<String> analyzedDeps = new HashSet<>();
 
         int count = 0;
         int maxCount = isClosureRequired() ? MAX_LOOPS : 1;
-        Set<String> dependencies = new HashSet<>();
-        Set<File> containers = new HashSet<>();
-        Set<String> analyzedDeps = null;
         while (!toAnalyze.isEmpty() && count++ < maxCount) {
-            analyzedDeps = new HashSet<>();
+            analyzedDeps.clear();
             for (String classname : toAnalyze) {
                 dependencies.add(classname);
                 try {
@@ -76,17 +76,13 @@ public class AntAnalyzer extends AbstractAnalyzer {
                             inStream = Files.newInputStream(Paths.get(container.getPath()));
                         } else {
                             zipFile = new ZipFile(container.getPath());
-                            String entryName
-                                = classname.replace('.', '/') + ".class";
+                            String entryName = classname.replace('.', '/') + ".class";
                             ZipEntry entry = new ZipEntry(entryName);
-                            inStream
-                                = zipFile.getInputStream(entry);
+                            inStream = zipFile.getInputStream(entry);
                         }
                         ClassFile classFile = new ClassFile();
                         classFile.read(inStream);
-                        for (String dependency : classFile.getClassRefs()) {
-                            analyzedDeps.add(dependency);
-                        }
+                        analyzedDeps.addAll(classFile.getClassRefs());
                     } finally {
                         FileUtils.close(inStream);
                         FileUtils.close(zipFile);
@@ -97,13 +93,9 @@ public class AntAnalyzer extends AbstractAnalyzer {
             }
 
             toAnalyze.clear();
-
             // now recover all the dependencies collected and add to the list.
-            for (String className : analyzedDeps) {
-                if (!dependencies.contains(className)) {
-                    toAnalyze.add(className);
-                }
-            }
+            analyzedDeps.stream().filter(className -> !dependencies.contains(className))
+                    .forEach(toAnalyze::add);
         }
 
         // pick up the last round of dependencies that were determined

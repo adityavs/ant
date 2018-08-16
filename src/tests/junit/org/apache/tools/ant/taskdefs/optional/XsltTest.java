@@ -23,7 +23,9 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
-import static org.junit.Assert.fail;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+import static org.junit.Assert.assertThat;
 
 /**
  * Tests the {@link org.apache.tools.ant.taskdefs.XSLTProcess} task.
@@ -32,53 +34,45 @@ import static org.junit.Assert.fail;
  */
 public class XsltTest {
 
-    /**
-     * where tasks run
-     */
-    private static final String TASKDEFS_DIR = "src/etc/testcases/taskdefs/optional/";
-
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
 
     @Before
     public void setUp() {
-        buildRule.configureProject(TASKDEFS_DIR + "xslt.xml");
+        buildRule.configureProject("src/etc/testcases/taskdefs/optional/xslt.xml");
     }
 
-    @Test
+    /**
+     * Expected failure due to lacking DTD
+     */
+    @Test(expected = BuildException.class)
     public void testCatchNoDtd() {
-        try {
-            buildRule.executeTarget("testCatchNoDtd");
-            fail("Expected failure");
-        } catch(BuildException ex) {
-            //TODO assert exception message
-        }
+        buildRule.executeTarget("testCatchNoDtd");
+        // TODO assert exception message
     }
 
     @Test
-    public void testCatalog() throws Exception {
+    public void testCatalog() {
          buildRule.executeTarget("testCatalog");
     }
 
     @Test
-    public void testOutputProperty() throws Exception {
+    public void testOutputProperty() {
       buildRule.executeTarget("testOutputProperty");
     }
 
     @Test
-    public void testXMLWithEntitiesInNonAsciiPath() throws Exception {
+    public void testXMLWithEntitiesInNonAsciiPath() {
         buildRule.executeTarget("testXMLWithEntitiesInNonAsciiPath");
     }
 
     /**
      * check that the system id gets set properly on stylesheets.
-     * @throws Exception if something goes wrong.
      */
     @Test
-    public void testStyleSheetWithInclude() throws Exception {
+    public void testStyleSheetWithInclude() {
         buildRule.executeTarget("testStyleSheetWithInclude");
-        if (buildRule.getLog().indexOf("java.io.FileNotFoundException") != -1) {
-            fail("xsl:include was not found");
-        }
+        assertThat("xsl:include was not found", buildRule.getLog(),
+                not(containsString("java.io.FileNotFoundException")));
     }
 }

@@ -23,21 +23,21 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.net.URL;
+import java.util.Collections;
 import java.util.Enumeration;
 
 import org.apache.tools.ant.types.Path;
 import org.apache.tools.ant.util.FileUtils;
-import org.apache.tools.ant.util.CollectionUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 /**
  * Test case for ant class loader
@@ -47,6 +47,9 @@ public class AntClassLoaderTest {
 
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
+
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     private AntClassLoader loader;
 
@@ -88,39 +91,40 @@ public class AntClassLoaderTest {
         assertEquals(mainjarstring + File.pathSeparator + extjarstring, path);
     }
 
+    /**
+     * The test should fail if NullPointException is thrown
+     *
+     * @throws ClassNotFoundException if a class is not found, ignored
+     */
     @Test
-    public void testCleanup() throws BuildException {
+    public void testCleanup() throws ClassNotFoundException {
+        thrown.expect(ClassNotFoundException.class);
         Path path = new Path(buildRule.getProject(), ".");
         loader = buildRule.getProject().createClassLoader(path);
+        boolean canary = false;
         try {
             // we don't expect to find this
             loader.findClass("fubar");
-            fail("Did not expect to find fubar class");
-        } catch (ClassNotFoundException e) {
-            // ignore expected
-        }
-
-        loader.cleanup();
-        try {
-            // we don't expect to find this
-            loader.findClass("fubar");
-            fail("Did not expect to find fubar class");
-        } catch (ClassNotFoundException e) {
-            // ignore expected
-        } catch (NullPointerException e) {
-            fail("loader should not fail even if cleaned up");
-        }
-
-        // tell the build it is finished
-        buildRule.getProject().fireBuildFinished(null);
-        try {
-            // we don't expect to find this
-            loader.findClass("fubar");
-            fail("Did not expect to find fubar class");
-        } catch (ClassNotFoundException e) {
-            // ignore expected
-        } catch (NullPointerException e) {
-            fail("loader should not fail even if project finished");
+            canary = true;
+        } finally {
+            assertFalse("Nonexistent class found", canary);
+            loader.cleanup();
+            try {
+                // we don't expect to find this
+                loader.findClass("fubar");
+                canary = true;
+            } finally {
+                assertFalse("Nonexistent class found", canary);
+                // tell the build it is finished
+                buildRule.getProject().fireBuildFinished(null);
+                try {
+                    // we don't expect to find this
+                    loader.findClass("fubar");
+                    canary = true;
+                } finally {
+                    assertFalse("Nonexistent class found", canary);
+                }
+            }
         }
     }
 
@@ -170,12 +174,12 @@ public class AntClassLoaderTest {
     }
 
     /**
-     * @see <a href="https://issues.apache.org/bugzilla/show_bug.cgi?id=47593">
-     *     bug 47593, request to log the name of corrupt zip files from which
-     *     classes cannot be loaded</a>
+     * @see <a href="https://issues.apache.org/bugzilla/show_bug.cgi?id=47593">bug 47593</a>
+     *     request to log the name of corrupt zip files from which
+     *     classes cannot be loaded
      */
     @Test
-    public void testInvalidZipException() throws Exception {
+    public void testInvalidZipException() {
         buildRule.executeTarget("createNonJar");
         File jar = new File(buildRule.getProject().getProperty("tmp.dir")
                             + "/foo.jar");
@@ -204,8 +208,7 @@ public class AntClassLoaderTest {
      * Asserts that getResources won't return resources that cannot be
      * seen by AntClassLoader but by ClassLoader.this.parent.
      *
-     * @see <a href="https://issues.apache.org/bugzilla/show_bug.cgi?id=46752">
-     *     https://issues.apache.org/bugzilla/show_bug.cgi?id=46752</a>
+     * @see <a href="https://issues.apache.org/bugzilla/show_bug.cgi?id=46752">bug 46752</a>
      */
     @SuppressWarnings("resource")
     @Test
@@ -234,8 +237,9 @@ public class AntClassLoaderTest {
         public URL getResource(String n) {
             return null;
         }
-        public Enumeration getResources(String n) {
-            return new CollectionUtils.EmptyEnumeration();
+
+        public Enumeration<URL> getResources(String n) {
+            return Collections.emptyEnumeration();
         }
     }
 
@@ -243,6 +247,7 @@ public class AntClassLoaderTest {
         GetPackageWrapper(ClassLoader parent) {
             super(parent);
         }
+
         public Package getPackage(String s) {
             return super.getPackage(s);
         }

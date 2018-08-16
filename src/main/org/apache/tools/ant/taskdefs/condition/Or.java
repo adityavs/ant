@@ -18,9 +18,8 @@
 
 package org.apache.tools.ant.taskdefs.condition;
 
-import java.util.Enumeration;
-
 import org.apache.tools.ant.BuildException;
+import org.apache.tools.ant.util.StreamUtils;
 
 /**
  * &lt;or&gt; condition container.
@@ -38,14 +37,7 @@ public class Or extends ConditionBase implements Condition {
      */
     @Override
     public boolean eval() throws BuildException {
-        Enumeration<Condition> e = getConditions();
-        while (e.hasMoreElements()) {
-            Condition c = e.nextElement();
-            if (c.eval()) {
-                return true;
-            }
-        }
-        return false;
+        return StreamUtils.enumerationAsStream(getConditions()).anyMatch(Condition::eval);
     }
 
 }

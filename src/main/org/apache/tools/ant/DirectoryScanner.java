@@ -616,9 +616,7 @@ public class DirectoryScanner
     public static void resetDefaultExcludes() {
         synchronized (defaultExcludes) {
             defaultExcludes.clear();
-            for (String element : DEFAULTEXCLUDES) {
-                defaultExcludes.add(element);
-            }
+            Collections.addAll(defaultExcludes, DEFAULTEXCLUDES);
         }
     }
 
@@ -1017,8 +1015,7 @@ public class DirectoryScanner
                         continue;
                     }
                     if (myfile.isDirectory()) {
-                        if (isIncluded(currentPath)
-                            && currentelement.length() > 0) {
+                        if (isIncluded(currentPath) && !currentelement.isEmpty()) {
                             accountForIncludedDir(currentPath, myfile, true);
                         }  else {
                             scandir(myfile, currentPath, true);
@@ -1046,16 +1043,11 @@ public class DirectoryScanner
     private boolean shouldSkipPattern(final String pattern) {
         if (FileUtils.isAbsolutePath(pattern)) {
             //skip abs. paths not under basedir, if set:
-            if (!(basedir == null || SelectorUtils.matchPatternStart(pattern,
-                                                basedir.getAbsolutePath(),
-                                                isCaseSensitive()))) {
-                return true;
-            }
-        } else if (basedir == null) {
-            //skip non-abs. paths if basedir == null:
-            return true;
+            return !(basedir == null || SelectorUtils.matchPatternStart(pattern,
+                    basedir.getAbsolutePath(), isCaseSensitive()));
         }
-        return false;
+
+        return basedir == null;
     }
 
     /**
@@ -1200,13 +1192,13 @@ public class DirectoryScanner
                     dir.getAbsolutePath());
             }
         }
-        scandir(dir, path, fast, newfiles, new LinkedList<String>());
+        scandir(dir, path, fast, newfiles, new LinkedList<>());
     }
 
     private void scandir(final File dir, final TokenizedPath path, final boolean fast,
-                         String[] newfiles, final Deque<String> directoryNamesFollowed) {
+                         String[] newFiles, final Deque<String> directoryNamesFollowed) {
         String vpath = path.toString();
-        if (vpath.length() > 0 && !vpath.endsWith(File.separator)) {
+        if (!vpath.isEmpty() && !vpath.endsWith(File.separator)) {
             vpath += File.separator;
         }
 
@@ -1216,16 +1208,16 @@ public class DirectoryScanner
         }
         if (!followSymlinks) {
             final ArrayList<String> noLinks = new ArrayList<>();
-            for (final String newfile : newfiles) {
+            for (final String newFile : newFiles) {
                 final Path filePath;
                 if (dir == null) {
-                    filePath = Paths.get(newfile);
+                    filePath = Paths.get(newFile);
                 } else {
-                    filePath = Paths.get(dir.toPath().toString(), newfile);
+                    filePath = Paths.get(dir.toPath().toString(), newFile);
                 }
                 if (Files.isSymbolicLink(filePath)) {
-                    final String name = vpath + newfile;
-                    final File file = new File(dir, newfile);
+                    final String name = vpath + newFile;
+                    final File file = new File(dir, newFile);
                     if (file.isDirectory()) {
                         dirsExcluded.addElement(name);
                     } else if (file.isFile()) {
@@ -1233,18 +1225,18 @@ public class DirectoryScanner
                     }
                     accountForNotFollowedSymlink(name, file);
                 } else {
-                    noLinks.add(newfile);
+                    noLinks.add(newFile);
                 }
             }
-            newfiles = noLinks.toArray(new String[noLinks.size()]);
+            newFiles = noLinks.toArray(new String[noLinks.size()]);
         } else {
             directoryNamesFollowed.addFirst(dir.getName());
         }
 
-        for (int i = 0; i < newfiles.length; i++) {
-            final String name = vpath + newfiles[i];
-            final TokenizedPath newPath = new TokenizedPath(path, newfiles[i]);
-            final File file = new File(dir, newfiles[i]);
+        for (String newFile : newFiles) {
+            final String name = vpath + newFile;
+            final TokenizedPath newPath = new TokenizedPath(path, newFile);
+            final File file = new File(dir, newFile);
             final String[] children = file.list();
             if (children == null || (children.length == 0 && file.isFile())) {
                 if (isIncluded(newPath)) {
@@ -1256,8 +1248,7 @@ public class DirectoryScanner
             } else if (file.isDirectory()) { // dir
 
                 if (followSymlinks
-                    && causesIllegalSymlinkLoop(newfiles[i], dir,
-                                                directoryNamesFollowed)) {
+                        && causesIllegalSymlinkLoop(newFile, dir, directoryNamesFollowed)) {
                     // will be caught and redirected to Ant's logging system
                     System.err.println("skipping symbolic link "
                                        + file.getAbsolutePath()
@@ -1824,9 +1815,9 @@ public class DirectoryScanner
                 final String target = f.getCanonicalPath();
                 files.add(target);
 
-                String relPath = "";
+                StringBuilder relPath = new StringBuilder();
                 for (final String dir : directoryNamesFollowed) {
-                    relPath += "../";
+                    relPath.append("../");
                     if (dirName.equals(dir)) {
                         f = FILE_UTILS.resolveFile(parent, relPath + dir);
                         files.add(f.getCanonicalPath());

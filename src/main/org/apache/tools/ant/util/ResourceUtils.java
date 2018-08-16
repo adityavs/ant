@@ -176,8 +176,10 @@ public class ResourceUtils {
         final Union result = new Union();
         for (final Resource sr : source) {
             String srName = sr.getName();
-            srName = srName == null
-                ? srName : srName.replace('/', File.separatorChar);
+            if (srName != null) {
+                srName = srName.replace('/', File.separatorChar);
+            }
+
 
             String[] targetnames = null;
             try {
@@ -191,15 +193,13 @@ public class ResourceUtils {
                       Project.MSG_VERBOSE);
                 continue;
             }
-            for (int i = 0; i < targetnames.length; i++) {
-                if (targetnames[i] == null) {
-                    targetnames[i] = "(no name)";
-                }
-            }
             final Union targetColl = new Union();
-            for (int i = 0; i < targetnames.length; i++) {
+            for (String targetname : targetnames) {
+                if (targetname == null) {
+                    targetname = "(no name)";
+                }
                 targetColl.add(targets.getResource(
-                    targetnames[i].replace(File.separatorChar, '/')));
+                        targetname.replace(File.separatorChar, '/')));
             }
             //find the out-of-date targets:
             final Restrict r = new Restrict();
@@ -370,8 +370,8 @@ public class ResourceUtils {
                                     final String inputEncoding, final String outputEncoding,
                                     final Project project, final boolean force)
         throws IOException {
-        if (!(overwrite || SelectorUtils.isOutOfDate(source, dest, FileUtils.getFileUtils()
-                .getFileTimestampGranularity()))) {
+        if (!overwrite && !SelectorUtils.isOutOfDate(source, dest,
+                FileUtils.getFileUtils().getFileTimestampGranularity())) {
             return;
         }
         final boolean filterSetsAvailable = (filters != null
@@ -517,7 +517,7 @@ public class ResourceUtils {
         }
         final boolean e1 = r1.isExists();
         final boolean e2 = r2.isExists();
-        if (!(e1 || e2)) {
+        if (!e1 && !e2) {
             return 0;
         }
         if (e1 != e2) {
@@ -655,16 +655,14 @@ public class ResourceUtils {
 
             final LineTokenizer lineTokenizer = new LineTokenizer();
             lineTokenizer.setIncludeDelims(true);
-            String newline = null;
             String line = lineTokenizer.getToken(in);
             while (line != null) {
-                if (line.length() == 0) {
+                if (line.isEmpty()) {
                     // this should not happen, because the lines are
                     // returned with the end of line delimiter
                     out.newLine();
                 } else {
-                    newline = filters.replaceTokens(line);
-                    out.write(newline);
+                    out.write(filters.replaceTokens(line));
                 }
                 line = lineTokenizer.getToken(in);
             }
@@ -798,14 +796,9 @@ public class ResourceUtils {
             return false;
         }
         final FileProvider fileResource1 = resource1.as(FileProvider.class);
-        if (fileResource1 == null) {
-            return false;
-        }
         final FileProvider fileResource2 = resource2.as(FileProvider.class);
-        if (fileResource2 == null) {
-            return false;
-        }
-        return FileUtils.getFileUtils().areSame(fileResource1.getFile(), fileResource2.getFile());
+        return fileResource1 != null && fileResource2 != null
+                && FileUtils.getFileUtils().areSame(fileResource1.getFile(), fileResource2.getFile());
     }
 
     private static void log(final Project project, final String message) {

@@ -24,13 +24,25 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Properties;
 
+import org.junit.Before;
 import org.junit.Test;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThat;
 
 public class LayoutPreservingPropertiesTest {
 
+    private static final String ROOT = System.getProperty("root");
+
+    private LayoutPreservingProperties lpf;
+
+    @Before
+    public void setUp() {
+        lpf = new LayoutPreservingProperties();
+    }
     /**
      * Tests that a properties file read by the
      * LayoutPreservingPropertiesFile and then saves the properties in
@@ -38,10 +50,8 @@ public class LayoutPreservingPropertiesTest {
      */
     @Test
     public void testPreserve() throws Exception {
-        File simple = new File(System.getProperty("root"),
-                               "src/etc/testcases/util/simple.properties");
+        File simple = new File(ROOT, "src/etc/testcases/util/simple.properties");
         FileInputStream fis = new FileInputStream(simple);
-        LayoutPreservingProperties lpf = new LayoutPreservingProperties();
         lpf.load(fis);
 
         File tmp = File.createTempFile("tmp", "props");
@@ -59,8 +69,8 @@ public class LayoutPreservingPropertiesTest {
 
         // and now make sure that the comments made it into the new file
         String s = readFile(tmp);
-        assertTrue("missing comment", s.indexOf("# a comment") > -1);
-        assertTrue("missing comment", s.indexOf("! more comment") > -1);
+        assertThat("missing comment", s, containsString(("# a comment")));
+        assertThat("missing comment", s, containsString(("! more comment")));
     }
 
     /**
@@ -69,8 +79,6 @@ public class LayoutPreservingPropertiesTest {
      */
     @Test
     public void testEscaping() throws Exception {
-        LayoutPreservingProperties lpf = new LayoutPreservingProperties();
-
         lpf.setProperty(" prop one ", "  leading and trailing spaces ");
         lpf.setProperty("prop\ttwo", "contains\ttab");
         lpf.setProperty("prop\nthree", "contains\nnewline");
@@ -89,16 +97,15 @@ public class LayoutPreservingPropertiesTest {
         // and check that the resulting file looks okay
         String s = readFile(tmp);
 
-        assertTrue(s.indexOf("\\ prop\\ one\\ =\\ \\ leading and trailing"
-                             + " spaces ") > -1);
-        assertTrue(s.indexOf("prop\\ttwo=contains\\ttab") > -1);
-        assertTrue(s.indexOf("prop\\nthree=contains\\nnewline") > -1);
-        assertTrue(s.indexOf("prop\\rfour=contains\\rcarriage return") > -1);
-        assertTrue(s.indexOf("prop\\\\six=contains\\\\backslash") > -1);
-        assertTrue(s.indexOf("prop\\:seven=contains\\:colon") > -1);
-        assertTrue(s.indexOf("prop\\=eight=contains\\=equals") > -1);
-        assertTrue(s.indexOf("prop\\#nine=contains\\#hash") > -1);
-        assertTrue(s.indexOf("prop\\!ten=contains\\!exclamation") > -1);
+        assertThat(s, containsString("\\ prop\\ one\\ =\\ \\ leading and trailing spaces "));
+        assertThat(s, containsString("prop\\ttwo=contains\\ttab"));
+        assertThat(s, containsString("prop\\nthree=contains\\nnewline"));
+        assertThat(s, containsString("prop\\rfour=contains\\rcarriage return"));
+        assertThat(s, containsString("prop\\\\six=contains\\\\backslash"));
+        assertThat(s, containsString("prop\\:seven=contains\\:colon"));
+        assertThat(s, containsString("prop\\=eight=contains\\=equals"));
+        assertThat(s, containsString("prop\\#nine=contains\\#hash"));
+        assertThat(s, containsString("prop\\!ten=contains\\!exclamation"));
     }
 
     /**
@@ -108,10 +115,8 @@ public class LayoutPreservingPropertiesTest {
      */
     @Test
     public void testOverwrite() throws Exception {
-        File unusual = new File(System.getProperty("root"),
-                                "src/etc/testcases/util/unusual.properties");
+        File unusual = new File(ROOT, "src/etc/testcases/util/unusual.properties");
         FileInputStream fis = new FileInputStream(unusual);
-        LayoutPreservingProperties lpf = new LayoutPreservingProperties();
         lpf.load(fis);
 
         lpf.setProperty(" prop one ", "new one");
@@ -125,21 +130,18 @@ public class LayoutPreservingPropertiesTest {
         // and check that the resulting file looks okay
         String s = readFile(tmp);
 
-        assertTrue(s.indexOf("\\ prop\\ one\\ =\\ \\ leading and"
-                             + " trailing spaces ") == -1);
-        assertTrue(s.indexOf("\\ prop\\ one\\ =new one") > -1);
-        assertTrue(s.indexOf("prop\\ttwo=contains\\ttab") == -1);
-        assertTrue(s.indexOf("prop\\ttwo=new two") > -1);
-        assertTrue(s.indexOf("prop\\nthree=contains\\nnewline") == -1);
-        assertTrue(s.indexOf("prop\\nthree=new three") > -1);
+        assertThat(s, not(containsString("\\ prop\\ one\\ =\\ \\ leading and trailing spaces ")));
+        assertThat(s, containsString("\\ prop\\ one\\ =new one"));
+        assertThat(s, not(containsString("prop\\ttwo=contains\\ttab")));
+        assertThat(s, containsString("prop\\ttwo=new two"));
+        assertThat(s, not(containsString("prop\\nthree=contains\\nnewline")));
+        assertThat(s, containsString("prop\\nthree=new three"));
     }
 
     @Test
     public void testStoreWithHeader() throws Exception {
-        File simple = new File(System.getProperty("root"),
-                               "src/etc/testcases/util/simple.properties");
+        File simple = new File(ROOT, "src/etc/testcases/util/simple.properties");
         FileInputStream fis = new FileInputStream(simple);
-        LayoutPreservingProperties lpf = new LayoutPreservingProperties();
         lpf.load(fis);
 
         File tmp = File.createTempFile("tmp", "props");
@@ -149,17 +151,13 @@ public class LayoutPreservingPropertiesTest {
         fos.close();
 
         // and check that the resulting file looks okay
-        String s = readFile(tmp);
-
-        assertTrue("should have had header ", s.startsWith("#file-header"));
+        assertThat("should have had header ", readFile(tmp), startsWith("#file-header"));
     }
 
     @Test
     public void testClear() throws Exception {
-        File simple = new File(System.getProperty("root"),
-                               "src/etc/testcases/util/simple.properties");
+        File simple = new File(ROOT, "src/etc/testcases/util/simple.properties");
         FileInputStream fis = new FileInputStream(simple);
-        LayoutPreservingProperties lpf = new LayoutPreservingProperties();
         lpf.load(fis);
 
         lpf.clear();
@@ -171,27 +169,19 @@ public class LayoutPreservingPropertiesTest {
         // and check that the resulting file looks okay
         String s = readFile(tmp);
 
-        assertTrue("should have had no properties ",
-                   s.indexOf("prop.alpha") == -1);
-        assertTrue("should have had no properties ",
-                   s.indexOf("prop.beta") == -1);
-        assertTrue("should have had no properties ",
-                   s.indexOf("prop.gamma") == -1);
+        assertThat("should have had no properties ", s, not(containsString(("prop.alpha"))));
+        assertThat("should have had no properties ", s, not(containsString(("prop.beta"))));
+        assertThat("should have had no properties ", s, not(containsString(("prop.gamma"))));
 
-        assertTrue("should have had no comments",
-                   s.indexOf("# a comment") == -1);
-        assertTrue("should have had no comments",
-                   s.indexOf("! more comment") == -1);
-        assertTrue("should have had no comments",
-                   s.indexOf("# now a line wrapping one") == -1);
+        assertThat("should have had no comments", s, not(containsString(("# a comment"))));
+        assertThat("should have had no comments", s, not(containsString(("! more comment"))));
+        assertThat("should have had no comments", s, not(containsString(("# now a line wrapping one"))));
     }
 
     @Test
     public void testRemove() throws Exception {
-        File simple = new File(System.getProperty("root"),
-                               "src/etc/testcases/util/simple.properties");
+        File simple = new File(ROOT, "src/etc/testcases/util/simple.properties");
         FileInputStream fis = new FileInputStream(simple);
-        LayoutPreservingProperties lpf = new LayoutPreservingProperties();
         lpf.load(fis);
 
         lpf.remove("prop.beta");
@@ -203,18 +193,14 @@ public class LayoutPreservingPropertiesTest {
         // and check that the resulting file looks okay
         String s = readFile(tmp);
 
-        assertTrue("should not have had prop.beta",
-                   s.indexOf("prop.beta") == -1);
-        assertTrue("should have had prop.beta's comment",
-                   s.indexOf("! more comment") > -1);
+        assertThat("should not have had prop.beta", s, not(containsString(("prop.beta"))));
+        assertThat("should have had prop.beta's comment", s, containsString("! more comment"));
     }
 
     @Test
     public void testRemoveWithComment() throws Exception {
-        File simple = new File(System.getProperty("root"),
-                               "src/etc/testcases/util/simple.properties");
+        File simple = new File(ROOT, "src/etc/testcases/util/simple.properties");
         FileInputStream fis = new FileInputStream(simple);
-        LayoutPreservingProperties lpf = new LayoutPreservingProperties();
         lpf.load(fis);
 
         lpf.setRemoveComments(true);
@@ -228,54 +214,46 @@ public class LayoutPreservingPropertiesTest {
         // and check that the resulting file looks okay
         String s = readFile(tmp);
 
-        assertTrue("should not have had prop.beta",
-                   s.indexOf("prop.beta") == -1);
-        assertTrue("should not have had prop.beta's comment",
-                   s.indexOf("! more comment") == -1);
+        assertThat("should not have had prop.beta", s, not(containsString(("prop.beta"))));
+        assertThat("should not have had prop.beta's comment", s, not(containsString(("! more comment"))));
     }
 
     @Test
     public void testClone() throws Exception {
-        File simple = new File(System.getProperty("root"),
-                               "src/etc/testcases/util/simple.properties");
+        File simple = new File(ROOT, "src/etc/testcases/util/simple.properties");
         FileInputStream fis = new FileInputStream(simple);
-        LayoutPreservingProperties lpf1 = new LayoutPreservingProperties();
-        lpf1.load(fis);
+        lpf.load(fis);
 
-        LayoutPreservingProperties lpf2 =
-            (LayoutPreservingProperties) lpf1.clone();
+        LayoutPreservingProperties lpfClone = (LayoutPreservingProperties) lpf.clone();
 
-        lpf2.setProperty("prop.new", "a new property");
-        lpf2.setProperty("prop.beta", "a new value for beta");
+        lpfClone.setProperty("prop.new", "a new property");
+        lpfClone.setProperty("prop.beta", "a new value for beta");
 
-        assertEquals("size of original is wrong", 3, lpf1.size());
-        assertEquals("size of clone is wrong", 4, lpf2.size());
+        assertEquals("size of original is wrong", 3, lpf.size());
+        assertEquals("size of clone is wrong", 4, lpfClone.size());
 
         File tmp1 = File.createTempFile("tmp", "props");
         tmp1.deleteOnExit();
-        lpf1.saveAs(tmp1);
+        lpf.saveAs(tmp1);
         String s1 = readFile(tmp1);
 
         File tmp2 = File.createTempFile("tmp", "props");
         tmp2.deleteOnExit();
-        lpf2.saveAs(tmp2);
+        lpfClone.saveAs(tmp2);
         String s2 = readFile(tmp2);
 
         // check original is untouched
-        assertTrue("should have had 'simple'", s1.indexOf("simple") > -1);
-        assertTrue("should not have had prop.new", s1.indexOf("prop.new") == -1);
+        assertThat("should have had 'simple'", s1, containsString(("simple")));
+        assertThat("should not have had prop.new", s1, not(containsString(("prop.new"))));
 
         // check clone has the changes
-        assertTrue("should have had 'a new value for beta'",
-                   s2.indexOf("a new value for beta") > -1);
-        assertTrue("should have had prop.new", s2.indexOf("prop.new") > -1);
+        assertThat("should have had 'a new value for beta'", s2, containsString(("a new value for beta")));
+        assertThat("should have had prop.new", s2, containsString(("prop.new")));
     }
 
     @Test
     public void testPreserveEscapeName() throws Exception {
-        LayoutPreservingProperties lpf = new LayoutPreservingProperties();
-        File unusual = new File(System.getProperty("root"),
-                                "src/etc/testcases/util/unusual.properties");
+        File unusual = new File(ROOT, "src/etc/testcases/util/unusual.properties");
         FileInputStream fis = new FileInputStream(unusual);
         lpf.load(fis);
 
@@ -293,16 +271,16 @@ public class LayoutPreservingPropertiesTest {
         // and check that the resulting file looks okay
         String s = readFile(tmp);
 
-        assertTrue(s.indexOf("prop\\:seven=new value for seven") > -1);
-        assertTrue(s.indexOf("prop\\=eight=new value for eight") > -1);
-        assertTrue(s.indexOf("prop\\ eleven=new value for eleven") > -1);
-        assertTrue(s.indexOf("alpha=new value for alpha") > -1);
-        assertTrue(s.indexOf("beta=new value for beta") > -1);
+        assertThat(s, containsString("prop\\:seven=new value for seven"));
+        assertThat(s, containsString("prop\\=eight=new value for eight"));
+        assertThat(s, containsString("prop\\ eleven=new value for eleven"));
+        assertThat(s, containsString("alpha=new value for alpha"));
+        assertThat(s, containsString("beta=new value for beta"));
 
-        assertTrue(s.indexOf("prop\\:seven=contains\\:colon") == -1);
-        assertTrue(s.indexOf("prop\\=eight=contains\\=equals") == -1);
-        assertTrue(s.indexOf("alpha:set with a colon") == -1);
-        assertTrue(s.indexOf("beta set with a space") == -1);
+        assertThat(s, not(containsString("prop\\:seven=contains\\:colon")));
+        assertThat(s, not(containsString("prop\\=eight=contains\\=equals")));
+        assertThat(s, not(containsString("alpha:set with a colon")));
+        assertThat(s, not(containsString("beta set with a space")));
     }
 
     private static String readFile(File f) throws IOException {

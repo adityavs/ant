@@ -18,26 +18,24 @@
 
 package org.apache.tools.ant.taskdefs;
 
+import static org.junit.Assert.assertTrue;
+
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.BuildFileRule;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 public class SleepTest {
 
     @Rule
     public final BuildFileRule buildRule = new BuildFileRule();
 
-    private static final String TASKDEFS_DIR = "src/etc/testcases/taskdefs/";
     private static final int ERROR_RANGE = 1000;
 
     @Before
     public void setUp() {
-        buildRule.configureProject(TASKDEFS_DIR + "sleep.xml");
+        buildRule.configureProject("src/etc/testcases/taskdefs/sleep.xml");
     }
 
     @Test
@@ -72,14 +70,13 @@ public class SleepTest {
         assertTrue(timer.time() >= (2000 - ERROR_RANGE) && timer.time() < 60000);
     }
 
-    @Test
+    /**
+     * Expected failure: negative sleep periods are not supported
+     */
+    @Test(expected = BuildException.class)
     public void test5() {
-        try {
-            buildRule.executeTarget("test5");
-            fail("Negative sleep periods are not supported");
-        } catch (BuildException ex) {
-            //TODO assert value
-        }
+        buildRule.executeTarget("test5");
+        // TODO assert value
     }
 
     @Test

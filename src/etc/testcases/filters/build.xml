@@ -16,11 +16,12 @@
    limitations under the License.
 -->
 <project default="tearDown" basedir=".">
+
   <import file="../buildfiletest-base.xml"/>
+
   <target name="setUp">
     <mkdir dir="${output}" />
   </target>
-
 
   <target name="testLineContains" depends="setUp">
     <copy todir="${output}">
@@ -79,8 +80,8 @@
   </target>
 
   <target name="testReplaceTokens" depends="setUp">
-    <copy todir="${output}">
-      <fileset dir="input" includes="replacetokens.test" />
+    <copy  tofile="${output}/replaceTokens.test">
+      <fileset dir="input" includes="replacetokens.test"/>
       <filterchain>
         <replacetokens>
           <token key="foo" value=""/>
@@ -90,19 +91,19 @@
   </target>
 
   <target name="testReplaceTokensPropertyFile" depends="setUp">
-    <copy tofile="${output}/replacetokensPropertyFile.test">
-      <fileset dir="input" includes="replacetokens.test" />
+    <copy tofile="${output}/replaceTokensPropertyFile.test">
+      <fileset dir="input" includes="replacetokens.test"/>
       <filterchain>
       	<filterreader classname="org.apache.tools.ant.filters.ReplaceTokens">
           <param type="propertiesfile" value="${basedir}/input/sample.properties"/>
-    	  </filterreader>
+        </filterreader>
       </filterchain>
     </copy>
   </target>
 
   <target name="testReplaceTokensDoubleEncoded" depends="setUp">
-    <copy todir="${output}">
-      <fileset dir="input" includes="replacetokens.double.test" />
+    <copy tofile="${output}/replaceTokensDoubleEncoded.test">
+      <fileset dir="input" includes="replacetokens.double.test"/>
       <filterchain>
         <replacetokens>
           <token key="foo" value=""/>
@@ -112,8 +113,8 @@
   </target>
 
   <target name="testReplaceTokensDoubleEncodedToSimple" depends="setUp">
-    <copy todir="${output}">
-      <fileset dir="input" includes="replacetokens.double.test" />
+    <copy tofile="${output}/replaceTokensDoubleEncodedToSimple.test">
+      <fileset dir="input" includes="replacetokens.double.test"/>
       <filterchain>
         <replacetokens begintoken="@@" endtoken="@@">
           <token key="foo" value=""/>
@@ -123,8 +124,8 @@
   </target>
 
   <target name="testReplaceTokensMustacheStyle" depends="setUp">
-    <copy todir="${output}">
-      <fileset dir="input" includes="replacetokens.mustache.test" />
+    <copy tofile="${output}/replaceTokensMustacheStyle.test">
+      <fileset dir="input" includes="replacetokens.mustache.test"/>
       <filterchain>
         <replacetokens begintoken="{{" endtoken="}}">
           <token key="foo" value=""/>
@@ -144,4 +145,31 @@
     <fail unless="filterchain.files.are.same">File was modified</fail>
   </target>
 
+  <target name="testMatchAny" depends="setUp">
+    <copy todir="${output}">
+      <fileset dir="input">
+        <include name="linecontains.test"/>
+      </fileset>
+      <filterchain>
+        <linecontains matchAny="true">
+          <contains value="beta"/>
+          <contains value="alpha"/>
+        </linecontains>
+      </filterchain>
+    </copy>
+  </target>
+
+  <target name="testMatchAnyNegate" depends="setUp">
+    <copy todir="${output}">
+      <fileset dir="input">
+        <include name="linecontains.test"/>
+      </fileset>
+      <filterchain>
+        <linecontains matchAny="true" negate="true">
+          <contains value="beta"/>
+          <contains value="alpha"/>
+        </linecontains>
+      </filterchain>
+    </copy>
+  </target>
 </project>

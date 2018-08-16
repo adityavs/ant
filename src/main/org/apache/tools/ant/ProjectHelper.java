@@ -136,9 +136,9 @@ public class ProjectHelper {
             if (name == null) {
                 throw new NullPointerException();
             }
-            for (int i = 0; i < values.length; i++) {
-                if (name.equals(values[i].name())) {
-                    return values[i];
+            for (OnMissingExtensionPoint value : values) {
+                if (name.equals(value.name())) {
+                    return value;
                 }
             }
             throw new IllegalArgumentException(
@@ -202,11 +202,7 @@ public class ProjectHelper {
         targetPrefix.set(prefix);
     }
 
-    private static final ThreadLocal<String> prefixSeparator = new ThreadLocal<String>() {
-            protected String initialValue() {
-                return ".";
-            }
-        };
+    private static final ThreadLocal<String> prefixSeparator = ThreadLocal.withInitial(() -> ".");
 
     /**
      * The separator between the prefix and the target name.
@@ -230,11 +226,7 @@ public class ProjectHelper {
         prefixSeparator.set(sep);
     }
 
-    private static final ThreadLocal<Boolean> inIncludeMode = new ThreadLocal<Boolean>() {
-            protected Boolean initialValue() {
-                return Boolean.FALSE;
-            }
-        };
+    private static final ThreadLocal<Boolean> inIncludeMode = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     /**
      * Whether the current file should be read in include as opposed
@@ -264,7 +256,7 @@ public class ProjectHelper {
      * @since Ant 1.8.0
      */
     public static void setInIncludeMode(boolean includeMode) {
-        inIncludeMode.set(Boolean.valueOf(includeMode));
+        inIncludeMode.set(includeMode);
     }
 
     // --------------------  Parse method  --------------------
@@ -305,6 +297,7 @@ public class ProjectHelper {
      * @return the current context class loader, or <code>null</code>
      * if the context class loader is unavailable.
      */
+    @Deprecated
     public static ClassLoader getContextClassLoader() {
         return LoaderUtils.isContextLoaderAvailable() ? LoaderUtils.getContextClassLoader() : null;
     }
@@ -327,6 +320,7 @@ public class ProjectHelper {
      * @exception BuildException if any of the attributes can't be handled by
      *                           the target
      */
+    @Deprecated
     public static void configure(Object target, AttributeList attrs,
                                  Project project) throws BuildException {
         if (target instanceof TypeAdapter) {
@@ -430,6 +424,7 @@ public class ProjectHelper {
      *             Use project.replaceProperties().
      * @since 1.5
      */
+    @Deprecated
      public static String replaceProperties(Project project, String value) throws BuildException {
         // needed since project properties are not accessible
          return project.replaceProperties(value);
@@ -455,6 +450,7 @@ public class ProjectHelper {
      * @deprecated since 1.6.x.
      *             Use PropertyHelper.
      */
+    @Deprecated
      public static String replaceProperties(Project project, String value, Hashtable<String, Object> keys)
              throws BuildException {
         PropertyHelper ph = PropertyHelper.getPropertyHelper(project);
@@ -482,6 +478,7 @@ public class ProjectHelper {
      * @exception BuildException if the string contains an opening
      *                           <code>${</code> without a closing <code>}</code>
      */
+    @Deprecated
     public static void parsePropertyString(String value, Vector<String> fragments, Vector<String> propertyRefs)
             throws BuildException {
         PropertyHelper.parsePropertyStringDefault(value, fragments, propertyRefs);
@@ -497,7 +494,7 @@ public class ProjectHelper {
      * @return      The stringified form of the ns name
      */
     public static String genComponentName(String uri, String name) {
-        if (uri == null || "".equals(uri) || uri.equals(ANT_CORE_URI)) {
+        if (uri == null || uri.isEmpty() || uri.equals(ANT_CORE_URI)) {
             return name;
         }
         return uri + ":" + name;
@@ -559,10 +556,8 @@ public class ProjectHelper {
             return ex;
         }
         String errorMessage
-            = "The following error occurred while executing this line:"
-            + System.getProperty("line.separator")
-            + ex.getLocation().toString()
-            + ex.getMessage();
+            = String.format("The following error occurred while executing this line:%n%s%s",
+                ex.getLocation().toString(), ex.getMessage());
         if (ex instanceof ExitStatusException) {
             int exitStatus = ((ExitStatusException) ex).getStatus();
             if (newLocation == null) {

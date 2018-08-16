@@ -18,30 +18,29 @@
 
 package org.apache.tools.ant.taskdefs;
 
-import org.apache.tools.ant.BuildFileRule;
 import org.apache.tools.ant.BuildException;
+import org.apache.tools.ant.BuildFileRule;
 import org.apache.tools.ant.util.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import java.io.File;
 
-import static org.apache.tools.ant.AntAssert.assertContains;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class TouchTest {
 
     @Rule
     public final BuildFileRule buildRule = new BuildFileRule();
 
-    private static String TOUCH_FILE = "src/etc/testcases/taskdefs/touchtest";
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     /** Utilities used for file operations */
     private static final FileUtils FILE_UTILS = FileUtils.getFileUtils();
-
 
     @Before
     public void setUp() {
@@ -54,8 +53,7 @@ public class TouchTest {
     }
 
     public long getTargetTime() {
-
-        File file = new File(System.getProperty("root"), TOUCH_FILE);
+        File file = new File(buildRule.getProject().getBaseDir(), "touchtest");
         if (!file.exists()) {
             throw new BuildException("failed to touch file " + file);
         }
@@ -96,9 +94,9 @@ public class TouchTest {
     public void testNow() {
         long now = System.currentTimeMillis();
         buildRule.executeTarget("testNow");
-        long time = getTargetTime();
-        assertTimesNearlyMatch(time, now, 5000);
+        assertTimesNearlyMatch(getTargetTime(), now, 5000);
     }
+
     /**
      * verify that the millis test sets things up
      */
@@ -168,13 +166,9 @@ public class TouchTest {
      */
     @Test
     public void testBadPattern() {
-        try {
-            buildRule.executeTarget("testBadPattern");
-            fail("No parsing exception thrown");
-        } catch (BuildException ex) {
-            assertContains("Unparseable", ex.getMessage());
-        }
-
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("Unparseable");
+        buildRule.executeTarget("testBadPattern");
     }
 
     /**
@@ -184,8 +178,7 @@ public class TouchTest {
      */
     private void touchFile(String targetName, long timestamp) {
         buildRule.executeTarget(targetName);
-        long time = getTargetTime();
-        assertTimesNearlyMatch(timestamp, time);
+        assertTimesNearlyMatch(timestamp, getTargetTime());
     }
 
     /**
@@ -193,8 +186,8 @@ public class TouchTest {
      * @param timestamp long
      * @param time long
      */
-    public void assertTimesNearlyMatch(long timestamp,long time) {
-        long granularity= FILE_UTILS.getFileTimestampGranularity();
+    public void assertTimesNearlyMatch(long timestamp, long time) {
+        long granularity = FILE_UTILS.getFileTimestampGranularity();
         assertTimesNearlyMatch(timestamp, time, granularity);
     }
 

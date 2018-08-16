@@ -123,7 +123,7 @@ public class Files extends AbstractSelectorContainer
 
     /**
      * Add a name entry to the include files list.
-     * @return <code>PatternSet.NameEntry</code>.
+     * @return <code>PatternSet.PatternFileNameEntry</code>.
      */
     public synchronized PatternSet.NameEntry createIncludesFile() {
         if (isReference()) {
@@ -147,7 +147,7 @@ public class Files extends AbstractSelectorContainer
 
     /**
      * Add a name entry to the excludes files list.
-     * @return <code>PatternSet.NameEntry</code>.
+     * @return <code>PatternSet.PatternFileNameEntry</code>.
      */
     public synchronized PatternSet.NameEntry createExcludesFile() {
         if (isReference()) {
@@ -180,8 +180,8 @@ public class Files extends AbstractSelectorContainer
     public synchronized void appendIncludes(String[] includes) {
         checkAttributesAllowed();
         if (includes != null) {
-            for (int i = 0; i < includes.length; i++) {
-                defaultPatterns.createInclude().setName(includes[i]);
+            for (String include : includes) {
+                defaultPatterns.createInclude().setName(include);
             }
             ds = null;
         }
@@ -210,8 +210,8 @@ public class Files extends AbstractSelectorContainer
     public synchronized void appendExcludes(String[] excludes) {
         checkAttributesAllowed();
         if (excludes != null) {
-            for (int i = 0; i < excludes.length; i++) {
-                defaultPatterns.createExclude().setName(excludes[i]);
+            for (String exclude : excludes) {
+                defaultPatterns.createExclude().setName(exclude);
             }
             ds = null;
         }
@@ -392,13 +392,13 @@ public class Files extends AbstractSelectorContainer
      * @return a cloned Object.
      */
     @Override
-    public synchronized Files clone() {
+    public synchronized Object clone() {
         if (isReference()) {
             return getRef().clone();
         }
         Files f = (Files) super.clone();
         f.defaultPatterns = (PatternSet) defaultPatterns.clone();
-        f.additionalPatterns = new Vector<PatternSet>(additionalPatterns.size());
+        f.additionalPatterns = new Vector<>(additionalPatterns.size());
         for (PatternSet ps : additionalPatterns) {
             f.additionalPatterns.add((PatternSet) ps.clone());
         }
@@ -481,7 +481,7 @@ public class Files extends AbstractSelectorContainer
         String[] includePatterns = ps.getIncludePatterns(getProject());
         String[] excludePatterns = ps.getExcludePatterns(getProject());
         return (includePatterns != null && includePatterns.length > 0)
-            || (includePatterns != null && excludePatterns.length > 0);
+            || (excludePatterns != null && excludePatterns.length > 0);
     }
 
 }

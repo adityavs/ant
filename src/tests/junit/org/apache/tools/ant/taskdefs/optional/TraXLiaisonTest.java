@@ -18,7 +18,12 @@
 
 package org.apache.tools.ant.taskdefs.optional;
 
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.startsWith;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assume.assumeFalse;
+import static org.junit.Assume.assumeNoException;
+import static org.junit.Assume.assumeTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -32,7 +37,6 @@ import org.apache.tools.ant.taskdefs.XSLTLiaison;
 import org.apache.tools.ant.taskdefs.XSLTLogger;
 import org.apache.tools.ant.util.JAXPUtils;
 import org.junit.After;
-import org.junit.Assume;
 import org.junit.Test;
 
 /**
@@ -59,13 +63,12 @@ public class TraXLiaisonTest extends AbstractXSLTLiaisonTest implements XSLTLogg
         try {
             getClass().getClassLoader().loadClass("org.apache.xalan.lib.Redirect");
         } catch (Exception exc) {
-            Assume.assumeNoException("xalan redirect is not on the classpath", exc);
+            assumeNoException("xalan redirect is not on the classpath", exc);
         }
         try {
             String factoryName = TransformerFactory.newInstance().getClass().getName();
-            Assume.assumeFalse("TraxFactory is Xalan",
-                              "org.apache.xalan.processor.TransformerFactoryImpl"
-                              .equals(factoryName));
+            assumeFalse("TraxFactory is Xalan",
+                    "org.apache.xalan.processor.TransformerFactoryImpl".equals(factoryName));
         } catch (TransformerFactoryConfigurationError exc) {
             throw new RuntimeException(exc);
         }
@@ -106,13 +109,12 @@ public class TraXLiaisonTest extends AbstractXSLTLiaisonTest implements XSLTLogg
         try {
             getClass().getClassLoader().loadClass("org.apache.xalan.lib.Redirect");
         } catch (Exception exc) {
-            Assume.assumeNoException("xalan redirect is not on the classpath", exc);
+            assumeNoException("xalan redirect is not on the classpath", exc);
         }
         try {
             String factoryName = TransformerFactory.newInstance().getClass().getName();
-            Assume.assumeTrue("TraxFactory is " + factoryName + " and not Xalan",
-                              "org.apache.xalan.processor.TransformerFactoryImpl"
-                              .equals(factoryName));
+            assumeTrue("TraxFactory is " + factoryName + " and not Xalan",
+                    "org.apache.xalan.processor.TransformerFactoryImpl".equals(factoryName));
         } catch (TransformerFactoryConfigurationError exc) {
             throw new RuntimeException(exc);
         }
@@ -161,8 +163,8 @@ public class TraXLiaisonTest extends AbstractXSLTLiaisonTest implements XSLTLogg
             file = new File("/user/local/bin");
         }
         String systemid = JAXPUtils.getSystemId(file);
-        assertTrue("SystemIDs should start by file:/", systemid.startsWith("file:/"));
-        assertTrue("SystemIDs should not start with file:////", !systemid.startsWith("file:////"));
+        assertThat("SystemIDs should start by file:/", systemid, startsWith("file:/"));
+        assertThat("SystemIDs should not start with file:////", systemid, not(startsWith("file:////")));
     }
 
     public void log(String message) {

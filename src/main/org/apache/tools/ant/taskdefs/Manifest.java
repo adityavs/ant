@@ -37,8 +37,8 @@ import java.util.Vector;
 import java.util.stream.Collectors;
 
 import org.apache.tools.ant.BuildException;
-import org.apache.tools.ant.util.CollectionUtils;
 import org.apache.tools.ant.util.FileUtils;
+import org.apache.tools.ant.util.StreamUtils;
 
 /**
  * Holds the data of a jar manifest.
@@ -131,7 +131,7 @@ public class Manifest {
         private String name = null;
 
         /** The attribute's value */
-        private Vector<String> values = new Vector<String>();
+        private Vector<String> values = new Vector<>();
 
         /**
          * For multivalued attributes, this is the index of the attribute
@@ -193,12 +193,8 @@ public class Manifest {
             Attribute rhsAttribute = (Attribute) rhs;
             String lhsKey = getKey();
             String rhsKey = rhsAttribute.getKey();
-            if ((lhsKey == null && rhsKey != null)
-                 || (lhsKey != null && !lhsKey.equals(rhsKey))) {
-                return false;
-            }
-
-            return values.equals(rhsAttribute.values);
+            return (lhsKey != null || rhsKey == null)
+                    && (lhsKey == null || lhsKey.equals(rhsKey)) && values.equals(rhsAttribute.values);
         }
 
         /**
@@ -243,10 +239,7 @@ public class Manifest {
          * @return the attribute's key.
          */
         public String getKey() {
-            if (name == null) {
-                return null;
-            }
-            return name.toLowerCase(Locale.ENGLISH);
+            return name == null ? null : name.toLowerCase(Locale.ENGLISH);
         }
 
         /**
@@ -302,8 +295,7 @@ public class Manifest {
          * @param line the continuation line.
          */
         public void addContinuation(String line) {
-            String currentValue = values.elementAt(currentIndex);
-            setValue(currentValue + line.substring(1));
+            setValue(values.elementAt(currentIndex) + line.substring(1));
         }
 
         /**
@@ -498,21 +490,15 @@ public class Manifest {
                     "Unable to merge sections with different names");
             }
 
-            Enumeration<String> e = section.getAttributeKeys();
             Attribute classpathAttribute = null;
-            while (e.hasMoreElements()) {
-                String attributeName = e.nextElement();
+            for (String attributeName : Collections.list(section.getAttributeKeys())) {
                 Attribute attribute = section.getAttribute(attributeName);
                 if (ATTRIBUTE_CLASSPATH.equalsIgnoreCase(attributeName)) {
                     if (classpathAttribute == null) {
                         classpathAttribute = new Attribute();
                         classpathAttribute.setName(ATTRIBUTE_CLASSPATH);
                     }
-                    Enumeration<String> cpe = attribute.getValues();
-                    while (cpe.hasMoreElements()) {
-                        String value = cpe.nextElement();
-                        classpathAttribute.addValue(value);
-                    }
+                    Collections.list(attribute.getValues()).forEach(classpathAttribute::addValue);
                 } else {
                     // the merge file always wins
                     storeAttribute(attribute);
@@ -523,11 +509,7 @@ public class Manifest {
                 if (mergeClassPaths) {
                     Attribute currentCp = getAttribute(ATTRIBUTE_CLASSPATH);
                     if (currentCp != null) {
-                        for (Enumeration<String> attribEnum = currentCp.getValues();
-                             attribEnum.hasMoreElements();) {
-                            String value = attribEnum.nextElement();
-                            classpathAttribute.addValue(value);
-                        }
+                        Collections.list(currentCp.getValues()).forEach(classpathAttribute::addValue);
                     }
                 }
                 storeAttribute(classpathAttribute);
@@ -566,11 +548,8 @@ public class Manifest {
                 Attribute nameAttr = new Attribute(ATTRIBUTE_NAME, name);
                 nameAttr.write(writer);
             }
-            Enumeration<String> e = getAttributeKeys();
-            while (e.hasMoreElements()) {
-                String key = e.nextElement();
-                Attribute attribute = getAttribute(key);
-                attribute.write(writer, flatten);
+            for (String key : Collections.list(getAttributeKeys())) {
+                getAttribute(key).write(writer, flatten);
             }
             writer.print(EOL);
         }
@@ -594,7 +573,7 @@ public class Manifest {
          *         key of an attribute of the section.
          */
         public Enumeration<String> getAttributeKeys() {
-            return CollectionUtils.asEnumeration(attributes.keySet().iterator());
+            return Collections.enumeration(attributes.keySet());
         }
 
         /**
@@ -607,10 +586,7 @@ public class Manifest {
          */
         public String getAttributeValue(String attributeName) {
             Attribute attribute = getAttribute(attributeName.toLowerCase(Locale.ENGLISH));
-            if (attribute == null) {
-                return null;
-            }
-            return attribute.getValue();
+            return attribute == null ? null : attribute.getValue();
         }
 
         /**
@@ -677,11 +653,7 @@ public class Manifest {
                     } else {
                         warnings.add(
                             "Multiple Class-Path attributes are supported but violate the Jar specification and may not be correctly processed in all environments");
-                        Enumeration<String> e = attribute.getValues();
-                        while (e.hasMoreElements()) {
-                            String value = e.nextElement();
-                            classpathAttribute.addValue(value);
-                        }
+                        Collections.list(attribute.getValues()).forEach(classpathAttribute::addValue);
                     }
                 } else if (attributes.containsKey(attributeKey)) {
                     throw new ManifestException("The attribute \""
@@ -701,16 +673,12 @@ public class Manifest {
          * @since Ant 1.5.2
          */
         @Override
-        public Section clone() {
+        public Object clone() {
             Section cloned = new Section();
             cloned.setName(name);
-            Enumeration<String> e = getAttributeKeys();
-            while (e.hasMoreElements()) {
-                String key = e.nextElement();
-                Attribute attribute = getAttribute(key);
-                cloned.storeAttribute(new Attribute(attribute.getName(),
-                                                    attribute.getValue()));
-            }
+            StreamUtils.enumerationAsStream(getAttributeKeys())
+                    .map(key -> new Attribute(getAttribute(key).getName(),
+                    getAttribute(key).getValue())).forEach(cloned::storeAttribute);
             return cloned;
         }
 
@@ -723,8 +691,7 @@ public class Manifest {
             if (attribute == null) {
                 return;
             }
-            String attributeKey = attribute.getKey();
-            attributes.put(attributeKey, attribute);
+            attributes.put(attribute.getKey(), attribute);
         }
 
         /**
@@ -954,7 +921,7 @@ public class Manifest {
          throws ManifestException {
         if (other != null) {
              if (overwriteMain) {
-                 mainSection = other.mainSection.clone();
+                 mainSection = (Section) other.mainSection.clone();
              } else {
                  mainSection.merge(other.mainSection, mergeClassPaths);
              }
@@ -963,15 +930,12 @@ public class Manifest {
                  manifestVersion = other.manifestVersion;
              }
 
-             Enumeration<String> e = other.getSectionNames();
-             while (e.hasMoreElements()) {
-                 String sectionName = e.nextElement();
+             for (String sectionName : Collections.list(other.getSectionNames())) {
                  Section ourSection = sections.get(sectionName);
-                 Section otherSection
-                    = other.sections.get(sectionName);
+                 Section otherSection = other.sections.get(sectionName);
                  if (ourSection == null) {
                      if (otherSection != null) {
-                         addConfiguredSection(otherSection.clone());
+                         addConfiguredSection((Section) otherSection.clone());
                      }
                  } else {
                      ourSection.merge(otherSection, mergeClassPaths);
@@ -1054,22 +1018,14 @@ public class Manifest {
      * @return an enumeration of warning strings
      */
     public Enumeration<String> getWarnings() {
-        Vector<String> warnings = new Vector<>();
+        // create a vector and add in the warnings for the main section
+        List<String> warnings = Collections.list(mainSection.getWarnings());
 
-        Enumeration<String> warnEnum = mainSection.getWarnings();
-        while (warnEnum.hasMoreElements()) {
-            warnings.addElement(warnEnum.nextElement());
-        }
+        // add in the warnings for all the sections
+        sections.values().stream().map(section -> Collections.list(section.getWarnings()))
+                .forEach(warnings::addAll);
 
-        // create a vector and add in the warnings for all the sections
-        for (Section section : sections.values()) {
-            Enumeration<String> e2 = section.getWarnings();
-            while (e2.hasMoreElements()) {
-                warnings.addElement(e2.nextElement());
-            }
-        }
-
-        return warnings.elements();
+        return Collections.enumeration(warnings);
     }
 
     /**
@@ -1113,11 +1069,8 @@ public class Manifest {
             return false;
         }
 
-        if (!mainSection.equals(rhsManifest.mainSection)) {
-            return false;
-        }
+        return mainSection.equals(rhsManifest.mainSection) && sections.equals(rhsManifest.sections);
 
-        return sections.equals(rhsManifest.sections);
     }
 
     /**
@@ -1155,6 +1108,6 @@ public class Manifest {
      * @return an Enumeration of section names
      */
     public Enumeration<String> getSectionNames() {
-        return CollectionUtils.asEnumeration(sections.keySet().iterator());
+        return Collections.enumeration(sections.keySet());
     }
 }

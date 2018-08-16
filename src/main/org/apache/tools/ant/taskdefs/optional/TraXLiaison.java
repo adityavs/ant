@@ -28,7 +28,6 @@ import java.lang.reflect.Field;
 import java.net.URL;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
@@ -64,6 +63,7 @@ import org.apache.tools.ant.types.resources.URLProvider;
 import org.apache.tools.ant.util.FileUtils;
 import org.apache.tools.ant.util.JAXPUtils;
 import org.apache.tools.ant.util.JavaEnvUtils;
+import org.apache.tools.ant.util.StreamUtils;
 import org.xml.sax.EntityResolver;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
@@ -121,16 +121,16 @@ public class TraXLiaison implements XSLTLiaison4, ErrorListener, XSLTLoggerAware
     private URIResolver uriResolver;
 
     /** transformer output properties */
-    private final Vector outputProperties = new Vector();
+    private final Vector<String[]> outputProperties = new Vector<>();
 
     /** stylesheet parameters */
-    private final Hashtable<String, Object> params = new Hashtable<String, Object>();
+    private final Hashtable<String, Object> params = new Hashtable<>();
 
     /** factory attributes */
-    private final List<Object[]> attributes = new ArrayList<Object[]>();
+    private final List<Object[]> attributes = new ArrayList<>();
 
     /** factory features */
-    private final Map<String, Boolean> features = new HashMap<String, Boolean>();
+    private final Map<String, Boolean> features = new HashMap<>();
 
     /** whether to suppress warnings */
     private boolean suppressWarnings = false;
@@ -327,9 +327,7 @@ public class TraXLiaison implements XSLTLiaison4, ErrorListener, XSLTLoggerAware
         if (uriResolver != null) {
             transformer.setURIResolver(uriResolver);
         }
-        final int size = outputProperties.size();
-        for (int i = 0; i < size; i++) {
-            final String[] pair = (String[]) outputProperties.elementAt(i);
+        for (final String[] pair : outputProperties) {
             transformer.setOutputProperty(pair[0], pair[1]);
         }
 
@@ -337,7 +335,7 @@ public class TraXLiaison implements XSLTLiaison4, ErrorListener, XSLTLoggerAware
             if ("org.apache.xalan.transformer.TransformerImpl" //NOSONAR
                 .equals(transformer.getClass().getName())) {
                 try {
-                    final Class traceSupport =
+                    final Class<?> traceSupport =
                         Class.forName("org.apache.tools.ant.taskdefs.optional."
                                       + "Xalan2TraceSupport", true,
                                       Thread.currentThread()
@@ -369,12 +367,7 @@ public class TraXLiaison implements XSLTLiaison4, ErrorListener, XSLTLoggerAware
      * Sets the parameters for the transformer.
      */
     private void setTransformationParameters() {
-        for (final Enumeration enumeration = params.keys();
-             enumeration.hasMoreElements();) {
-            final String name = (String) enumeration.nextElement();
-            final Object value = params.get(name);
-            transformer.setParameter(name, value);
-        }
+        params.forEach((key, value) -> transformer.setParameter(key, value));
     }
 
     /**
@@ -394,7 +387,7 @@ public class TraXLiaison implements XSLTLiaison4, ErrorListener, XSLTLoggerAware
             tfactory = TransformerFactory.newInstance();
         } else {
             try {
-                Class clazz = null;
+                Class<?> clazz = null;
                 try {
                     clazz =
                         Class.forName(factoryName, true,
@@ -427,9 +420,7 @@ public class TraXLiaison implements XSLTLiaison4, ErrorListener, XSLTLoggerAware
         tfactory.setErrorListener(this);
 
         // specific attributes for the transformer
-        final int size = attributes.size();
-        for (int i = 0; i < size; i++) {
-            final Object[] pair = attributes.get(i);
+        for (final Object[] pair : attributes) {
             tfactory.setAttribute((String) pair[0], pair[1]);
         }
 
@@ -627,18 +618,11 @@ public class TraXLiaison implements XSLTLiaison4, ErrorListener, XSLTLoggerAware
         final XSLTProcess.Factory factory = xsltTask.getFactory();
         if (factory != null) {
             setFactory(factory.getName());
-
             // configure factory attributes
-            for (final Enumeration attrs = factory.getAttributes();
-                    attrs.hasMoreElements();) {
-                final XSLTProcess.Factory.Attribute attr =
-                        (XSLTProcess.Factory.Attribute) attrs.nextElement();
-                setAttribute(attr.getName(), attr.getValue());
-            }
-            for (final XSLTProcess.Factory.Feature feature
-                     : factory.getFeatures()) {
-                setFeature(feature.getName(), feature.getValue());
-            }
+            StreamUtils.enumerationAsStream(factory.getAttributes())
+                    .forEach(attr -> setAttribute(attr.getName(), attr.getValue()));
+            factory.getFeatures()
+                    .forEach(feature -> setFeature(feature.getName(), feature.getValue()));
         }
 
         final XMLCatalog xmlCatalog = xsltTask.getXMLCatalog();
@@ -648,14 +632,9 @@ public class TraXLiaison implements XSLTLiaison4, ErrorListener, XSLTLoggerAware
             setURIResolver(xmlCatalog);
         }
 
-
         // configure output properties
-        for (final Enumeration props = xsltTask.getOutputProperties();
-                props.hasMoreElements();) {
-            final XSLTProcess.OutputProperty prop
-                = (XSLTProcess.OutputProperty) props.nextElement();
-            setOutputProperty(prop.getName(), prop.getValue());
-        }
+        StreamUtils.enumerationAsStream(xsltTask.getOutputProperties())
+                .forEach(prop -> setOutputProperty(prop.getName(), prop.getValue()));
 
         suppressWarnings = xsltTask.getSuppressWarnings();
 

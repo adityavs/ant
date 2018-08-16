@@ -591,7 +591,7 @@ public class Rmic extends MatchingTask {
     /**
      * execute by creating an instance of an implementation
      * class and getting to do the work
-     * @throws org.apache.tools.ant.BuildException
+     * @throws BuildException
      * if there's a problem with baseDir or RMIC
      */
     @Override
@@ -613,9 +613,8 @@ public class Rmic extends MatchingTask {
             if (verify) {
                 log("Verify has been turned on.", Project.MSG_VERBOSE);
             }
-            RmicAdapter adapter =
-                nestedAdapter != null ? nestedAdapter :
-                RmicAdapterFactory.getRmic(getCompiler(), this,
+            RmicAdapter adapter = nestedAdapter != null ? nestedAdapter
+                    : RmicAdapterFactory.getRmic(getCompiler(), this,
                                            createCompilerClasspath());
 
             // now we need to populate the compiler adapter
@@ -628,8 +627,7 @@ public class Rmic extends MatchingTask {
             // specific classname is not given
             if (classname == null) {
                 DirectoryScanner ds = this.getDirectoryScanner(baseDir);
-                String[] files = ds.getIncludedFiles();
-                scanDir(baseDir, files, adapter.getMapper());
+                scanDir(baseDir, ds.getIncludedFiles(), adapter.getMapper());
             } else {
                 // otherwise perform a timestamp comparison - at least
                 String path = classname.replace('.', File.separatorChar)
@@ -697,7 +695,7 @@ public class Rmic extends MatchingTask {
     /**
      * Move the generated source file(s) to the base directory
      *
-     * @throws org.apache.tools.ant.BuildException When error
+     * @throws BuildException When error
      * copying/removing files.
      */
     private void moveGeneratedFile(File baseDir, File sourceBaseFile, String classname,
@@ -705,6 +703,9 @@ public class Rmic extends MatchingTask {
         String classFileName = classname.replace('.', File.separatorChar)
             + ".class";
         String[] generatedFiles = adapter.getMapper().mapFileName(classFileName);
+        if (generatedFiles == null) {
+            return;
+        }
 
         for (String generatedFile : generatedFiles) {
             if (!generatedFile.endsWith(".class")) {
@@ -725,8 +726,7 @@ public class Rmic extends MatchingTask {
             try {
                 if (filtering) {
                     FILE_UTILS.copyFile(oldFile, newFile,
-                                        new FilterSetCollection(getProject()
-                                                                .getGlobalFilterSet()));
+                            new FilterSetCollection(getProject().getGlobalFilterSet()));
                 } else {
                     FILE_UTILS.copyFile(oldFile, newFile);
                 }
@@ -751,7 +751,7 @@ public class Rmic extends MatchingTask {
         if (idl) {
             log("will leave uptodate test to rmic implementation in idl mode.",
                 Project.MSG_VERBOSE);
-        } else if (iiop && iiopOpts != null && iiopOpts.indexOf("-always") > -1) {
+        } else if (iiop && iiopOpts != null && iiopOpts.contains("-always")) {
             log("no uptodate test as -always option has been specified",
                 Project.MSG_VERBOSE);
         } else {
@@ -772,10 +772,7 @@ public class Rmic extends MatchingTask {
         try {
             Class<?> testClass = loader.loadClass(classname);
             // One cannot RMIC an interface for "classic" RMI (JRMP)
-            if (testClass.isInterface() && !iiop && !idl) {
-                return false;
-            }
-            return isValidRmiRemote(testClass);
+            return (!testClass.isInterface() || iiop || idl) && isValidRmiRemote(testClass);
         } catch (ClassNotFoundException e) {
             log(ERROR_UNABLE_TO_VERIFY_CLASS + classname + ERROR_NOT_FOUND,
                 Project.MSG_WARN);

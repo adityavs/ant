@@ -74,7 +74,7 @@ public class CBZip2InputStream extends InputStream implements BZip2Constants {
 
     private int currentChar = -1;
 
-    private static final int EOF                  = 0;
+    private static final int EOF               = 0;
     private static final int START_BLOCK_STATE = 1;
     private static final int RAND_PART_A_STATE = 2;
     private static final int RAND_PART_B_STATE = 3;
@@ -85,8 +85,10 @@ public class CBZip2InputStream extends InputStream implements BZip2Constants {
 
     private int currentState = START_BLOCK_STATE;
 
-    private int storedBlockCRC, storedCombinedCRC;
-    private int computedBlockCRC, computedCombinedCRC;
+    private int storedBlockCRC;
+    private int storedCombinedCRC;
+    private int computedBlockCRC;
+    private int computedCombinedCRC;
 
     // Variables used by setup* methods exclusively
 
@@ -286,7 +288,7 @@ public class CBZip2InputStream extends InputStream implements BZip2Constants {
         }
 
         int blockSize = this.in.read();
-        if ((blockSize < '1') || (blockSize > '9')) {
+        if (blockSize < '1' || blockSize > '9') {
             throw new IOException("Stream is not BZip2 formatted: illegal "
                                   + "blocksize " + (char) blockSize);
         }
@@ -359,7 +361,7 @@ public class CBZip2InputStream extends InputStream implements BZip2Constants {
         }
     }
 
-    private void endBlock() throws IOException {
+    private void endBlock() {
         this.computedBlockCRC = this.crc.getFinalCRC();
 
         // A bad CRC is considered a fatal error.
@@ -660,7 +662,7 @@ public class CBZip2InputStream extends InputStream implements BZip2Constants {
         int minLens_zt  = minLens[zt];
 
         while (nextSym != eob) {
-            if ((nextSym == RUNA) || (nextSym == RUNB)) {
+            if (nextSym == RUNA || nextSym == RUNB) {
                 int s = -1;
 
                 for (int n = 1; true; n <<= 1) {
@@ -853,7 +855,7 @@ public class CBZip2InputStream extends InputStream implements BZip2Constants {
             tt[cftab[ll8[i] & 0xff]++] = i;
         }
 
-        if ((this.origPtr < 0) || (this.origPtr >= tt.length)) {
+        if (this.origPtr < 0 || this.origPtr >= tt.length) {
             throw new IOException("stream corrupted");
         }
 
@@ -983,7 +985,7 @@ public class CBZip2InputStream extends InputStream implements BZip2Constants {
         }
     }
 
-    private static final class Data extends Object {
+    private static final class Data {
 
         // (with blockSize 900k)
         final boolean[] inUse   = new boolean[256];                                   //      256 byte
@@ -1037,7 +1039,7 @@ public class CBZip2InputStream extends InputStream implements BZip2Constants {
             // it can happen, if the compressor mixed small and large
             // blocks.  Normally only the last block will be smaller
             // than others.
-            if ((ttShadow == null) || (ttShadow.length < length)) {
+            if (ttShadow == null || ttShadow.length < length) {
                 this.tt = ttShadow = new int[length];
             }
 
@@ -1046,7 +1048,7 @@ public class CBZip2InputStream extends InputStream implements BZip2Constants {
 
     }
 
-    private static void reportCRCError() throws IOException {
+    private static void reportCRCError() {
         // The clean way would be to throw an exception.
         //throw new IOException("crc error");
 

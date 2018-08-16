@@ -196,7 +196,7 @@ public class ZipOutputStream extends FilterOutputStream {
      *
      * @since 1.1
      */
-    private final List<ZipEntry> entries = new LinkedList<ZipEntry>();
+    private final List<ZipEntry> entries = new LinkedList<>();
 
     /**
      * CRC instance to avoid parsing DEFLATED data twice.
@@ -247,7 +247,7 @@ public class ZipOutputStream extends FilterOutputStream {
      *
      * @since 1.1
      */
-    private final Map<ZipEntry, Long> offsets = new HashMap<ZipEntry, Long>();
+    private final Map<ZipEntry, Long> offsets = new HashMap<>();
 
     /**
      * The encoding to use for filenames and the file comment.
@@ -343,22 +343,22 @@ public class ZipOutputStream extends FilterOutputStream {
      */
     public ZipOutputStream(File file) throws IOException {
         super(null);
-        RandomAccessFile _raf = null;
+        RandomAccessFile ranf = null;
         try {
-            _raf = new RandomAccessFile(file, "rw");
-            _raf.setLength(0);
+            ranf = new RandomAccessFile(file, "rw");
+            ranf.setLength(0);
         } catch (IOException e) {
-            if (_raf != null) {
+            if (ranf != null) {
                 try {
-                    _raf.close();
+                    ranf.close();
                 } catch (IOException inner) { // NOPMD
                     // ignore
                 }
-                _raf = null;
+                ranf = null;
             }
             out = Files.newOutputStream(file.toPath());
         }
-        raf = _raf;
+        raf = ranf;
     }
 
     /**
@@ -1148,20 +1148,16 @@ public class ZipOutputStream extends FilterOutputStream {
         }
 
         String comm = ze.getComment();
-        if (comm != null && !"".equals(comm)) {
+        if (comm == null || comm.isEmpty()) {
+            return;
+        }
 
-            boolean commentEncodable = zipEncoding.canEncode(comm);
-
-            if (createUnicodeExtraFields == UnicodeExtraFieldPolicy.ALWAYS
-                || !commentEncodable) {
-                ByteBuffer commentB = getEntryEncoding(ze).encode(comm);
-                ze.addExtraField(new UnicodeCommentExtraField(comm,
-                                                              commentB.array(),
-                                                              commentB.arrayOffset(),
-                                                              commentB.limit()
-                                                              - commentB.position())
-                                 );
-            }
+        if (createUnicodeExtraFields == UnicodeExtraFieldPolicy.ALWAYS
+            || !zipEncoding.canEncode(comm)) {
+            ByteBuffer commentB = getEntryEncoding(ze).encode(comm);
+            ze.addExtraField(new UnicodeCommentExtraField(comm,
+                    commentB.array(), commentB.arrayOffset(),
+                    commentB.limit() - commentB.position()));
         }
     }
 

@@ -52,7 +52,7 @@ import java.util.BitSet;
  * ssCommons Compre
  * </pre>
  *
- * <p>Which results in a new text "ss romooCCmmpnse", in adition the
+ * <p>Which results in a new text "ss romooCCmmpnse", in addition the
  * index of the first line that contained the original text is kept -
  * in this case it is 1.  The idea is that in a long English text all
  * permutations that start with "he" are likely suffixes of a "the" and
@@ -117,6 +117,7 @@ class BlockSort {
 
     private static final int FALLBACK_QSORT_STACK_SIZE = 100;
 
+    @SuppressWarnings("unused")
     private static final int STACK_SIZE =
         QSORT_STACK_SIZE < FALLBACK_QSORT_STACK_SIZE
         ? FALLBACK_QSORT_STACK_SIZE : QSORT_STACK_SIZE;
@@ -523,7 +524,7 @@ class BlockSort {
 
         /*-- LBZ2: the log(N) loop --*/
         H = 1;
-        while (true) {
+        do {
 
             j = 0;
             for (i = 0; i < nblock; i++) {
@@ -572,10 +573,7 @@ class BlockSort {
             }
 
             H *= 2;
-            if (H > nblock || nNotDone == 0) {
-                break;
-            }
-        }
+        } while (H <= nblock && nNotDone != 0);
     }
 
 /*---------------------------------------------*/
@@ -651,7 +649,7 @@ class BlockSort {
                         if (onceRun) {
                             fmap[j] = a;
                             if ((j -= h) <= mj) { //NOSONAR
-                                break HAMMER;
+                                break;
                             }
                         } else {
                             onceRun = true;
@@ -670,7 +668,7 @@ class BlockSort {
                                         if (block[i1 + 5] == block[i2 + 5]) {
                                             if (block[(i1 += 6)] == block[(i2 += 6)]) { //NOSONAR
                                                 int x = lastShadow;
-                                                X: while (x > 0) {
+                                                while (x > 0) {
                                                     x -= 4;
 
                                                     if (block[i1 + 1] == block[i2 + 1]) {
@@ -688,7 +686,6 @@ class BlockSort {
                                                                                         i2 -= lastPlus1;
                                                                                     }
                                                                                     workDoneShadow++;
-                                                                                    continue X;
                                                                                 } else if ((quadrant[i1 + 3] > quadrant[i2 + 3])) {
                                                                                     continue HAMMER;
                                                                                 } else {
@@ -731,39 +728,25 @@ class BlockSort {
                                                     }
 
                                                 }
-                                                break HAMMER;
+                                                break;
                                             } // while x > 0
-                                            else {
-                                                if ((block[i1] & 0xff) > (block[i2] & 0xff)) {
-                                                    continue HAMMER;
-                                                } else {
-                                                    break HAMMER;
-                                                }
+                                            else if ((block[i1] & 0xff) <= (block[i2] & 0xff)) {
+                                                break;
                                             }
-                                        } else if ((block[i1 + 5] & 0xff) > (block[i2 + 5] & 0xff)) {
-                                            continue HAMMER;
-                                        } else {
-                                            break HAMMER;
+                                        } else if ((block[i1 + 5] & 0xff) <= (block[i2 + 5] & 0xff)) {
+                                            break;
                                         }
-                                    } else if ((block[i1 + 4] & 0xff) > (block[i2 + 4] & 0xff)) {
-                                        continue HAMMER;
-                                    } else {
-                                        break HAMMER;
+                                    } else if ((block[i1 + 4] & 0xff) <= (block[i2 + 4] & 0xff)) {
+                                        break;
                                     }
-                                } else if ((block[i1 + 3] & 0xff) > (block[i2 + 3] & 0xff)) {
-                                    continue HAMMER;
-                                } else {
-                                    break HAMMER;
+                                } else if ((block[i1 + 3] & 0xff) <= (block[i2 + 3] & 0xff)) {
+                                    break;
                                 }
-                            } else if ((block[i1 + 2] & 0xff) > (block[i2 + 2] & 0xff)) {
-                                continue HAMMER;
-                            } else {
-                                break HAMMER;
+                            } else if ((block[i1 + 2] & 0xff) <= (block[i2 + 2] & 0xff)) {
+                                break;
                             }
-                        } else if ((block[i1 + 1] & 0xff) > (block[i2 + 1] & 0xff)) {
-                            continue HAMMER;
-                        } else {
-                            break HAMMER;
+                        } else if ((block[i1 + 1] & 0xff) <= (block[i2 + 1] & 0xff)) {
+                            break;
                         }
 
                     } // HAMMER

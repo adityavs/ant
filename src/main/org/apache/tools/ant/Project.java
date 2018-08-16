@@ -23,8 +23,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -34,10 +34,12 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.Vector;
 import java.util.WeakHashMap;
+import java.util.stream.Collectors;
 
 import org.apache.tools.ant.helper.DefaultExecutor;
 import org.apache.tools.ant.input.DefaultInputHandler;
 import org.apache.tools.ant.input.InputHandler;
+import org.apache.tools.ant.launch.Locator;
 import org.apache.tools.ant.types.Description;
 import org.apache.tools.ant.types.FilterSet;
 import org.apache.tools.ant.types.FilterSetCollection;
@@ -45,10 +47,8 @@ import org.apache.tools.ant.types.Path;
 import org.apache.tools.ant.types.Resource;
 import org.apache.tools.ant.types.ResourceFactory;
 import org.apache.tools.ant.types.resources.FileResource;
-import org.apache.tools.ant.util.CollectionUtils;
 import org.apache.tools.ant.util.FileUtils;
 import org.apache.tools.ant.util.JavaEnvUtils;
-import org.apache.tools.ant.util.StringUtils;
 import org.apache.tools.ant.util.VectorSet;
 
 /**
@@ -178,12 +178,7 @@ public class Project implements ResourceFactory {
 
     /** for each thread, record whether it is currently executing
         messageLogged */
-    private final ThreadLocal<Boolean> isLoggingMessage = new ThreadLocal<Boolean>() {
-            @Override
-            protected Boolean initialValue() {
-                return Boolean.FALSE;
-            }
-        };
+    private final ThreadLocal<Boolean> isLoggingMessage = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     /**
      * The Ant core classloader--may be <code>null</code> if using
@@ -326,7 +321,7 @@ public class Project implements ResourceFactory {
      * to the result
      */
     private void setAntLib() {
-        final File antlib = org.apache.tools.ant.launch.Locator.getClassSource(
+        final File antlib = Locator.getClassSource(
             Project.class);
         if (antlib != null) {
             setPropertyInternal(MagicNames.ANT_LIB, antlib.getAbsolutePath());
@@ -392,8 +387,8 @@ public class Project implements ResourceFactory {
     public void addBuildListener(final BuildListener listener) {
         synchronized (listenersLock) {
             // If the listeners already has this listener, do nothing
-            for (int i = 0; i < listeners.length; i++) {
-                if (listeners[i] == listener) {
+            for (BuildListener buildListener : listeners) {
+                if (buildListener == listener) {
                     return;
                 }
             }
@@ -438,9 +433,7 @@ public class Project implements ResourceFactory {
     public Vector<BuildListener> getBuildListeners() {
         synchronized (listenersLock) {
             final Vector<BuildListener> r = new Vector<>(listeners.length);
-            for (int i = 0; i < listeners.length; i++) {
-                r.add(listeners[i]);
-            }
+            Collections.addAll(r, listeners);
             return r;
         }
     }
@@ -945,9 +938,7 @@ public class Project implements ResourceFactory {
      */
     public void setSystemProperties() {
         final Properties systemP = System.getProperties();
-        final Enumeration<?> e = systemP.propertyNames();
-        while (e.hasMoreElements()) {
-            final String propertyName = (String) e.nextElement();
+        for (final String propertyName : systemP.stringPropertyNames()) {
             final String value = systemP.getProperty(propertyName);
             if (value != null) {
                 this.setPropertyInternal(propertyName, value);
@@ -1256,7 +1247,7 @@ public class Project implements ResourceFactory {
      */
     public void executeTargets(final Vector<String> names) throws BuildException {
         setUserProperty(MagicNames.PROJECT_INVOKED_TARGETS,
-                        CollectionUtils.flattenToString(names));
+                names.stream().collect(Collectors.joining(",")));
         getExecutor().executeTargets(this, names.toArray(new String[names.size()]));
     }
 
@@ -1381,9 +1372,7 @@ public class Project implements ResourceFactory {
         BuildException buildException = null; // first build exception
         for (final Target curtarget : sortedTargets) {
             boolean canExecute = true;
-            for (final Enumeration<String> depIter = curtarget.getDependencies();
-                 depIter.hasMoreElements();) {
-                final String dependencyName = depIter.nextElement();
+            for (final String dependencyName : Collections.list(curtarget.getDependencies())) {
                 if (!succeededTargets.contains(dependencyName)) {
                     canExecute = false;
                     log(curtarget,
@@ -1399,12 +1388,12 @@ public class Project implements ResourceFactory {
                     curtarget.performTasks();
                     succeededTargets.add(curtarget.getName());
                 } catch (final RuntimeException ex) {
-                    if (!(keepGoingMode)) {
+                    if (!keepGoingMode) {
                         throw ex; // throw further
                     }
                     thrownException = ex;
                 } catch (final Throwable ex) {
-                    if (!(keepGoingMode)) {
+                    if (!keepGoingMode) {
                         throw new BuildException(ex);
                     }
                     thrownException = ex;
@@ -1825,26 +1814,22 @@ public class Project implements ResourceFactory {
         // dependency tree, not just on the Targets that depend on the
         // build Target.
 
-        for (int i = 0; i < roots.length; i++) {
-            final String st = state.get(roots[i]);
+        for (String root : roots) {
+            final String st = state.get(root);
             if (st == null) {
-                tsort(roots[i], targetTable, state, visiting, ret);
+                tsort(root, targetTable, state, visiting, ret);
             } else if (st == VISITING) {
                 throw new BuildException("Unexpected node in visiting state: "
-                    + roots[i]);
+                        + root);
             }
         }
-        final StringBuilder buf = new StringBuilder("Build sequence for target(s)");
-
-        for (int j = 0; j < roots.length; j++) {
-            buf.append((j == 0) ? " `" : ", `").append(roots[j]).append('\'');
-        }
-        buf.append(" is ").append(ret);
-        log(buf.toString(), MSG_VERBOSE);
+        log("Build sequence for target(s)"
+                + Arrays.stream(roots).map(root -> String.format(" `%s'", root))
+                .collect(Collectors.joining(","))
+                + " is " + ret, MSG_VERBOSE);
 
         final Vector<Target> complete = (returnAll) ? ret : new Vector<>(ret);
-        for (final Enumeration<String> en = targetTable.keys(); en.hasMoreElements();) {
-            final String curTarget = en.nextElement();
+        for (final String curTarget : targetTable.keySet()) {
             final String st = state.get(curTarget);
             if (st == null) {
                 tsort(curTarget, targetTable, state, visiting, complete);
@@ -1922,8 +1907,7 @@ public class Project implements ResourceFactory {
             }
             throw new BuildException(new String(sb));
         }
-        for (final Enumeration<String> en = target.getDependencies(); en.hasMoreElements();) {
-            final String cur = en.nextElement();
+        for (final String cur : Collections.list(target.getDependencies())) {
             final String m = state.get(cur);
             if (m == null) {
                 // Not been visited
@@ -2086,9 +2070,8 @@ public class Project implements ResourceFactory {
      */
     public void fireBuildStarted() {
         final BuildEvent event = new BuildEvent(this);
-        final BuildListener[] currListeners = listeners;
-        for (int i = 0; i < currListeners.length; i++) {
-            currListeners[i].buildStarted(event);
+        for (BuildListener currListener : listeners) {
+            currListener.buildStarted(event);
         }
     }
 
@@ -2102,9 +2085,8 @@ public class Project implements ResourceFactory {
     public void fireBuildFinished(final Throwable exception) {
         final BuildEvent event = new BuildEvent(this);
         event.setException(exception);
-        final BuildListener[] currListeners = listeners;
-        for (int i = 0; i < currListeners.length; i++) {
-            currListeners[i].buildFinished(event);
+        for (BuildListener currListener : listeners) {
+            currListener.buildFinished(event);
         }
         // Inform IH to clear the cache
         IntrospectionHelper.clearCache();
@@ -2118,10 +2100,9 @@ public class Project implements ResourceFactory {
      */
     public void fireSubBuildStarted() {
         final BuildEvent event = new BuildEvent(this);
-        final BuildListener[] currListeners = listeners;
-        for (int i = 0; i < currListeners.length; i++) {
-            if (currListeners[i] instanceof SubBuildListener) {
-                ((SubBuildListener) currListeners[i]).subBuildStarted(event);
+        for (BuildListener currListener : listeners) {
+            if (currListener instanceof SubBuildListener) {
+                ((SubBuildListener) currListener).subBuildStarted(event);
             }
         }
     }
@@ -2138,10 +2119,9 @@ public class Project implements ResourceFactory {
     public void fireSubBuildFinished(final Throwable exception) {
         final BuildEvent event = new BuildEvent(this);
         event.setException(exception);
-        final BuildListener[] currListeners = listeners;
-        for (int i = 0; i < currListeners.length; i++) {
-            if (currListeners[i] instanceof SubBuildListener) {
-                ((SubBuildListener) currListeners[i]).subBuildFinished(event);
+        for (BuildListener currListener : listeners) {
+            if (currListener instanceof SubBuildListener) {
+                ((SubBuildListener) currListener).subBuildFinished(event);
             }
         }
     }
@@ -2155,9 +2135,8 @@ public class Project implements ResourceFactory {
      */
     protected void fireTargetStarted(final Target target) {
         final BuildEvent event = new BuildEvent(target);
-        final BuildListener[] currListeners = listeners;
-        for (int i = 0; i < currListeners.length; i++) {
-            currListeners[i].targetStarted(event);
+        for (BuildListener currListener : listeners) {
+            currListener.targetStarted(event);
         }
 
     }
@@ -2175,9 +2154,8 @@ public class Project implements ResourceFactory {
     protected void fireTargetFinished(final Target target, final Throwable exception) {
         final BuildEvent event = new BuildEvent(target);
         event.setException(exception);
-        final BuildListener[] currListeners = listeners;
-        for (int i = 0; i < currListeners.length; i++) {
-            currListeners[i].targetFinished(event);
+        for (BuildListener currListener : listeners) {
+            currListener.targetFinished(event);
         }
 
     }
@@ -2193,9 +2171,8 @@ public class Project implements ResourceFactory {
         // register this as the current task on the current thread.
         registerThreadTask(Thread.currentThread(), task);
         final BuildEvent event = new BuildEvent(task);
-        final BuildListener[] currListeners = listeners;
-        for (int i = 0; i < currListeners.length; i++) {
-            currListeners[i].taskStarted(event);
+        for (BuildListener currListener : listeners) {
+            currListener.taskStarted(event);
         }
     }
 
@@ -2215,9 +2192,8 @@ public class Project implements ResourceFactory {
         System.err.flush();
         final BuildEvent event = new BuildEvent(task);
         event.setException(exception);
-        final BuildListener[] currListeners = listeners;
-        for (int i = 0; i < currListeners.length; i++) {
-            currListeners[i].taskFinished(event);
+        for (BuildListener currListener : listeners) {
+            currListener.taskFinished(event);
         }
 
     }
@@ -2239,8 +2215,8 @@ public class Project implements ResourceFactory {
         if (message == null) {
             message = String.valueOf(message);
         }
-        if (message.endsWith(StringUtils.LINE_SEP)) {
-            final int endIndex = message.length() - StringUtils.LINE_SEP.length();
+        if (message.endsWith(System.lineSeparator())) {
+            final int endIndex = message.length() - System.lineSeparator().length();
             event.setMessage(message.substring(0, endIndex), priority);
         } else {
             event.setMessage(message, priority);
@@ -2263,9 +2239,8 @@ public class Project implements ResourceFactory {
         }
         try {
             isLoggingMessage.set(Boolean.TRUE);
-            final BuildListener[] currListeners = listeners;
-            for (int i = 0; i < currListeners.length; i++) {
-                currListeners[i].messageLogged(event);
+            for (BuildListener currListener : listeners) {
+                currListener.messageLogged(event);
             }
         } finally {
             isLoggingMessage.set(Boolean.FALSE);
@@ -2465,11 +2440,9 @@ public class Project implements ResourceFactory {
             return;
         }
         try {
-            final Method method =
-                obj.getClass().getMethod(
-                    "setProject", new Class[] {Project.class});
+            final Method method = obj.getClass().getMethod("setProject", Project.class);
             if (method != null) {
-                method.invoke(obj, new Object[] {this});
+                method.invoke(obj, this);
             }
         } catch (final Throwable e) {
             // ignore this if the object does not have

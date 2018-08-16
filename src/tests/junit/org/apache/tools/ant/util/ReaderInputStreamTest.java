@@ -26,12 +26,13 @@ import java.io.InputStreamReader;
 import java.io.StringReader;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 /**
  * Test for ReaderInputStream
  */
 public class ReaderInputStreamTest {
+
+    private static final String ROOT = System.getProperty("root");
 
     @Test
     public void testSimple() throws Exception {
@@ -90,9 +91,8 @@ public class ReaderInputStreamTest {
         ReaderInputStream r = null;
         FileInputStream utf8 = null;
         try {
-            fin = new InputStreamReader(new FileInputStream(new File(System.getProperty("root"),
-                    "src/tests/antunit/taskdefs/exec/input/iso8859-1")),
-                                        "ISO8859_1");
+            fin = new InputStreamReader(new FileInputStream(new File(ROOT,
+                    "src/tests/antunit/taskdefs/exec/input/iso8859-1")), "ISO8859_1");
             r = new ReaderInputStream(fin, "UTF8");
 
             ByteArrayOutputStream actualOS = new ByteArrayOutputStream();
@@ -102,7 +102,7 @@ public class ReaderInputStreamTest {
                 b = r.read();
             }
 
-            utf8 = new FileInputStream(new File(System.getProperty("root"),
+            utf8 = new FileInputStream(new File(ROOT,
                     "src/tests/antunit/taskdefs/exec/expected/utf-8"));
             ByteArrayOutputStream expectedOS = new ByteArrayOutputStream();
             b = utf8.read();
@@ -131,15 +131,11 @@ public class ReaderInputStreamTest {
         for (int i = 0; i < expected.length; ++i) {
             int expect = expected[i] & 0xFF;
             int read = r.read();
-            if (expect != read) {
-                fail("Mismatch in ReaderInputStream at index " + i
-                     + " expecting " + expect + " got " + read + " for string "
-                     + s + " with encoding " + encoding);
-            }
+            assertEquals("Mismatch in ReaderInputStream at index " + i
+                    + " expecting " + expect + " got " + read + " for string "
+                    + s + " with encoding " + encoding, expect, read);
         }
-        if (r.read() != -1) {
-            fail("Mismatch in ReaderInputStream - EOF not seen for string "
-                 + s + " with encoding " + encoding);
-        }
+        assertEquals("Mismatch in ReaderInputStream - EOF not seen for string "
+                + s + " with encoding " + encoding, -1, r.read());
     }
 }

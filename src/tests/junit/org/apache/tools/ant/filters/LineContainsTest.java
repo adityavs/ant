@@ -49,8 +49,34 @@ public class LineContainsTest {
     }
 
     @Test
-    public void testNegateLineContains() throws IOException {
+    public void testNegateLineContains() {
         buildRule.executeTarget("testNegateLineContains");
     }
 
+    /**
+     * Tests that the {@code matchAny} attribute of {@link LineContains} works as expected
+     *
+     * @throws IOException
+     */
+    @Test
+    public void testLineContainsMatchAny() throws IOException {
+        buildRule.executeTarget("testMatchAny");
+        File expected = buildRule.getProject().resolveFile("expected/linecontains-matchany.test");
+        File result = new File(buildRule.getProject().getProperty("output"), "linecontains.test");
+        assertEquals(FileUtilities.getFileContents(expected), FileUtilities.getFileContents(result));
+    }
+
+    /**
+     * Tests that the {@code matchAny} attribute when used with the {@code negate} attribute
+     * of {@link LineContains} works as expected
+     *
+     * @throws IOException
+     */
+    @Test
+    public void testLineContainsMatchAnyNegate() throws IOException {
+        buildRule.executeTarget("testMatchAnyNegate");
+        File expected = buildRule.getProject().resolveFile("expected/linecontains-matchany-negate.test");
+        File result = new File(buildRule.getProject().getProperty("output"), "linecontains.test");
+        assertEquals(FileUtilities.getFileContents(expected), FileUtilities.getFileContents(result));
+    }
 }

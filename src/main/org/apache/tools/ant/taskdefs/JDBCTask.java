@@ -60,7 +60,7 @@ public class SQLExampleTask extends JDBCTask {
         Statement stmt=null;
         try {
             if (tableName == null) {
-                throw new BuildException("TableName must be specified",location);
+                throw new BuildException("TableName must be specified", location);
             }
             String sql = "SELECT * FROM "+tableName;
             stmt= conn.createStatement();
@@ -97,7 +97,7 @@ public abstract class JDBCTask extends Task {
      * getting an OutOfMemoryError when calling this task
      * multiple times in a row.
      */
-    private static Hashtable<String, AntClassLoader> LOADER_MAP = new Hashtable<>(HASH_TABLE_SIZE);
+    private static final Hashtable<String, AntClassLoader> LOADER_MAP = new Hashtable<>(HASH_TABLE_SIZE);
 
     private boolean caching = true;
 
@@ -269,7 +269,7 @@ public abstract class JDBCTask extends Task {
                 String theVendor = dmd.getDatabaseProductName().toLowerCase();
 
                 log("RDBMS = " + theVendor, Project.MSG_VERBOSE);
-                if (theVendor == null || theVendor.indexOf(rdbms) < 0) {
+                if (theVendor == null || !theVendor.contains(rdbms)) {
                     log("Not the required RDBMS: " + rdbms, Project.MSG_VERBOSE);
                     return false;
                 }
@@ -281,7 +281,7 @@ public abstract class JDBCTask extends Task {
                 log("Version = " + theVersion, Project.MSG_VERBOSE);
                 if (theVersion == null
                         || !(theVersion.startsWith(version)
-                        || theVersion.indexOf(" " + version) >= 0)) {
+                        || theVersion.contains(" " + version))) {
                     log("Not the required version: \"" + version + "\"", Project.MSG_VERBOSE);
                     return false;
                 }
@@ -349,8 +349,8 @@ public abstract class JDBCTask extends Task {
             info.put("password", getPassword());
 
             for (Property p : connectionProperties) {
-            String name = p.getName();
-            String value = p.getValue();
+                String name = p.getName();
+                String value = p.getValue();
                 if (name == null || value == null) {
                     log("Only name/value pairs are supported as connection properties.",
                         Project.MSG_WARN);

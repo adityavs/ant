@@ -30,9 +30,9 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+import static org.hamcrest.Matchers.endsWith;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertThat;
 
 /**
  */
@@ -83,14 +83,8 @@ public class BZip2Test {
         while (true) {
             int expected = originalIn.read();
             int actual   = actualIn.read();
-            if (expected >= 0) {
-                if (expected != actual) {
-                    fail("File content mismatch");
-                }
-            } else {
-                if (actual >= 0) {
-                    fail("File content mismatch");
-                }
+            assertEquals("File content mismatch", expected, actual);
+            if (expected < 0) {
                 break;
             }
         }
@@ -108,9 +102,8 @@ public class BZip2Test {
     public void testDateCheck() {
         buildRule.executeTarget("testDateCheck");
         String log = buildRule.getLog();
-        assertTrue(
-            "Expecting message ending with 'asf-logo.gif.bz2 is up to date.' but got '" + log + "'",
-            log.endsWith("asf-logo.gif.bz2 is up to date."));
+        assertThat("Expecting message ending with 'asf-logo.gif.bz2 is up to date.' but got '"
+                        + log + "'", log, endsWith("asf-logo.gif.bz2 is up to date."));
     }
 
 }

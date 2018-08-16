@@ -25,8 +25,10 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Vector;
+import java.util.stream.Collectors;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
@@ -34,7 +36,6 @@ import org.apache.tools.ant.Task;
 import org.apache.tools.ant.types.Commandline;
 import org.apache.tools.ant.types.Environment;
 import org.apache.tools.ant.util.FileUtils;
-import org.apache.tools.ant.util.StringUtils;
 
 /**
  * original Cvs.java 1.20
@@ -352,12 +353,9 @@ public abstract class AbstractCvsTask extends Task {
             log("retCode=" + retCode, Project.MSG_DEBUG);
 
             if (failOnError && Execute.isFailure(retCode)) {
-                throw new BuildException("cvs exited with error code "
-                                         + retCode
-                                         + StringUtils.LINE_SEP
-                                         + "Command line was ["
-                                         + actualCommandLine + "]",
-                                         getLocation());
+                throw new BuildException(
+                        String.format("cvs exited with error code %s%nCommand line was [%s]",
+                                retCode, actualCommandLine), getLocation());
             }
         } catch (IOException e) {
             if (failOnError) {
@@ -399,7 +397,7 @@ public abstract class AbstractCvsTask extends Task {
         String c = this.getCommand();
         Commandline cloned = null;
         if (c != null) {
-            cloned = cmd.clone();
+            cloned = (Commandline) cmd.clone();
             cloned.createArgument(true).setLine(c);
             this.addConfiguredCommandline(cloned, true);
         }
@@ -422,19 +420,10 @@ public abstract class AbstractCvsTask extends Task {
                 .getCommandline());
         StringBuilder buf = removeCvsPassword(cmdLine);
 
-        String newLine = StringUtils.LINE_SEP;
         String[] variableArray = execute.getEnvironment();
-
         if (variableArray != null) {
-            buf.append(newLine);
-            buf.append(newLine);
-            buf.append("environment:");
-            buf.append(newLine);
-            for (int z = 0; z < variableArray.length; z++) {
-                buf.append(newLine);
-                buf.append("\t");
-                buf.append(variableArray[z]);
-            }
+            buf.append(Arrays.stream(variableArray).map(variable -> String.format("%n\t%s", variable))
+                    .collect(Collectors.joining("", String.format("%n%nenvironment:%n"), "")));
         }
 
         return buf.toString();
@@ -458,7 +447,6 @@ public abstract class AbstractCvsTask extends Task {
             int startproto = cmdLine.indexOf(':', start);
             int startuser = cmdLine.indexOf(':', startproto + 1);
             int startpass = cmdLine.indexOf(':', startuser + 1);
-            stop = cmdLine.indexOf('@', start);
             if (stop >= 0 && startpass > startproto && startpass < stop) {
                 for (int i = startpass + 1; i < stop; i++) {
                     buf.replace(i, i + 1, "*");
@@ -603,7 +591,7 @@ public abstract class AbstractCvsTask extends Task {
      */
     public void setTag(String p) {
         // Check if not real tag => set it to null
-        if (!(p == null || p.trim().isEmpty())) {
+        if (p != null && !p.trim().isEmpty()) {
             tag = p;
             addCommandArgument("-r" + p);
         }
@@ -639,7 +627,7 @@ public abstract class AbstractCvsTask extends Task {
      * can understand see man cvs
      */
     public void setDate(String p) {
-        if (!(p == null || p.trim().isEmpty())) {
+        if (p != null && !p.trim().isEmpty()) {
             addCommandArgument("-D");
             addCommandArgument(p);
         }

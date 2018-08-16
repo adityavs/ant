@@ -64,33 +64,33 @@ class ConstantPool {
                 break;
 
             case INTEGER :
-                values[i] = Integer.valueOf(data.readInt());
+                values[i] = data.readInt();
                 break;
 
             case FLOAT :
-                values[i] = Float.valueOf(data.readFloat());
+                values[i] = data.readFloat();
                 break;
 
             case LONG :
-                values[i] = Long.valueOf(data.readLong());
+                values[i] = data.readLong();
                 ++i;
                 break;
 
             case DOUBLE :
-                values[i] = Double.valueOf(data.readDouble());
+                values[i] = data.readDouble();
                 ++i;
                 break;
 
             case CLASS :
             case STRING :
-                values[i] = Integer.valueOf(data.readUnsignedShort());
+                values[i] = data.readUnsignedShort();
                 break;
 
             case FIELDREF :
             case METHODREF :
             case INTERFACEMETHODREF :
             case NAMEANDTYPE :
-                values[i] = Integer.valueOf(data.readInt());
+                values[i] = data.readInt();
                 break;
             default:
                 // Do nothing
@@ -104,7 +104,7 @@ class ConstantPool {
  * given just an InputStream. Reads in just enough to perform this
  * minimal task only.
  */
-public class ClassNameReader extends Object {
+public class ClassNameReader {
     private static final int CLASS_MAGIC_NUMBER =  0xCAFEBABE;
 
     /**
@@ -129,8 +129,7 @@ public class ClassNameReader extends Object {
         /* int accessFlags = */ data.readUnsignedShort();
         int classIndex = data.readUnsignedShort();
         Integer stringIndex = (Integer) values[classIndex];
-        String className = (String) values[stringIndex.intValue()];
-        return className;
+        return (String) values[stringIndex];
     }
 
 }

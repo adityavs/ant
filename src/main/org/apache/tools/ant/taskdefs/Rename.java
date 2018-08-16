@@ -32,6 +32,7 @@ import org.apache.tools.ant.util.FileUtils;
  * @deprecated The rename task is deprecated since Ant 1.2.  Use move instead.
  * @since Ant 1.1
  */
+@Deprecated
 public class Rename extends Task {
 
     private static final FileUtils FILE_UTILS = FileUtils.getFileUtils();
@@ -68,8 +69,8 @@ public class Rename extends Task {
 
     /**
      * Renames the file <code>src</code> to <code>dest</code>
-     * @exception org.apache.tools.ant.BuildException The exception is
-     * thrown, if the rename operation fails.
+     *
+     * @throws BuildException if the rename operation fails
      */
     public void execute() throws BuildException {
         log("DEPRECATED - The rename task is deprecated.  Use move instead.");

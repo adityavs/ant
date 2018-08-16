@@ -31,6 +31,7 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.util.Arrays;
 import java.util.Vector;
+import java.util.stream.Collectors;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
@@ -46,7 +47,6 @@ import org.apache.tools.ant.util.LeadPipeInputStream;
 import org.apache.tools.ant.util.LineOrientedOutputStreamRedirector;
 import org.apache.tools.ant.util.OutputStreamFunneler;
 import org.apache.tools.ant.util.ReaderInputStream;
-import org.apache.tools.ant.util.StringUtils;
 import org.apache.tools.ant.util.TeeOutputStream;
 
 /**
@@ -549,24 +549,12 @@ public class Redirector {
      *            contains the property value.
      * @param propertyName
      *            the property name.
-     *
-     * @exception IOException
-     *                if the value cannot be read form the stream.
      */
     private void setPropertyFromBAOS(final ByteArrayOutputStream baos,
-            final String propertyName) throws IOException {
-
-        final BufferedReader in = new BufferedReader(new StringReader(Execute
-                .toString(baos)));
-        String line = null;
-        final StringBuffer val = new StringBuffer();
-        while ((line = in.readLine()) != null) {
-            if (val.length() != 0) {
-                val.append(StringUtils.LINE_SEP);
-            }
-            val.append(line);
-        }
-        managingTask.getProject().setNewProperty(propertyName, val.toString());
+                                     final String propertyName) {
+        final BufferedReader in = new BufferedReader(new StringReader(Execute.toString(baos)));
+        managingTask.getProject().setNewProperty(propertyName,
+                in.lines().collect(Collectors.joining(System.lineSeparator())));
     }
 
     /**
@@ -585,7 +573,7 @@ public class Redirector {
             }
 
             if ((outputFilterChains != null && outputFilterChains.size() > 0)
-                    || !(outputEncoding.equalsIgnoreCase(inputEncoding))) {
+                    || !outputEncoding.equalsIgnoreCase(inputEncoding)) {
                 try {
                     final LeadPipeInputStream snk = new LeadPipeInputStream();
                     snk.setManagingComponent(managingTask);
@@ -627,7 +615,7 @@ public class Redirector {
             }
 
             if ((errorFilterChains != null && errorFilterChains.size() > 0)
-                    || !(errorEncoding.equalsIgnoreCase(inputEncoding))) {
+                    || !errorEncoding.equalsIgnoreCase(inputEncoding)) {
                 try {
                     final LeadPipeInputStream snk = new LeadPipeInputStream();
                     snk.setManagingComponent(managingTask);
@@ -674,8 +662,7 @@ public class Redirector {
                 } catch (final IOException eyeOhEx) {
                     throw new BuildException(eyeOhEx);
                 }
-                ((ConcatFileInputStream) inputStream)
-                        .setManagingComponent(managingTask);
+                ((ConcatFileInputStream) inputStream).setManagingComponent(managingTask);
             } else if (inputString != null) {
                 final StringBuffer buf = new StringBuffer("Using input ");
                 if (logInputString) {
@@ -708,9 +695,8 @@ public class Redirector {
     /** outStreams */
     private void outStreams() {
         if (out != null && out.length > 0) {
-            final String logHead = new StringBuffer("Output ").append(
-                    ((appendOut) ? "appended" : "redirected")).append(" to ")
-                    .toString();
+            final String logHead = "Output "
+                    + ((appendOut) ? "appended" : "redirected") + " to ";
             outputStream = foldFiles(out, logHead, Project.MSG_VERBOSE,
                     appendOut, createEmptyFilesOut);
         }
@@ -731,9 +717,8 @@ public class Redirector {
 
     private void errorStreams() {
         if (error != null && error.length > 0) {
-            final String logHead = new StringBuffer("Error ").append(
-                    ((appendErr) ? "appended" : "redirected")).append(" to ")
-                    .toString();
+            final String logHead = "Error "
+                    + ((appendErr) ? "appended" : "redirected") + " to ";
             errorStream = foldFiles(error, logHead, Project.MSG_VERBOSE,
                     appendErr, createEmptyFilesErr);
         } else if (!(logError || outputStream == null) && errorProperty == null) {

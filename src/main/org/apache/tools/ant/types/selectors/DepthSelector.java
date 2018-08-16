@@ -50,11 +50,7 @@ public class DepthSelector extends BaseExtendSelector {
      * @return a string describing this object
      */
     public String toString() {
-        StringBuilder buf = new StringBuilder("{depthselector");
-        buf.append(" min: ").append(min);
-        buf.append(" max: ").append(max);
-        buf.append("}");
-        return buf.toString();
+        return "{depthselector min: " + min + " max: " + max + "}";
     }
 
     /**
@@ -84,21 +80,21 @@ public class DepthSelector extends BaseExtendSelector {
     public void setParameters(Parameter... parameters) {
         super.setParameters(parameters);
         if (parameters != null) {
-            for (int i = 0; i < parameters.length; i++) {
-                String paramname = parameters[i].getName();
+            for (Parameter parameter : parameters) {
+                String paramname = parameter.getName();
                 if (MIN_KEY.equalsIgnoreCase(paramname)) {
                     try {
-                        setMin(Integer.parseInt(parameters[i].getValue()));
+                        setMin(Integer.parseInt(parameter.getValue()));
                     } catch (NumberFormatException nfe1) {
                         setError("Invalid minimum value "
-                                + parameters[i].getValue());
+                                + parameter.getValue());
                     }
                 } else if (MAX_KEY.equalsIgnoreCase(paramname)) {
                     try {
-                        setMax(Integer.parseInt(parameters[i].getValue()));
+                        setMax(Integer.parseInt(parameter.getValue()));
                     } catch (NumberFormatException nfe1) {
                         setError("Invalid maximum value "
-                                + parameters[i].getValue());
+                                + parameter.getValue());
                     }
                 } else {
                     setError("Invalid parameter " + paramname);
@@ -164,9 +160,6 @@ public class DepthSelector extends BaseExtendSelector {
             throw new BuildException("File %s is outside of %s directory tree",
                 filename, absBase);
         }
-        if (min > -1 && depth < min) {
-            return false;
-        }
-        return true;
+        return min <= -1 || depth >= min;
     }
 }

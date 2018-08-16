@@ -37,6 +37,7 @@ import org.apache.tools.ant.util.JavaEnvUtils;
  * @since Ant 1.3
  * @deprecated Use {@link Javac13} instead.
  */
+@Deprecated
 public class Javac12 extends DefaultCompilerAdapter {
     protected static final String CLASSIC_COMPILER_CLASSNAME = "sun.tools.javac.Main";
 
@@ -53,20 +54,13 @@ public class Javac12 extends DefaultCompilerAdapter {
         try {
             // Create an instance of the compiler, redirecting output to
             // the project log
-            Class c = Class.forName(CLASSIC_COMPILER_CLASSNAME);
-            Constructor cons =
-                c.getConstructor(new Class[] {OutputStream.class,
-                                              String.class});
-            Object compiler
-                = cons.newInstance(new Object[] {logstr, "javac"});
+            Class<?> c = Class.forName(CLASSIC_COMPILER_CLASSNAME);
+            Constructor<?> cons = c.getConstructor(OutputStream.class, String.class);
+            Object compiler = cons.newInstance(logstr, "javac");
 
             // Call the compile() method
-            Method compile = c.getMethod("compile",
-                                         new Class [] {String[].class});
-            Boolean ok =
-                (Boolean) compile.invoke(compiler,
-                                        new Object[] {cmd.getArguments()});
-            return ok.booleanValue();
+            Method compile = c.getMethod("compile", String[].class);
+            return (Boolean) compile.invoke(compiler, new Object[] {cmd.getArguments()});
         } catch (ClassNotFoundException ex) {
             throw new BuildException("Cannot use classic compiler, as it is "
                                         + "not available. \n"

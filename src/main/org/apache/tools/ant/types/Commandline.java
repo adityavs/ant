@@ -30,7 +30,6 @@ import java.util.stream.Stream;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.ProjectComponent;
 import org.apache.tools.ant.taskdefs.condition.Os;
-import org.apache.tools.ant.util.StringUtils;
 
 /**
  * Commandline objects help handling command lines specifying processes to
@@ -59,19 +58,15 @@ public class Commandline implements Cloneable {
     /**
      * The arguments of the command
      */
-    private List<Argument> arguments = new ArrayList<Argument>();
+    private List<Argument> arguments = new ArrayList<>();
 
     /**
      * the program to execute
      */
     private String executable = null;
 
-    protected static final String DISCLAIMER =
-        StringUtils.LINE_SEP
-        + "The \' characters around the executable and arguments are"
-        + StringUtils.LINE_SEP
-        + "not part of the command."
-        + StringUtils.LINE_SEP;
+    protected static final String DISCLAIMER = String.format(
+            "%nThe ' characters around the executable and arguments are%nnot part of the command.%n");
 
     /**
      * Create a command line from a string.
@@ -188,8 +183,7 @@ public class Commandline implements Cloneable {
          * @return an array of strings.
          */
         public String[] getParts() {
-            if (parts == null || parts.length == 0
-                    || (prefix.length() == 0 && suffix.length() == 0)) {
+            if (parts == null || parts.length == 0 || (prefix.isEmpty() && suffix.isEmpty())) {
                 return parts;
             }
             String[] fullParts = new String[parts.length];
@@ -230,9 +224,9 @@ public class Commandline implements Cloneable {
          */
         public int getPosition() {
             if (realPos == -1) {
-                realPos = (executable == null ? 0 : 1) + (int)
-                arguments.stream().limit(position).map(Argument::getParts)
-                        .flatMap(Stream::of).count();
+                realPos = (executable == null ? 0 : 1)
+                        + (int) arguments.stream().limit(position)
+                        .map(Argument::getParts).flatMap(Stream::of).count();
             }
             return realPos;
         }
@@ -332,7 +326,7 @@ public class Commandline implements Cloneable {
      * @since Ant 1.9.7
      */
     public void setExecutable(String executable, boolean translateFileSeparator) {
-        if (executable == null || executable.length() == 0) {
+        if (executable == null || executable.isEmpty()) {
             return;
         }
         this.executable = translateFileSeparator
@@ -353,8 +347,8 @@ public class Commandline implements Cloneable {
      * @param line an array of arguments to append.
      */
     public void addArguments(String[] line) {
-        for (int i = 0; i < line.length; i++) {
-            createArgument().setValue(line[i]);
+        for (String l : line) {
+            createArgument().setValue(l);
         }
     }
 
@@ -363,7 +357,7 @@ public class Commandline implements Cloneable {
      * @return the commandline as an array of strings.
      */
     public String[] getCommandline() {
-        final List<String> commands = new LinkedList<String>();
+        final List<String> commands = new LinkedList<>();
         addCommandToList(commands.listIterator());
         return commands.toArray(new String[commands.size()]);
     }
@@ -397,13 +391,11 @@ public class Commandline implements Cloneable {
      * @since Ant 1.6
      */
     public void addArgumentsToList(ListIterator<String> list) {
-        final int size = arguments.size();
-        for (int i = 0; i < size; i++) {
-            Argument arg = arguments.get(i);
+        for (Argument arg : arguments) {
             String[] s = arg.getParts();
             if (s != null) {
-                for (int j = 0; j < s.length; j++) {
-                    list.add(s[j]);
+                for (String value : s) {
+                    list.add(value);
                 }
             }
         }
@@ -430,17 +422,16 @@ public class Commandline implements Cloneable {
      *                           and double quotes.
      */
     public static String quoteArgument(String argument) {
-        if (argument.indexOf("\"") > -1) {
-            if (argument.indexOf("\'") > -1) {
+        if (argument.contains("\"")) {
+            if (argument.contains("\'")) {
                 throw new BuildException("Can\'t handle single and double"
                         + " quotes in same argument");
             }
             return '\'' + argument + '\'';
         }
-        if (argument.indexOf("\'") > -1
-               || argument.indexOf(" ") > -1
-               // WIN9x uses a bat file for executing commands
-               || (IS_WIN_9X && argument.indexOf(';') != -1)) {
+        if (argument.contains("\'") || argument.contains(" ")
+                // WIN9x uses a bat file for executing commands
+                || (IS_WIN_9X && argument.contains(";"))) {
             return '\"' + argument + '\"';
         }
         return argument;
@@ -460,11 +451,11 @@ public class Commandline implements Cloneable {
         }
         // path containing one or more elements
         final StringBuilder result = new StringBuilder();
-        for (int i = 0; i < line.length; i++) {
-            if (i > 0) {
+        for (String l : line) {
+            if (result.length() > 0) {
                 result.append(' ');
             }
-            result.append(quoteArgument(line[i]));
+            result.append(quoteArgument(l));
         }
         return result.toString();
     }
@@ -476,7 +467,7 @@ public class Commandline implements Cloneable {
      * An empty or null toProcess parameter results in a zero sized array.
      */
     public static String[] translateCommandline(String toProcess) {
-        if (toProcess == null || toProcess.length() == 0) {
+        if (toProcess == null || toProcess.isEmpty()) {
             //no command? no string
             return new String[0];
         }
@@ -516,7 +507,7 @@ public class Commandline implements Cloneable {
                 } else if ("\"".equals(nextTok)) {
                     state = inDoubleQuote;
                 } else if (" ".equals(nextTok)) {
-                    if (lastTokenHasBeenQuoted || current.length() != 0) {
+                    if (lastTokenHasBeenQuoted || current.length() > 0) {
                         result.add(current.toString());
                         current.setLength(0);
                     }
@@ -527,7 +518,7 @@ public class Commandline implements Cloneable {
                 break;
             }
         }
-        if (lastTokenHasBeenQuoted || current.length() != 0) {
+        if (lastTokenHasBeenQuoted || current.length() > 0) {
             result.add(current.toString());
         }
         if (state == inQuote || state == inDoubleQuote) {
@@ -550,7 +541,7 @@ public class Commandline implements Cloneable {
      * @return a clone of the contained object
      */
     @Override
-    public Commandline clone() {
+    public Object clone() {
         try {
             Commandline c = (Commandline) super.clone();
             c.arguments = new ArrayList<>(arguments);
@@ -679,14 +670,10 @@ public class Commandline implements Cloneable {
         if (args == null || args.length <= offset) {
             return "";
         }
-        StringBuilder buf = new StringBuilder("argument");
-        if (args.length > offset) {
-            buf.append("s");
-        }
-        buf.append(":").append(StringUtils.LINE_SEP);
+        StringBuilder buf = new StringBuilder();
+        buf.append(String.format("argument%s:%n", args.length > offset ? "s" : ""));
         for (int i = offset; i < args.length; i++) {
-            buf.append("\'").append(args[i]).append("\'")
-                .append(StringUtils.LINE_SEP);
+            buf.append(String.format("\'%s\'%n", args[i]));
         }
         buf.append(DISCLAIMER);
         return buf.toString();

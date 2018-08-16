@@ -20,7 +20,7 @@
   <import file="../antunit-base.xml" />
 
   <property name="location" value="http://ant.apache.org/webtest/gettest" />
-    
+
   <target name="setUp">
     <mkdir dir="${output}" />
   </target>
@@ -95,7 +95,7 @@
     
     
     <target name="testInfiniteRedirect" unless="jenkins">
-        <au:expectfailure expectedmessage="More than 25 times redirected, giving up">
+      <au:expectfailure expectedmessage="More than 25 times redirected, giving up">
       <get  src="${location}/infinite.txt" dest="${output}/infinite.tmp"/>
         </au:expectfailure>
     </target>
@@ -121,5 +121,14 @@
       </resourcecount>
     </au:assertTrue>
     <au:assertLogContains text="local.cgi moved to http" />  
+  </target>
+
+  <target name="testHttpToHttpsRedirect" description="Tests that a resource that's redirected
+        from HTTP to HTTPS works without an error. See bugzilla-62499 for details">
+    <get  src="${location}/http-to-https.txt" dest="${output}/http-to-https-redirect.tmp"/>
+    <au:assertFileExists file="${output}/http-to-https-redirect.tmp"/>
+    <au:assertTrue>
+      <resourcecontains resource="${output}/http-to-https-redirect.tmp" substring="hello world"/>
+    </au:assertTrue>
   </target>
 </project>

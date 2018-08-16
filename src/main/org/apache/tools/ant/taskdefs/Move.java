@@ -125,9 +125,7 @@ public class Move extends Copy {
                     fs.setDir(fromDir);
                     addFileset(fs);
                     DirectoryScanner ds = fs.getDirectoryScanner(getProject());
-                    String[] files = ds.getIncludedFiles();
-                    String[] dirs = ds.getIncludedDirectories();
-                    scan(fromDir, toDir, files, dirs);
+                    scan(fromDir, toDir, ds.getIncludedFiles(), ds.getIncludedDirectories());
                 }
             }
         }
@@ -170,17 +168,16 @@ public class Move extends Copy {
             int createCount = 0;
             for (Map.Entry<String, String[]> entry : dirCopyMap.entrySet()) {
                 String fromDirName = entry.getKey();
-                String[] toDirNames = entry.getValue();
                 boolean selfMove = false;
-                for (int i = 0; i < toDirNames.length; i++) {
-                    if (fromDirName.equals(toDirNames[i])) {
+                for (String toDirName : entry.getValue()) {
+                    if (fromDirName.equals(toDirName)) {
                         log("Skipping self-move of " + fromDirName, verbosity);
                         selfMove = true;
                         continue;
                     }
-                    File d = new File(toDirNames[i]);
+                    File d = new File(toDirName);
                     if (!d.exists()) {
-                        if (!(d.mkdirs() || d.exists())) {
+                        if (!d.mkdirs() && !d.exists()) {
                             log("Unable to create directory "
                                     + d.getAbsolutePath(), Project.MSG_ERR);
                         } else {
@@ -373,8 +370,8 @@ public class Move extends Copy {
                     + " is a no-op.", Project.MSG_VERBOSE);
                 return true;
             }
-            if (!(getFileUtils().areSame(sourceFile, destFile)
-                  || getFileUtils().tryHardToDelete(destFile, performGc))) {
+            if (!getFileUtils().areSame(sourceFile, destFile)
+                    && !getFileUtils().tryHardToDelete(destFile, performGc)) {
                 throw new BuildException("Unable to remove existing file %s",
                     destFile);
             }

@@ -254,13 +254,8 @@ public class PropertyFile extends Task {
             throw new BuildException(x, getLocation());
         }
         try {
-            OutputStream os = Files.newOutputStream(propertyfile.toPath()); //NOSONAR
-            try {
-                try {
-                    os.write(baos.toByteArray());
-                } finally {
-                    os.close();
-                }
+            try (OutputStream os = Files.newOutputStream(propertyfile.toPath())) {
+                os.write(baos.toByteArray());
             } catch (IOException x) { // possibly corrupt
                 FileUtils.getFileUtils().tryHardToDelete(propertyfile);
                 throw x;
@@ -471,9 +466,7 @@ public class PropertyFile extends Task {
                 } else {
                     currentValue = 0;
                 }
-            } catch (NumberFormatException nfe) {
-                // swallow
-            } catch (ParseException pe)  {
+            } catch (NumberFormatException | ParseException nfe) {
                 // swallow
             }
 
@@ -484,9 +477,7 @@ public class PropertyFile extends Task {
                 if (value != null) {
                     try {
                         operationValue = fmt.parse(value).intValue();
-                    } catch (NumberFormatException nfe) {
-                        // swallow
-                    } catch (ParseException pe)  {
+                    } catch (NumberFormatException | ParseException nfe) {
                         // swallow
                     }
                 }
@@ -692,14 +683,14 @@ public class PropertyFile extends Task {
         /** no arg constructor */
         public Unit() {
             calendarFields.put(MILLISECOND,
-                Integer.valueOf(Calendar.MILLISECOND));
-            calendarFields.put(SECOND, Integer.valueOf(Calendar.SECOND));
-            calendarFields.put(MINUTE, Integer.valueOf(Calendar.MINUTE));
-            calendarFields.put(HOUR, Integer.valueOf(Calendar.HOUR_OF_DAY));
-            calendarFields.put(DAY, Integer.valueOf(Calendar.DATE));
-            calendarFields.put(WEEK, Integer.valueOf(Calendar.WEEK_OF_YEAR));
-            calendarFields.put(MONTH, Integer.valueOf(Calendar.MONTH));
-            calendarFields.put(YEAR, Integer.valueOf(Calendar.YEAR));
+                    Calendar.MILLISECOND);
+            calendarFields.put(SECOND, Calendar.SECOND);
+            calendarFields.put(MINUTE, Calendar.MINUTE);
+            calendarFields.put(HOUR, Calendar.HOUR_OF_DAY);
+            calendarFields.put(DAY, Calendar.DATE);
+            calendarFields.put(WEEK, Calendar.WEEK_OF_YEAR);
+            calendarFields.put(MONTH, Calendar.MONTH);
+            calendarFields.put(YEAR, Calendar.YEAR);
         }
 
         /**
@@ -707,7 +698,7 @@ public class PropertyFile extends Task {
          * @return the calendar value.
          */
         public int getCalendarField() {
-            return calendarFields.get(getValue().toLowerCase()).intValue();
+            return calendarFields.get(getValue().toLowerCase());
         }
 
         /** {@inheritDoc}. */

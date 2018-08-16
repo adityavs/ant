@@ -17,13 +17,11 @@
  */
 package org.apache.tools.ant.listener;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Enumeration;
 import java.util.Map;
 import java.util.Properties;
 import java.util.StringTokenizer;
@@ -36,13 +34,11 @@ import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.DefaultLogger;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.email.EmailAddress;
-import org.apache.tools.ant.taskdefs.email.Header;
 import org.apache.tools.ant.taskdefs.email.Mailer;
 import org.apache.tools.ant.taskdefs.email.Message;
 import org.apache.tools.ant.util.ClasspathUtils;
 import org.apache.tools.ant.util.DateUtils;
 import org.apache.tools.ant.util.FileUtils;
-import org.apache.tools.ant.util.StringUtils;
 import org.apache.tools.mail.MailMessage;
 
 /**
@@ -132,11 +128,8 @@ public class MailLogger extends DefaultLogger {
             }
         }
 
-        for (Enumeration<?> e = fileProperties.keys(); e.hasMoreElements();) {
-            String key = (String) e.nextElement();
-            String value = fileProperties.getProperty(key);
-            properties.put(key, project.replaceProperties(value));
-        }
+        fileProperties.stringPropertyNames()
+                .forEach(key -> properties.put(key, project.replaceProperties(fileProperties.getProperty(key))));
 
         boolean success = (event.getException() == null);
         String prefix = success ? "success" : "failure";
@@ -315,7 +308,7 @@ public class MailLogger extends DefaultLogger {
      */
     @Override
     protected void log(String message) {
-        buffer.append(message).append(StringUtils.LINE_SEP);
+        buffer.append(message).append(System.lineSeparator());
     }
 
 
@@ -372,15 +365,15 @@ public class MailLogger extends DefaultLogger {
 
         mailMessage.setSubject(values.subject());
 
-        if (values.charset().length() > 0) {
+        if (values.charset().isEmpty()) {
+            mailMessage.setHeader("Content-Type", values.mimeType());
+        } else {
             mailMessage.setHeader("Content-Type", values.mimeType()
                                   + "; charset=\"" + values.charset() + "\"");
-        } else {
-            mailMessage.setHeader("Content-Type", values.mimeType());
         }
 
         PrintStream ps = mailMessage.getPrintStream();
-        ps.println(values.body().length() > 0 ? values.body() : message);
+        ps.println(values.body().isEmpty() ? message : values.body());
 
         mailMessage.sendAndClose();
     }
@@ -410,10 +403,10 @@ public class MailLogger extends DefaultLogger {
         mailer.setSSL(values.ssl());
         mailer.setEnableStartTLS(values.starttls());
         Message mymessage =
-            new Message(values.body().length() > 0 ? values.body() : message);
+            new Message(!values.body().isEmpty() ? values.body() : message);
         mymessage.setProject(project);
         mymessage.setMimeType(values.mimeType());
-        if (values.charset().length() > 0) {
+        if (!values.charset().isEmpty()) {
             mymessage.setCharset(values.charset());
         }
         mailer.setMessage(mymessage);
@@ -425,9 +418,9 @@ public class MailLogger extends DefaultLogger {
         mailer.setCcList(toCcList);
         Vector<EmailAddress> toBccList = splitEmailAddresses(values.toBccList());
         mailer.setBccList(toBccList);
-        mailer.setFiles(new Vector<File>());
+        mailer.setFiles(new Vector<>());
         mailer.setSubject(values.subject());
-        mailer.setHeaders(new Vector<Header>());
+        mailer.setHeaders(new Vector<>());
         mailer.send();
     }
 

@@ -282,13 +282,13 @@ public class TarOutputStream extends FilterOutputStream {
         if (finished) {
             throw new IOException("Stream has already been finished");
         }
-        Map<String, String> paxHeaders = new HashMap<String, String>();
+        Map<String, String> paxHeaders = new HashMap<>();
         final String entryName = entry.getName();
         boolean paxHeaderContainsPath = handleLongName(entry, entryName, paxHeaders, "path",
                                                        TarConstants.LF_GNUTYPE_LONGNAME, "file name");
 
         final String linkName = entry.getLinkName();
-        boolean paxHeaderContainsLinkPath = linkName != null && linkName.length() > 0
+        boolean paxHeaderContainsLinkPath = linkName != null && !linkName.isEmpty()
             && handleLongName(entry, linkName, paxHeaders, "linkpath",
                               TarConstants.LF_GNUTYPE_LONGLINK, "link name");
 
@@ -521,10 +521,9 @@ public class TarOutputStream extends FilterOutputStream {
     }
 
     private String stripTo7Bits(String name) {
-        final int length = name.length();
-        StringBuilder result = new StringBuilder(length);
-        for (int i = 0; i < length; i++) {
-            char stripped = (char) (name.charAt(i) & 0x7F);
+        StringBuilder result = new StringBuilder(name.length());
+        for (final char ch : name.toCharArray()) {
+            char stripped = (char) (ch & 0x7F);
             if (stripped != 0) { // would be read as Trailing null
                 result.append(stripped);
             }

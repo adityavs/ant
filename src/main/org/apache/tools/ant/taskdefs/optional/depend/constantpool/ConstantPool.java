@@ -37,13 +37,13 @@ import java.util.stream.IntStream;
 public class ConstantPool {
 
     /** The entries in the constant pool. */
-    private final List<ConstantPoolEntry> entries = new ArrayList<ConstantPoolEntry>();
+    private final List<ConstantPoolEntry> entries = new ArrayList<>();
 
     /**
      * A Hashtable of UTF8 entries - used to get constant pool indexes of
      * the UTF8 values quickly
      */
-    private final Map<String, Integer> utf8Indexes = new HashMap<String, Integer>();
+    private final Map<String, Integer> utf8Indexes = new HashMap<>();
 
     /** Initialise the constant pool. */
     public ConstantPool() {
@@ -103,7 +103,7 @@ public class ConstantPool {
         if (entry instanceof Utf8CPInfo) {
             Utf8CPInfo utf8Info = (Utf8CPInfo) entry;
 
-            utf8Indexes.put(utf8Info.getValue(), Integer.valueOf(index));
+            utf8Indexes.put(utf8Info.getValue(), index);
         }
 
         return index;
@@ -145,7 +145,7 @@ public class ConstantPool {
         Integer indexInteger = utf8Indexes.get(value);
 
         if (indexInteger != null) {
-            index = indexInteger.intValue();
+            index = indexInteger;
         }
 
         return index;

@@ -142,7 +142,7 @@ public class ExecuteJava implements Runnable, TimeoutObserver {
                     "Could not find %s. Make sure you have it in your classpath",
                     classname);
             }
-            main = target.getMethod("main", new Class[] {String[].class});
+            main = target.getMethod("main", String[].class);
             if (main == null) {
                 throw new BuildException("Could not find main() method in %s",
                     classname);
@@ -164,7 +164,7 @@ public class ExecuteJava implements Runnable, TimeoutObserver {
                 // main thread will still be there to let the new thread
                 // finish
                 thread.setDaemon(true);
-                Watchdog w = new Watchdog(timeout.longValue());
+                Watchdog w = new Watchdog(timeout);
                 w.addTimeoutObserver(this);
                 synchronized (this) {
                     thread.start();
@@ -188,12 +188,7 @@ public class ExecuteJava implements Runnable, TimeoutObserver {
             if (caught != null) {
                 throw caught;
             }
-        } catch (BuildException e) {
-            throw e;
-        } catch (SecurityException e) {
-            throw e;
-        } catch (ThreadDeath e) {
-            // TODO could perhaps also call thread.stop(); not sure if anyone cares
+        } catch (BuildException | ThreadDeath | SecurityException e) {
             throw e;
         } catch (Throwable e) {
             throw new BuildException(e);
@@ -275,9 +270,8 @@ public class ExecuteJava implements Runnable, TimeoutObserver {
     public int fork(ProjectComponent pc) throws BuildException {
         CommandlineJava cmdl = new CommandlineJava();
         cmdl.setClassname(javaCommand.getExecutable());
-        String[] args = javaCommand.getArguments();
-        for (int i = 0; i < args.length; i++) {
-            cmdl.createArgument().setValue(args[i]);
+        for (String arg : javaCommand.getArguments()) {
+            cmdl.createArgument().setValue(arg);
         }
         if (classpath != null) {
             cmdl.createClasspath(pc.getProject()).append(classpath);
@@ -290,7 +284,7 @@ public class ExecuteJava implements Runnable, TimeoutObserver {
             = new Execute(redirector.createHandler(),
                           timeout == null
                           ? null
-                          : new ExecuteWatchdog(timeout.longValue()));
+                          : new ExecuteWatchdog(timeout));
         exe.setAntRun(pc.getProject());
         if (Os.isFamily("openvms")) {
             setupCommandLineForVMS(exe, cmdl.getCommandline());

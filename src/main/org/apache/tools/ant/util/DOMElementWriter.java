@@ -151,8 +151,6 @@ public class DOMElementWriter {
         this.namespacePolicy = namespacePolicy;
     }
 
-    private static String lSep = System.getProperty("line.separator");
-
     // CheckStyle:VisibilityModifier OFF - bc
     /**
      * Don't try to be too smart but at least recognize the predefined
@@ -219,7 +217,7 @@ public class DOMElementWriter {
                 case Node.ELEMENT_NODE:
                     hasChildElements = true;
                     if (i == 0) {
-                        out.write(lSep);
+                        out.write(System.lineSeparator());
                     }
                     write((Element) child, out, indent + 1, indentWith);
                     break;
@@ -250,7 +248,7 @@ public class DOMElementWriter {
                     out.write("<?");
                     out.write(child.getNodeName());
                     String data = child.getNodeValue();
-                    if (data != null && data.length() > 0) {
+                    if (data != null && !data.isEmpty()) {
                         out.write(' ');
                         out.write(data);
                     }
@@ -306,7 +304,7 @@ public class DOMElementWriter {
         out.write("<");
         if (namespacePolicy.qualifyElements) {
             String uri = getNamespaceURI(element);
-            String prefix = (String) nsPrefixMap.get(uri);
+            String prefix = nsPrefixMap.get(uri);
             if (prefix == null) {
                 if (nsPrefixMap.isEmpty()) {
                     // steal default namespace
@@ -317,7 +315,7 @@ public class DOMElementWriter {
                 nsPrefixMap.put(uri, prefix);
                 addNSDefinition(element, uri);
             }
-            if (!"".equals(prefix)) {
+            if (!prefix.isEmpty()) {
                 out.write(prefix);
                 out.write(":");
             }
@@ -331,7 +329,7 @@ public class DOMElementWriter {
             out.write(" ");
             if (namespacePolicy.qualifyAttributes) {
                 String uri = getNamespaceURI(attr);
-                String prefix = (String) nsPrefixMap.get(uri);
+                String prefix = nsPrefixMap.get(uri);
                 if (prefix == null) {
                     prefix = NS + (nextPrefix++);
                     nsPrefixMap.put(uri, prefix);
@@ -352,7 +350,7 @@ public class DOMElementWriter {
             for (String uri : uris) {
                 String prefix = nsPrefixMap.get(uri);
                 out.write(" xmlns");
-                if (!"".equals(prefix)) {
+                if (!prefix.isEmpty()) {
                     out.write(":");
                     out.write(prefix);
                 }
@@ -366,8 +364,7 @@ public class DOMElementWriter {
             out.write(">");
         } else {
             removeNSDefinitions(element);
-            out.write(" />");
-            out.write(lSep);
+            out.write(String.format(" />%n"));
             out.flush();
         }
     }
@@ -399,16 +396,15 @@ public class DOMElementWriter {
         out.write("</");
         if (namespacePolicy.qualifyElements) {
             String uri = getNamespaceURI(element);
-            String prefix = (String) nsPrefixMap.get(uri);
-            if (prefix != null && !"".equals(prefix)) {
+            String prefix = nsPrefixMap.get(uri);
+            if (prefix != null && !prefix.isEmpty()) {
                 out.write(prefix);
                 out.write(":");
             }
             removeNSDefinitions(element);
         }
         out.write(element.getTagName());
-        out.write(">");
-        out.write(lSep);
+        out.write(String.format(">%n"));
         out.flush();
     }
 
@@ -434,10 +430,8 @@ public class DOMElementWriter {
     }
 
     private String encode(final String value, final boolean encodeWhitespace) {
-        final int len = value.length();
-        final StringBuilder sb = new StringBuilder(len);
-        for (int i = 0; i < len; i++) {
-            final char c = value.charAt(i);
+        final StringBuilder sb = new StringBuilder(value.length());
+        for (final char c : value.toCharArray()) {
             switch (c) {
             case '<':
                 sb.append("&lt;");
@@ -522,13 +516,12 @@ public class DOMElementWriter {
         while (prevEnd < len) {
             final int end = (cdataEndPos < 0 ? len : cdataEndPos);
             // Write out stretches of legal characters in the range [prevEnd, end).
-            for (int prevLegalCharPos = prevEnd; prevLegalCharPos < end;/*empty*/) {
-                int illegalCharPos;
-                for (illegalCharPos = prevLegalCharPos; true; ++illegalCharPos) {
-                    if (illegalCharPos >= end
-                        || !isLegalCharacter(value.charAt(illegalCharPos))) {
-                        break;
-                    }
+            int prevLegalCharPos = prevEnd;
+            while (prevLegalCharPos < end) {
+                int illegalCharPos = prevLegalCharPos;
+                while (illegalCharPos < end
+                        && isLegalCharacter(value.charAt(illegalCharPos))) {
+                    ++illegalCharPos;
                 }
                 out.write(value, prevLegalCharPos, illegalCharPos - prevLegalCharPos);
                 prevLegalCharPos = illegalCharPos + 1;
@@ -550,7 +543,7 @@ public class DOMElementWriter {
      * @return true if it is an entity.
      */
     public boolean isReference(String ent) {
-        if (!(ent.charAt(0) == '&') || !ent.endsWith(";")) {
+        if (ent.charAt(0) != '&' || !ent.endsWith(";")) {
             return false;
         }
 
@@ -575,8 +568,8 @@ public class DOMElementWriter {
         }
 
         String name = ent.substring(1, ent.length() - 1);
-        for (int i = 0; i < knownEntities.length; i++) {
-            if (name.equals(knownEntities[i])) {
+        for (String knownEntity : knownEntities) {
+            if (name.equals(knownEntity)) {
                 return true;
             }
         }
@@ -607,11 +600,8 @@ public class DOMElementWriter {
         if (c < 0xE000) {
             return false;
         }
-        if (c <= 0xFFFD) {
-            return true;
-        }
+        return c <= 0xFFFD;
         // CheckStyle:MagicNumber ON
-        return false;
     }
 
     private void removeNSDefinitions(Element element) {

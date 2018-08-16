@@ -18,20 +18,23 @@
 
 package org.apache.tools.zip;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import java.util.NoSuchElementException;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.fail;
 
 /**
  * JUnit 4 testcases for org.apache.tools.zip.ZipEntry.
  */
 public class ZipEntryTest {
 
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     /**
      * test handling of extra fields
@@ -80,12 +83,9 @@ public class ZipEntryTest {
         assertSame(u3, result[1]);
         assertEquals("length fourth pass", data2.length, data3.length);
 
-        try {
-            ze.removeExtraField(ExtraFieldUtilsTest.UNRECOGNIZED_HEADER);
-            fail("should be no such element");
-        } catch (NoSuchElementException nse) {
-            //TODO assert exception values
-        }
+        thrown.expect(NoSuchElementException.class);
+        //TODO assert exception values
+        ze.removeExtraField(ExtraFieldUtilsTest.UNRECOGNIZED_HEADER);
     }
 
     /**
@@ -203,14 +203,13 @@ public class ZipEntryTest {
 
     /**
      * Test case for
-     * <a href="https://issues.apache.org/jira/browse/COMPRESS-94"
-     * >COMPRESS-94</a>.
+     * <a href="https://issues.apache.org/jira/browse/COMPRESS-94">COMPRESS-94</a>
      */
     @Test
     public void testNotEquals() {
         ZipEntry entry1 = new ZipEntry("foo");
         ZipEntry entry2 = new ZipEntry("bar");
-        assertFalse(entry1.equals(entry2));
+        assertNotEquals(entry1, entry2);
     }
 
     @Test

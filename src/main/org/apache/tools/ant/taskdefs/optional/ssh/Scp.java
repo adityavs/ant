@@ -364,10 +364,10 @@ public class Scp extends SSHBase {
                 }
                 message.setLogListener(this);
                 if (fileMode != null) {
-                    message.setFileMode(fileMode.intValue());
+                    message.setFileMode(fileMode);
                 }
                 if (dirMode != null) {
-                    message.setDirMode(dirMode.intValue());
+                    message.setDirMode(dirMode);
                 }
                 message.execute();
             }
@@ -399,10 +399,10 @@ public class Scp extends SSHBase {
             }
             message.setLogListener(this);
             if (fileMode != null) {
-                message.setFileMode(fileMode.intValue());
+                message.setFileMode(fileMode);
             }
             if (dirMode != null) {
-                message.setDirMode(dirMode.intValue());
+                message.setDirMode(dirMode);
             }
             message.execute();
         } finally {
@@ -457,12 +457,7 @@ public class Scp extends SSHBase {
     }
 
     private static boolean isRemoteUri(final String uri) {
-        boolean isRemote = true;
-        final int indexOfAt = uri.indexOf('@');
-        if (indexOfAt < 0) {
-            isRemote = false;
-        }
-        return isRemote;
+        return uri.contains("@");
     }
 
     private Directory createDirectory(final FileSet set) {
@@ -498,22 +493,22 @@ public class Scp extends SSHBase {
 
         List<Directory> ds = new ArrayList<>();
         for (Resource r : rc) {
-               if (!r.isExists()) {
+            if (!r.isExists()) {
                 throw new BuildException("Could not find resource %s to scp.",
-                    r.toLongString());
+                        r.toLongString());
             }
 
             FileProvider fp = r.as(FileProvider.class);
             if (fp == null) {
                 throw new BuildException("Resource %s is not a file.",
-                    r.toLongString());
+                        r.toLongString());
             }
 
             FileResource fr = ResourceUtils.asFileResource(fp);
             File baseDir = fr.getBaseDir();
             if (baseDir == null) {
-                throw new BuildException(
-                    "basedir for resource %s is undefined.", r.toLongString());
+                throw new BuildException("basedir for resource %s is undefined.",
+                        r.toLongString());
             }
 
             // if the basedir is set, the name will be relative to that

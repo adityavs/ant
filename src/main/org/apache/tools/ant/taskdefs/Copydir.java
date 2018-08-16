@@ -121,8 +121,7 @@ public class Copydir extends MatchingTask {
         DirectoryScanner ds = super.getDirectoryScanner(srcDir);
 
         try {
-            String[] files = ds.getIncludedFiles();
-            scanDir(srcDir, destDir, files);
+            scanDir(srcDir, destDir, ds.getIncludedFiles());
             if (filecopyList.size() > 0) {
                 log("Copying " + filecopyList.size() + " file"
                     + (filecopyList.size() == 1 ? "" : "s")
@@ -146,8 +145,7 @@ public class Copydir extends MatchingTask {
     }
 
     private void scanDir(File from, File to, String[] files) {
-        for (int i = 0; i < files.length; i++) {
-            String filename = files[i];
+        for (String filename : files) {
             File srcFile = new File(from, filename);
             File destFile;
             if (flatten) {

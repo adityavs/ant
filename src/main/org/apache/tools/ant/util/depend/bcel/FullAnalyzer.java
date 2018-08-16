@@ -16,10 +16,10 @@
  *
  */
 package org.apache.tools.ant.util.depend.bcel;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Vector;
@@ -28,6 +28,7 @@ import org.apache.bcel.classfile.ClassParser;
 import org.apache.bcel.classfile.DescendingVisitor;
 import org.apache.bcel.classfile.JavaClass;
 import org.apache.tools.ant.BuildException;
+import org.apache.tools.ant.util.StreamUtils;
 import org.apache.tools.ant.util.depend.AbstractAnalyzer;
 
 /**
@@ -102,15 +103,10 @@ public class FullAnalyzer extends AbstractAnalyzer {
             }
 
             toAnalyze.clear();
-
             // now recover all the dependencies collected and add to the list.
-            Enumeration<String> depsEnum = dependencyVisitor.getDependencies();
-            while (depsEnum.hasMoreElements()) {
-                String className = depsEnum.nextElement();
-                if (!dependencies.contains(className)) {
-                    toAnalyze.add(className);
-                }
-            }
+            StreamUtils.enumerationAsStream(dependencyVisitor.getDependencies())
+                    .filter(className -> !dependencies.contains(className))
+                    .forEach(toAnalyze::add);
         }
 
         files.clear();

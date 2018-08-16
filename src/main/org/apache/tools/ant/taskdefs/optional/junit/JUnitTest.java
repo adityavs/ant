@@ -129,7 +129,7 @@ public class JUnitTest extends BaseTest implements Cloneable {
         this.haltOnFail = haltOnFailure;
         this.filtertrace = filtertrace;
         this.methodsSpecified = methods != null;
-        this.methods = methodsSpecified ? (String[]) methods.clone() : null;
+        this.methods = methodsSpecified ? methods.clone() : null;
         this.antThreadID = thread;
     }
 
@@ -221,7 +221,7 @@ public class JUnitTest extends BaseTest implements Cloneable {
      * @since 1.8.2
      */
     String getMethodsString() {
-        if ((methodsList == null) && methodsSpecified) {
+        if (methodsList == null && methodsSpecified) {
             if (methods.length == 0) {
                 methodsList = "";
             } else if (methods.length == 1) {
@@ -246,7 +246,7 @@ public class JUnitTest extends BaseTest implements Cloneable {
      * @since 1.8.2
      */
     void resolveMethods() {
-        if ((methods == null) && methodsSpecified) {
+        if (methods == null && methodsSpecified) {
             try {
                 methods = parseTestMethodNamesList(methodsList);
             } catch (IllegalArgumentException ex) {
@@ -525,7 +525,7 @@ public class JUnitTest extends BaseTest implements Cloneable {
      */
     @SuppressWarnings("unchecked")
     @Override
-    public JUnitTest clone() {
+    public Object clone() {
         try {
             JUnitTest t = (JUnitTest) super.clone();
             t.props = props == null ? null : (Properties) props.clone();

@@ -27,7 +27,6 @@ import org.apache.tools.ant.Location;
 import org.apache.tools.ant.Task;
 import org.apache.tools.ant.TaskContainer;
 import org.apache.tools.ant.property.LocalProperties;
-import org.apache.tools.ant.util.StringUtils;
 
 /**
  * Executes the contained tasks in separate threads, continuing
@@ -58,7 +57,7 @@ public class Parallel extends Task
         private List<Task> tasks = new ArrayList<>();
 
         /**
-         * Add a nested task to execute parallel (asynchron).
+         * Add a nested task to execute in parallel (asynchronously).
          * <p>
          * @param nestedTask  Nested task to be executed in parallel.
          *                    must not be null.
@@ -96,7 +95,7 @@ public class Parallel extends Task
      */
     private boolean failOnAny;
 
-    /** The dameon task list if any */
+    /** The daemon task list if any */
     private TaskList daemonTasks;
 
     /** Accumulation of exceptions messages from all nested tasks */
@@ -215,8 +214,8 @@ public class Parallel extends Task
      */
     private void updateThreadCounts() {
         if (numThreadsPerProcessor != 0) {
-            numThreads = Runtime.getRuntime().availableProcessors() *
-                    numThreadsPerProcessor;
+            numThreads = Runtime.getRuntime().availableProcessors()
+                    * numThreadsPerProcessor;
         }
     }
 
@@ -243,7 +242,7 @@ public class Parallel extends Task
                     // location should match the exit status
                     firstLocation = ex.getLocation();
                 }
-                exceptionMessage.append(StringUtils.LINE_SEP);
+                exceptionMessage.append(System.lineSeparator());
                 exceptionMessage.append(t.getMessage());
             }
         }
@@ -269,7 +268,7 @@ public class Parallel extends Task
         ThreadGroup group = new ThreadGroup("parallel");
 
         TaskRunnable[] daemons = null;
-        if (!(daemonTasks == null || daemonTasks.tasks.isEmpty())) {
+        if (daemonTasks != null && !daemonTasks.tasks.isEmpty()) {
             daemons = new TaskRunnable[daemonTasks.tasks.size()];
         }
 
@@ -411,9 +410,9 @@ public class Parallel extends Task
         int tries = 0;
         do {
             oneAlive = false;
-            for (int i = 0; i < running.length; i++) {
-                if (running[i] != null && !running[i].isFinished()) {
-                    running[i].interrupt();
+            for (TaskRunnable runnable : running) {
+                if (runnable != null && !runnable.isFinished()) {
+                    runnable.interrupt();
                     Thread.yield();
                     oneAlive = true;
                 }

@@ -35,7 +35,7 @@ public class OrionDeploymentTool extends GenericDeploymentTool {
 
     protected static final String ORION_DD = "orion-ejb-jar.xml";
 
-    /** Instance variable that stores the suffix for the jboss jarfile. */
+    /** Instance variable that stores the suffix for the JBoss jarfile. */
     private String jarSuffix = ".jar";
 
     /**
@@ -45,7 +45,7 @@ public class OrionDeploymentTool extends GenericDeploymentTool {
      * @param ejbFiles Hashtable&lt;String, File&gt;
      * @param baseName String
      */
-    protected void addVendorFiles(Hashtable ejbFiles, String baseName) {
+    protected void addVendorFiles(Hashtable<String, File> ejbFiles, String baseName) {
         String ddPrefix = usingBaseJarName() ? "" : baseName;
         File orionDD = new File(getConfig().descriptorDir, ddPrefix + ORION_DD);
 

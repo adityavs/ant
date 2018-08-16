@@ -38,6 +38,7 @@ import org.apache.tools.ant.util.FileUtils;
  * @deprecated since 1.2.
  *             Merged into the class Javac.
  */
+@Deprecated
 public class Jikes {
     // There have been reports that 300 files could be compiled
     // on a command line so 250 is a conservative approach
@@ -82,15 +83,15 @@ public class Jikes {
             // Windows has a 32k limit on total arg size, so
             // create a temporary file to store all the arguments
 
-            if (myos.toLowerCase(Locale.ENGLISH).indexOf("windows") >= 0
+            if (myos.toLowerCase(Locale.ENGLISH).contains("windows")
                 && args.length > MAX_FILES_ON_COMMAND_LINE) {
                 BufferedWriter out = null;
                 try {
                     tmpFile = FileUtils.getFileUtils().createTempFile("jikes",
                             "tmp", null, false, true);
                     out = new BufferedWriter(new FileWriter(tmpFile));
-                    for (int i = 0; i < args.length; i++) {
-                        out.write(args[i]);
+                    for (String arg : args) {
+                        out.write(arg);
                         out.newLine();
                     }
                     out.flush();

@@ -19,21 +19,28 @@
 package org.apache.tools.ant.taskdefs.optional.depend;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.Hashtable;
+import java.util.stream.Collectors;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.BuildFileRule;
 import org.apache.tools.ant.DirectoryScanner;
 import org.apache.tools.ant.FileUtilities;
+import org.apache.tools.ant.taskdefs.condition.JavaVersion;
 import org.apache.tools.ant.types.FileSet;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
-import static org.apache.tools.ant.AntAssert.assertContains;
+import static org.hamcrest.Matchers.both;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasKey;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 /**
  * Testcase for the Depend optional task.
@@ -42,15 +49,15 @@ import static org.junit.Assert.fail;
 public class DependTest {
     public static final String RESULT_FILESET = "result";
 
-    public static final String TEST_BUILD_FILE
-        = "src/etc/testcases/taskdefs/optional/depend/depend.xml";
-
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
 
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
     @Before
     public void setUp() {
-        buildRule.configureProject(TEST_BUILD_FILE);
+        buildRule.configureProject("src/etc/testcases/taskdefs/optional/depend/depend.xml");
     }
 
     /**
@@ -65,13 +72,10 @@ public class DependTest {
         FileUtilities.rollbackTimestamps(new File(buildRule.getProject().getProperty("classes.dir")), 5);
 
         buildRule.executeTarget("testdirect");
-        Hashtable files = getResultFiles();
-        assertEquals("Depend did not leave correct number of files", 3,
-            files.size());
-        assertTrue("Result did not contain A.class",
-            files.containsKey("A.class"));
-        assertTrue("Result did not contain D.class",
-            files.containsKey("D.class"));
+        Hashtable<String, String> files = getResultFiles();
+        assertEquals("Depend did not leave correct number of files", 3, files.size());
+        assertThat("Result did not contain A.class", files, hasKey("A.class"));
+        assertThat("Result did not contain D.class", files, hasKey("D.class"));
     }
 
     /**
@@ -86,11 +90,9 @@ public class DependTest {
         FileUtilities.rollbackTimestamps(new File(buildRule.getProject().getProperty("classes.dir")), 5);
 
         buildRule.executeTarget("testclosure");
-        Hashtable files = getResultFiles();
-        assertTrue("Depend did not leave correct number of files",
-            files.size() <= 2);
-        assertTrue("Result did not contain D.class",
-            files.containsKey("D.class"));
+        Hashtable<String, String> files = getResultFiles();
+        assertTrue("Depend did not leave correct number of files", files.size() <= 2);
+        assertThat("Result did not contain D.class", files, hasKey("D.class"));
     }
 
     /**
@@ -104,14 +106,12 @@ public class DependTest {
         FileUtilities.rollbackTimestamps(new File(buildRule.getProject().getProperty("tempsrc.dir")), 5);
         FileUtilities.rollbackTimestamps(new File(buildRule.getProject().getProperty("classes.dir")), 5);
 
-
         buildRule.executeTarget("testinner");
-        assertEquals("Depend did not leave correct number of files", 0,
-            getResultFiles().size());
+        assertEquals("Depend did not leave correct number of files", 0, getResultFiles().size());
     }
 
     /**
-     * Test that multi-leve inner class dependencies trigger deletion of
+     * Test that multi-level inner class dependencies trigger deletion of
      * the outer class
      */
     @Test
@@ -123,8 +123,7 @@ public class DependTest {
         FileUtilities.rollbackTimestamps(new File(buildRule.getProject().getProperty("classes.dir")), 5);
 
         buildRule.executeTarget("testinnerinner");
-        assertEquals("Depend did not leave correct number of files", 0,
-            getResultFiles().size());
+        assertEquals("Depend did not leave correct number of files", 0, getResultFiles().size());
     }
 
     /**
@@ -132,12 +131,9 @@ public class DependTest {
      */
     @Test
     public void testNoSource() {
-        try {
-            buildRule.executeTarget("testnosource");
-            fail("Build exception expected: No source specified");
-        } catch (BuildException ex) {
-            assertContains("srcdir attribute must be set", ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("srcdir attribute must be set");
+        buildRule.executeTarget("testnosource");
     }
 
     /**
@@ -145,12 +141,9 @@ public class DependTest {
      */
     @Test
     public void testEmptySource() {
-        try {
-            buildRule.executeTarget("testemptysource");
-            fail("Build exception expected: No source specified");
-        } catch (BuildException ex) {
-            assertContains("srcdir attribute must be non-empty", ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("srcdir attribute must be non-empty");
+        buildRule.executeTarget("testemptysource");
     }
 
     /**
@@ -159,15 +152,11 @@ public class DependTest {
      * @return a Hashtable containing the names of the files in the result
      * fileset
      */
-    private Hashtable getResultFiles() {
-        FileSet resultFileSet = (FileSet) buildRule.getProject().getReference(RESULT_FILESET);
+    private Hashtable<String, String> getResultFiles() {
+        FileSet resultFileSet = buildRule.getProject().getReference(RESULT_FILESET);
         DirectoryScanner scanner = resultFileSet.getDirectoryScanner(buildRule.getProject());
-        String[] scannedFiles = scanner.getIncludedFiles();
-        Hashtable files = new Hashtable();
-        for (int i = 0; i < scannedFiles.length; ++i) {
-            files.put(scannedFiles[i], scannedFiles[i]);
-        }
-        return files;
+        return Arrays.stream(scanner.getIncludedFiles())
+                .collect(Collectors.toMap(file -> file, file -> file, (a, b) -> b, Hashtable::new));
     }
 
 
@@ -202,12 +191,21 @@ public class DependTest {
         FileUtilities.rollbackTimestamps(new File(buildRule.getProject().getProperty("classes.dir")), 5);
 
         buildRule.executeTarget("testnonpublic");
-        String log = buildRule.getLog();
-        assertContains("Expected warning about APrivate",
-            "The class APrivate in file", log);
-        assertContains("but has not been deleted because its source file "
-            + "could not be determined",
-            "The class APrivate in file", log);
+        assertThat("Expected warning about APrivate",
+                buildRule.getLog(), both(containsString("The class APrivate in file"))
+                        .and(containsString("but has not been deleted because its source file could not be determined")));
+    }
+
+    /**
+     * Tests that the depend task when run against a path containing a module-info.class (Java 9+ construct)
+     * doesn't run into error
+     */
+    @Test
+    public void testModuleInfo() {
+        final JavaVersion atLeastJava9 = new JavaVersion();
+        atLeastJava9.setAtLeast("9");
+        Assume.assumeTrue("Skipping test execution since Java version is lesser than 9", atLeastJava9.eval());
+        buildRule.executeTarget("testmoduleinfo");
     }
 
 }

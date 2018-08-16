@@ -120,8 +120,7 @@ public class Archives extends DataType
      */
     @Override
     public void setRefid(final Reference r) {
-        if (!(zips.getResourceCollections().isEmpty()
-            && tars.getResourceCollections().isEmpty())) {
+        if (!zips.getResourceCollections().isEmpty() || !tars.getResourceCollections().isEmpty()) {
             throw tooManyAttributes();
         }
         super.setRefid(r);
@@ -134,7 +133,7 @@ public class Archives extends DataType
      * @return a cloned instance.
      */
     @Override
-    public Archives clone() {
+    public Object clone() {
         try {
             final Archives a = (Archives) super.clone();
             a.zips = (Union) zips.clone();

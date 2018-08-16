@@ -213,7 +213,7 @@ public final class SortFilter extends BaseParamFilterReader
         } else {
             if (lines == null) {
                 // We read all lines and sort them
-                lines = new ArrayList<String>();
+                lines = new ArrayList<>();
                 for (line = readLine(); line != null; line = readLine()) {
                     lines.add(line);
                 }
@@ -222,7 +222,7 @@ public final class SortFilter extends BaseParamFilterReader
             }
 
             if (iterator.hasNext()) {
-                line = (String) iterator.next();
+                line = iterator.next();
             } else {
                 line = null;
                 lines = null;
@@ -310,34 +310,25 @@ public final class SortFilter extends BaseParamFilterReader
     /**
      * Scans the parameters list
      */
-    private void initialize() throws IOException {
+    private void initialize() {
         // get parameters
         Parameter[] params = getParameters();
         if (params != null) {
-            for (int i = 0; i < params.length; i++) {
-                final String paramName = params[i].getName();
+            for (Parameter param : params) {
+                final String paramName = param.getName();
                 if (REVERSE_KEY.equals(paramName)) {
-                    setReverse(Boolean.valueOf(params[i].getValue())
-                               .booleanValue());
-                    continue;
-                }
-                if (COMPARATOR_KEY.equals(paramName)) {
+                    setReverse(Boolean.valueOf(param.getValue()));
+                } else if (COMPARATOR_KEY.equals(paramName)) {
                     try {
-                        String className = (String) params[i].getValue();
+                        String className = param.getValue();
                         @SuppressWarnings("unchecked")
-                        final Comparator<? super String> comparatorInstance = (Comparator<? super String>) (Class
-                                .forName(className).newInstance());
+                        final Comparator<? super String> comparatorInstance
+                                = (Comparator<? super String>) (Class.forName(className).newInstance());
                         setComparator(comparatorInstance);
-                        continue;
-                    } catch (InstantiationException e) {
-                        throw new BuildException(e);
-                    } catch (IllegalAccessException e) {
+                    } catch (InstantiationException | ClassNotFoundException | IllegalAccessException e) {
                         /*
-                         * Probably a inner non-static class, this this case is
-                         * not considered
+                         * IAE probably means an inner non-static class, that case is not considered
                          */
-                        throw new BuildException(e);
-                    } catch (ClassNotFoundException e) {
                         throw new BuildException(e);
                     } catch (ClassCastException e) {
                         throw new BuildException("Value of comparator attribute"
@@ -359,17 +350,13 @@ public final class SortFilter extends BaseParamFilterReader
      */
     private void sort() {
         if (comparator == null) {
-            if (reverse) {
-                Collections.sort(lines, new Comparator<String>() {
-                        public int compare(String s1, String s2) {
-                            return (-s1.compareTo(s2)); //NOSONAR
-                        }
-                    });
+            if (isReverse()) {
+                lines.sort(Comparator.reverseOrder());
             } else {
                 Collections.sort(lines);
             }
         } else {
-            Collections.sort(lines, comparator);
+            lines.sort(comparator);
         }
     }
 }

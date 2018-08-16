@@ -21,8 +21,8 @@ package org.apache.tools.zip;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertTrue;
 
 /**
  * JUnit 4 testcases for org.apache.tools.zip.ZipShort.
@@ -60,15 +60,15 @@ public class ZipShortTest {
         ZipShort zs2 = new ZipShort(0x1234);
         ZipShort zs3 = new ZipShort(0x5678);
 
-        assertTrue("reflexive", zs.equals(zs));
+        assertEquals("reflexive", zs, zs);
 
-        assertTrue("works", zs.equals(zs2));
-        assertTrue("works, part two", !zs.equals(zs3));
+        assertEquals("works", zs, zs2);
+        assertNotEquals("works, part two", zs, zs3);
 
-        assertTrue("symmetric", zs2.equals(zs));
+        assertEquals("symmetric", zs2, zs);
 
-        assertTrue("null handling", !zs.equals(null));
-        assertTrue("non ZipShort handling", !zs.equals(Integer.valueOf(0x1234)));
+        assertNotEquals("null handling", null, zs);
+        assertNotEquals("non ZipShort handling", 0x1234, zs);
     }
 
     /**

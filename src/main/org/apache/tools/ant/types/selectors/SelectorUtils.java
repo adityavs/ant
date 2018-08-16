@@ -153,20 +153,10 @@ public final class SelectorUtils {
             strIdxStart++;
         }
 
-        // CheckStyle:SimplifyBooleanReturnCheck OFF
-        // Check turned off as the code needs the comments for the various
-        // code paths.
-        if (strIdxStart > strIdxEnd) {
-            // String is exhausted
-            return true;
-        }
-        if (patIdxStart > patIdxEnd) {
-            // String not exhausted, but pattern is. Failure.
-            return false;
-        }
-        // pattern now holds ** while string is not exhausted
+        // Fail if string is not exhausted or pattern is exhausted
+        // Otherwise the pattern now holds ** while string is not exhausted
         // this will generate false positives but we can live with that.
-        return true;
+        return strIdxStart > strIdxEnd || patIdxStart <= patIdxEnd;
     }
 
     /**
@@ -364,8 +354,8 @@ public final class SelectorUtils {
         int strIdxEnd = strArr.length - 1;
 
         boolean containsStar = false;
-        for (int i = 0; i < patArr.length; i++) {
-            if (patArr[i] == '*') {
+        for (char ch : patArr) {
+            if (ch == '*') {
                 containsStar = true;
                 break;
             }
@@ -525,7 +515,8 @@ public final class SelectorUtils {
     /**
      * Same as {@link #tokenizePath tokenizePath} but hopefully faster.
      */
-    /*package*/ static String[] tokenizePathAsArray(String path) {
+    /* package */
+    static String[] tokenizePathAsArray(String path) {
         String root = null;
         if (FileUtils.isAbsolutePath(path)) {
             String[] s = FILE_UTILS.dissect(path);
@@ -587,16 +578,8 @@ public final class SelectorUtils {
      * @return whether the target is out of date
      */
     public static boolean isOutOfDate(File src, File target, int granularity) {
-        if (!src.exists()) {
-            return false;
-        }
-        if (!target.exists()) {
-            return true;
-        }
-        if ((src.lastModified() - granularity) > target.lastModified()) {
-            return true;
-        }
-        return false;
+        return src.exists() && (!target.exists()
+                || (src.lastModified() - granularity) > target.lastModified());
     }
 
     /**
@@ -666,7 +649,7 @@ public final class SelectorUtils {
      * @return true if the string contains at least a star or a question mark
      */
     public static boolean hasWildcards(String input) {
-        return input.indexOf('*') != -1 || input.indexOf('?') != -1;
+        return input.contains("*") || input.contains("?");
     }
 
     /**

@@ -63,7 +63,9 @@ public abstract class DefaultCompilerAdapter
 
     //must keep for subclass BC, though unused:
     // CheckStyle:ConstantNameCheck OFF - bc
+    @Deprecated
     protected static final String lSep = StringUtils.LINE_SEP;
+    // CheckStyle:ConstantNameCheck ON
 
     protected Path src;
     protected File destDir;
@@ -92,7 +94,6 @@ public abstract class DefaultCompilerAdapter
     protected File[] compileList;
     protected Javac attributes;
 
-    // CheckStyle:ConstantNameCheck ON
     // CheckStyle:VisibilityModifier ON
 
     /**
@@ -334,7 +335,7 @@ public abstract class DefaultCompilerAdapter
                 }
             }
 
-            if (!(extdirs == null || extdirs.isEmpty())) {
+            if (extdirs != null && !extdirs.isEmpty()) {
                 cmd.createArgument().setValue("-extdirs");
                 cmd.createArgument().setPath(extdirs);
             }
@@ -491,8 +492,8 @@ public abstract class DefaultCompilerAdapter
 
         attributes.log(Stream.of(compileList).map(File::getAbsolutePath)
                         .peek(arg -> cmd.createArgument().setValue(arg))
-                        .map(arg -> "    " + arg)
-                        .collect(Collectors.joining(StringUtils.LINE_SEP)), Project.MSG_VERBOSE);
+                        .map(arg -> String.format("    %s%n", arg))
+                        .collect(Collectors.joining("")), Project.MSG_VERBOSE);
     }
 
     /**
@@ -548,7 +549,7 @@ public abstract class DefaultCompilerAdapter
                     try (BufferedWriter out =
                         new BufferedWriter(new FileWriter(tmpFile))) {
                         for (int i = firstFileName; i < args.length; i++) {
-                            if (quoteFiles && args[i].indexOf(' ') > -1) {
+                            if (quoteFiles && args[i].contains(" ")) {
                                 args[i] =
                                     args[i].replace(File.separatorChar, '/');
                                 out.write("\"" + args[i] + "\"");
@@ -697,7 +698,7 @@ public abstract class DefaultCompilerAdapter
     @Deprecated
     protected boolean assumeJava19() {
         return assumeJavaXY("javac1.9", JavaEnvUtils.JAVA_9)
-            || assumeJavaXY("javac9", JavaEnvUtils.JAVA_9);
+                || assumeJavaXY("javac9", JavaEnvUtils.JAVA_9);
     }
 
     /**

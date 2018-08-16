@@ -20,14 +20,13 @@ package org.apache.tools.ant.types;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Enumeration;
 import java.util.Map;
 import java.util.zip.ZipException;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.types.resources.FileProvider;
 import org.apache.tools.ant.types.resources.ZipResource;
-import org.apache.tools.zip.ZipEntry;
+import org.apache.tools.ant.util.StreamUtils;
 import org.apache.tools.zip.ZipFile;
 
 /**
@@ -62,10 +61,7 @@ public class ZipScanner extends ArchiveScanner {
                 "Only file provider resources are supported"));
 
         try (ZipFile zf = new ZipFile(srcFile, encoding)) {
-
-            Enumeration<ZipEntry> e = zf.getEntries();
-            while (e.hasMoreElements()) {
-                ZipEntry entry = e.nextElement();
+            StreamUtils.enumerationAsStream(zf.getEntries()).forEach(entry -> {
                 Resource r = new ZipResource(srcFile, encoding, entry);
                 String name = entry.getName();
                 if (entry.isDirectory()) {
@@ -80,7 +76,7 @@ public class ZipScanner extends ArchiveScanner {
                         matchFileEntries.put(name, r);
                     }
                 }
-            }
+            });
         } catch (ZipException ex) {
             throw new BuildException("Problem reading " + srcFile, ex);
         } catch (IOException ex) {

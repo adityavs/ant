@@ -22,6 +22,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Files;
@@ -149,7 +150,7 @@ public class ProjectHelper2 extends ProjectHelper {
     public void parse(Project project, Object source) throws BuildException {
         getImportStack().addElement(source);
         AntXMLContext context = null;
-        context = (AntXMLContext) project.getReference(REFID_CONTEXT);
+        context = project.getReference(REFID_CONTEXT);
         if (context == null) {
             context = new AntXMLContext(project);
             project.addReference(REFID_CONTEXT, context);
@@ -166,7 +167,7 @@ public class ProjectHelper2 extends ProjectHelper {
                 newCurrent.setProject(project);
                 newCurrent.setName("");
                 context.setCurrentTarget(newCurrent);
-                context.setCurrentTargets(new HashMap<String, Target>());
+                context.setCurrentTargets(new HashMap<>());
                 context.setImplicitTarget(newCurrent);
                 parse(project, source, new RootHandler(context, mainHandler));
                 newCurrent.execute();
@@ -177,7 +178,7 @@ public class ProjectHelper2 extends ProjectHelper {
             }
         } else {
             // top level file
-            context.setCurrentTargets(new HashMap<String, Target>());
+            context.setCurrentTargets(new HashMap<>());
             parse(project, source, new RootHandler(context, mainHandler));
             // Execute the top-level target
             context.getImplicitTarget().execute();
@@ -209,13 +210,11 @@ public class ProjectHelper2 extends ProjectHelper {
         } else if (source instanceof URL) {
             url = (URL) source;
         } else if (source instanceof Resource) {
-            FileProvider fp =
-                ((Resource) source).as(FileProvider.class);
+            FileProvider fp = ((Resource) source).as(FileProvider.class);
             if (fp != null) {
                 buildFile = fp.getFile();
             } else {
-                URLProvider up =
-                    ((Resource) source).as(URLProvider.class);
+                URLProvider up = ((Resource) source).as(URLProvider.class);
                 if (up != null) {
                     url = up.getURL();
                 }
@@ -229,7 +228,7 @@ public class ProjectHelper2 extends ProjectHelper {
             try {
                 context.setBuildFile((File) null);
                 context.setBuildFile(url);
-            } catch (java.net.MalformedURLException ex) {
+            } catch (MalformedURLException ex) {
                 throw new BuildException(ex);
             }
             buildFileName = url.toString();
@@ -253,9 +252,8 @@ public class ProjectHelper2 extends ProjectHelper {
                 inputStream = Files.newInputStream(buildFile.toPath());
             } else {
                 uri = url.toString();
-                int pling = -1;
-                if (uri.startsWith("jar:file")
-                    && (pling = uri.indexOf("!/")) > -1) {
+                int pling = uri.indexOf("!/");
+                if (uri.startsWith("jar:file") && pling > -1) {
                     zf = new ZipFile(org.apache.tools.ant.launch.Locator
                                      .fromJarURI(uri), "UTF-8");
                     inputStream =
@@ -275,12 +273,10 @@ public class ProjectHelper2 extends ProjectHelper {
                         + uri + (zf != null ? " from a zip file" : ""),
                         Project.MSG_VERBOSE);
 
-            DefaultHandler hb = handler;
-
-            parser.setContentHandler(hb);
-            parser.setEntityResolver(hb);
-            parser.setErrorHandler(hb);
-            parser.setDTDHandler(hb);
+            parser.setContentHandler(handler);
+            parser.setEntityResolver(handler);
+            parser.setErrorHandler(handler);
+            parser.setDTDHandler(handler);
             parser.parse(inputSource);
         } catch (SAXParseException exc) {
             Location location = new Location(exc.getSystemId(), exc.getLineNumber(), exc
@@ -470,7 +466,7 @@ public class ProjectHelper2 extends ProjectHelper {
             throws SAXParseException {
             String s = new String(buf, start, count).trim();
 
-            if (s.length() > 0) {
+            if (!s.isEmpty()) {
                 throw new SAXParseException("Unexpected text \"" + s + "\"", context.getLocator());
             }
         }
@@ -490,7 +486,7 @@ public class ProjectHelper2 extends ProjectHelper {
      * with the implicit execution stack)
      */
     public static class RootHandler extends DefaultHandler {
-        private Stack<AntHandler> antHandlers = new Stack<AntHandler>();
+        private Stack<AntHandler> antHandlers = new Stack<>();
         private AntHandler currentHandler = null;
         private AntXMLContext context;
 
@@ -604,8 +600,7 @@ public class ProjectHelper2 extends ProjectHelper {
         @Override
         public void endElement(String uri, String name, String qName) throws SAXException {
             currentHandler.onEndElement(uri, name, context);
-            AntHandler prev = antHandlers.pop();
-            currentHandler = prev;
+            currentHandler = antHandlers.pop();
             if (currentHandler != null) {
                 currentHandler.onEndChild(uri, name, qName, context);
             }
@@ -667,8 +662,8 @@ public class ProjectHelper2 extends ProjectHelper {
         @Override
         public AntHandler onStartChild(String uri, String name, String qname, Attributes attrs,
                                        AntXMLContext context) throws SAXParseException {
-            if (name.equals("project")
-                && (uri.equals("") || uri.equals(ANT_CORE_URI))) {
+            if ("project".equals(name)
+                && (uri.isEmpty() || uri.equals(ANT_CORE_URI))) {
                 return ProjectHelper2.projectHandler;
             }
             if (name.equals(qname)) {
@@ -727,48 +722,52 @@ public class ProjectHelper2 extends ProjectHelper {
 
             for (int i = 0; i < attrs.getLength(); i++) {
                 String attrUri = attrs.getURI(i);
-                if (attrUri != null && !attrUri.equals("") && !attrUri.equals(uri)) {
+                if (attrUri != null && !attrUri.isEmpty() && !attrUri.equals(uri)) {
                     continue; // Ignore attributes from unknown uris
                 }
-                String key = attrs.getLocalName(i);
                 String value = attrs.getValue(i);
-
-                if (key.equals("default")) {
-                    if (value != null && !value.equals("")) {
-                        if (!context.isIgnoringProjectTag()) {
-                            project.setDefault(value);
-                        }
-                    }
-                } else if (key.equals("name")) {
-                    if (value != null) {
-                        context.setCurrentProjectName(value);
-                        nameAttributeSet = true;
-                        if (!context.isIgnoringProjectTag()) {
-                            project.setName(value);
-                            project.addReference(value, project);
-                        } else if (isInIncludeMode()) {
-                            if (!"".equals(value) && getCurrentTargetPrefix()!= null && getCurrentTargetPrefix().endsWith(ProjectHelper.USE_PROJECT_NAME_AS_TARGET_PREFIX))  {
-                                String newTargetPrefix = getCurrentTargetPrefix().replace(ProjectHelper.USE_PROJECT_NAME_AS_TARGET_PREFIX, value);
-                                // help nested include tasks
-                                setCurrentTargetPrefix(newTargetPrefix);
+                switch (attrs.getLocalName(i)) {
+                    case "default":
+                        if (value != null && !value.isEmpty()) {
+                            if (!context.isIgnoringProjectTag()) {
+                                project.setDefault(value);
                             }
                         }
-                    }
-                } else if (key.equals("id")) {
-                    if (value != null) {
-                        // What's the difference between id and name ?
-                        if (!context.isIgnoringProjectTag()) {
-                            project.addReference(value, project);
+                        break;
+                    case "name":
+                        if (value != null) {
+                            context.setCurrentProjectName(value);
+                            nameAttributeSet = true;
+                            if (!context.isIgnoringProjectTag()) {
+                                project.setName(value);
+                                project.addReference(value, project);
+                            } else if (isInIncludeMode()) {
+                                if (!value.isEmpty() && getCurrentTargetPrefix() != null
+                                        && getCurrentTargetPrefix().endsWith(ProjectHelper.USE_PROJECT_NAME_AS_TARGET_PREFIX)) {
+                                    String newTargetPrefix = getCurrentTargetPrefix().replace(ProjectHelper.USE_PROJECT_NAME_AS_TARGET_PREFIX, value);
+                                    // help nested include tasks
+                                    setCurrentTargetPrefix(newTargetPrefix);
+                                }
+                            }
                         }
-                    }
-                } else if (key.equals("basedir")) {
-                    if (!context.isIgnoringProjectTag()) {
-                        baseDir = value;
-                    }
-                } else {
-                    // TODO ignore attributes in a different NS ( maybe store them ? )
-                    throw new SAXParseException("Unexpected attribute \"" + attrs.getQName(i)
-                                                + "\"", context.getLocator());
+                        break;
+                    case "id":
+                        if (value != null) {
+                            // What's the difference between id and name ?
+                            if (!context.isIgnoringProjectTag()) {
+                                project.addReference(value, project);
+                            }
+                        }
+                        break;
+                    case "basedir":
+                        if (!context.isIgnoringProjectTag()) {
+                            baseDir = value;
+                        }
+                        break;
+                    default:
+                        // TODO ignore attributes in a different NS (maybe store them ?)
+                        throw new SAXParseException("Unexpected attribute \"" + attrs.getQName(i)
+                                + "\"", context.getLocator());
                 }
             }
 
@@ -785,7 +784,7 @@ public class ProjectHelper2 extends ProjectHelper {
                 if (MagicNames.ANT_FILE_TYPE_URL.equals(dupType)) {
                     try {
                         dupFile = new URL(dup);
-                    } catch (java.net.MalformedURLException mue) {
+                    } catch (MalformedURLException mue) {
                         throw new BuildException("failed to parse "
                                                  + dup + " as URL while looking"
                                                  + " at a duplicate project"
@@ -864,8 +863,8 @@ public class ProjectHelper2 extends ProjectHelper {
         @Override
         public AntHandler onStartChild(String uri, String name, String qname, Attributes attrs,
                                        AntXMLContext context) throws SAXParseException {
-            return (name.equals("target") || name.equals("extension-point"))
-                && (uri.equals("") || uri.equals(ANT_CORE_URI))
+            return ("target".equals(name) || "extension-point".equals(name))
+                && (uri.isEmpty() || uri.equals(ANT_CORE_URI))
                 ? ProjectHelper2.targetHandler : ProjectHelper2.elementHandler;
         }
     }
@@ -912,40 +911,47 @@ public class ProjectHelper2 extends ProjectHelper {
 
             for (int i = 0; i < attrs.getLength(); i++) {
                 String attrUri = attrs.getURI(i);
-                if (attrUri != null && !attrUri.equals("") && !attrUri.equals(uri)) {
+                if (attrUri != null && !attrUri.isEmpty() && !attrUri.equals(uri)) {
                     continue; // Ignore attributes from unknown uris
                 }
-                String key = attrs.getLocalName(i);
                 String value = attrs.getValue(i);
-
-                if (key.equals("name")) {
-                    name = value;
-                    if ("".equals(name)) {
-                        throw new BuildException("name attribute must " + "not be empty");
-                    }
-                } else if (key.equals("depends")) {
-                    depends = value;
-                } else if (key.equals("if")) {
-                    target.setIf(value);
-                } else if (key.equals("unless")) {
-                    target.setUnless(value);
-                } else if (key.equals("id")) {
-                    if (value != null && !value.equals("")) {
-                        context.getProject().addReference(value, target);
-                    }
-                } else if (key.equals("description")) {
-                    target.setDescription(value);
-                } else if (key.equals("extensionOf")) {
-                    extensionPoint = value;
-                } else if (key.equals("onMissingExtensionPoint")) {
-                    try {
-                        extensionPointMissing = OnMissingExtensionPoint.valueOf(value);
-                    } catch (IllegalArgumentException e) {
-                        throw new BuildException("Invalid onMissingExtensionPoint " + value);
-                    }
-                } else {
-                    throw new SAXParseException("Unexpected attribute \"" + key + "\"", context
-                                                .getLocator());
+                switch (attrs.getLocalName(i)) {
+                    case "name":
+                        name = value;
+                        if (name.isEmpty()) {
+                            throw new BuildException("name attribute must not be empty");
+                        }
+                        break;
+                    case "depends":
+                        depends = value;
+                        break;
+                    case "if":
+                        target.setIf(value);
+                        break;
+                    case "unless":
+                        target.setUnless(value);
+                        break;
+                    case "id":
+                        if (value != null && !value.isEmpty()) {
+                            context.getProject().addReference(value, target);
+                        }
+                        break;
+                    case "description":
+                        target.setDescription(value);
+                        break;
+                    case "extensionOf":
+                        extensionPoint = value;
+                        break;
+                    case "onMissingExtensionPoint":
+                        try {
+                            extensionPointMissing = OnMissingExtensionPoint.valueOf(value);
+                        } catch (IllegalArgumentException e) {
+                            throw new BuildException("Invalid onMissingExtensionPoint " + value);
+                        }
+                        break;
+                    default:
+                        throw new SAXParseException("Unexpected attribute \"" + attrs.getQName(i)
+                                + "\"", context.getLocator());
                 }
             }
 
@@ -977,7 +983,7 @@ public class ProjectHelper2 extends ProjectHelper {
                                          target.getLocation());
             }
             Hashtable<String, Target> projectTargets = project.getTargets();
-            boolean   usedTarget = false;
+            boolean usedTarget = false;
             // If the name has not already been defined define it
             if (projectTargets.containsKey(name)) {
                 project.log("Already defined in main or a previous import, ignore " + name,
@@ -989,7 +995,7 @@ public class ProjectHelper2 extends ProjectHelper {
                 usedTarget = true;
             }
 
-            if (depends.length() > 0) {
+            if (!depends.isEmpty()) {
                 if (!isInIncludeMode) {
                     target.setDepends(depends);
                 } else {
@@ -1020,8 +1026,7 @@ public class ProjectHelper2 extends ProjectHelper {
             }
             if (extensionPoint != null) {
                 ProjectHelper helper =
-                    (ProjectHelper) context.getProject().
-                    getReference(ProjectHelper.PROJECTHELPER_REFERENCE);
+                        context.getProject().getReference(ProjectHelper.PROJECTHELPER_REFERENCE);
                 for (String extPointName : Target.parseDepends(extensionPoint, name, "extensionOf")) {
                     if (extensionPointMissing == null) {
                         extensionPointMissing = OnMissingExtensionPoint.FAIL;
@@ -1046,7 +1051,7 @@ public class ProjectHelper2 extends ProjectHelper {
 
         private String getTargetPrefix(AntXMLContext context) {
             String configuredValue = getCurrentTargetPrefix();
-            if (configuredValue != null && configuredValue.length() == 0) {
+            if (configuredValue != null && configuredValue.isEmpty()) {
                 configuredValue = null;
             }
             if (configuredValue != null) {
@@ -1054,7 +1059,7 @@ public class ProjectHelper2 extends ProjectHelper {
             }
 
             String projectName = context.getCurrentProjectName();
-            if ("".equals(projectName)) {
+            if (projectName != null && projectName.isEmpty()) {
                 projectName = null;
             }
 
@@ -1167,7 +1172,7 @@ public class ProjectHelper2 extends ProjectHelper {
             for (int i = 0; i < attrs.getLength(); i++) {
                 String name = attrs.getLocalName(i);
                 String attrUri = attrs.getURI(i);
-                if (attrUri != null && !attrUri.equals("") && !attrUri.equals(uri)) {
+                if (attrUri != null && !attrUri.isEmpty() && !attrUri.equals(uri)) {
                     name = attrUri + ":" + attrs.getQName(i);
                 }
                 String value = attrs.getValue(i);

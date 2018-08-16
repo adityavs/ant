@@ -155,6 +155,9 @@ public class GlobPatternMapper implements FileNameMapper {
      */
     @Override
     public String[] mapFileName(String sourceFileName) {
+        if (sourceFileName == null) {
+            return null;
+        }
         String modName = modifyName(sourceFileName);
         if (fromPrefix == null
             || (sourceFileName.length() < (prefixLength + postfixLength))
@@ -196,7 +199,7 @@ public class GlobPatternMapper implements FileNameMapper {
             name = name.toLowerCase();
         }
         if (handleDirSep) {
-            if (name.indexOf('\\') != -1) {
+            if (name.contains("\\")) {
                 name = name.replace('\\', '/');
             }
         }

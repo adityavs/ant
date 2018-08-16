@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -65,59 +66,59 @@ public class MoveTest {
 
     /** Bugzilla Report 11732 */
     @Test
-    public void testDirectoryRemoval() throws IOException {
+    public void testDirectoryRemoval() {
 
         buildRule.executeTarget("testDirectoryRemoval");
         String output = buildRule.getProject().getProperty("output");
-        assertTrue(!new File(output,"E/B/1").exists());
+        assertFalse(new File(output, "E/B/1").exists());
         assertTrue(new File(output, "E/C/2").exists());
-        assertTrue(new File(output,"E/D/3").exists());
-        assertTrue(new File(output,"A/B/1").exists());
-        assertTrue(!new File(output,"A/C/2").exists());
-        assertTrue(!new File(output,"A/D/3").exists());
-        assertTrue(!new File(output,"A/C").exists());
-        assertTrue(!new File(output,"A/D").exists());
+        assertTrue(new File(output, "E/D/3").exists());
+        assertTrue(new File(output, "A/B/1").exists());
+        assertFalse(new File(output, "A/C/2").exists());
+        assertFalse(new File(output, "A/D/3").exists());
+        assertFalse(new File(output, "A/C").exists());
+        assertFalse(new File(output, "A/D").exists());
     }
 
     /** Bugzilla Report 18886 */
     @Test
-    public void testDirectoryRetaining() throws IOException {
+    public void testDirectoryRetaining() {
         buildRule.executeTarget("testDirectoryRetaining");
         String output = buildRule.getProject().getProperty("output");
-        assertTrue(new File(output,"E").exists());
-        assertTrue(new File(output,"E/1").exists());
-        assertTrue(!new File(output,"A/1").exists());
-        assertTrue(new File(output,"A").exists());
+        assertTrue(new File(output, "E").exists());
+        assertTrue(new File(output, "E/1").exists());
+        assertFalse(new File(output, "A/1").exists());
+        assertTrue(new File(output, "A").exists());
     }
 
     @Test
-    public void testCompleteDirectoryMove() throws IOException {
+    public void testCompleteDirectoryMove() {
         testCompleteDirectoryMove("testCompleteDirectoryMove");
     }
 
     @Test
-    public void testCompleteDirectoryMove2() throws IOException {
+    public void testCompleteDirectoryMove2() {
         testCompleteDirectoryMove("testCompleteDirectoryMove2");
     }
 
-    private void testCompleteDirectoryMove(String target) throws IOException {
+    private void testCompleteDirectoryMove(String target) {
         buildRule.executeTarget(target);
         String output = buildRule.getProject().getProperty("output");
-        assertTrue(new File(output,"E").exists());
-        assertTrue(new File(output,"E/1").exists());
-        assertTrue(!new File(output,"A/1").exists());
+        assertTrue(new File(output, "E").exists());
+        assertTrue(new File(output, "E/1").exists());
+        assertFalse(new File(output, "A/1").exists());
         // <path> swallows the basedir, it seems
-        //assertTrue(!new File(getOutputDir(),"A").exists());
+        //assertFalse(new File(getOutputDir(), "A").exists());
     }
 
     @Test
-    public void testPathElementMove() throws IOException {
+    public void testPathElementMove() {
         buildRule.executeTarget("testPathElementMove");
         String output = buildRule.getProject().getProperty("output");
-        assertTrue(new File(output,"E").exists());
-        assertTrue(new File(output,"E/1").exists());
-        assertTrue(!new File(output,"A/1").exists());
-        assertTrue(new File(output,"A").exists());
+        assertTrue(new File(output, "E").exists());
+        assertTrue(new File(output, "E/1").exists());
+        assertFalse(new File(output, "A/1").exists());
+        assertTrue(new File(output, "A").exists());
     }
 
     @Test

@@ -18,15 +18,38 @@
 
 package org.apache.tools.ant.types;
 
-import org.apache.tools.ant.AntAssert;
 import org.apache.tools.ant.BuildFileRule;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.Assert.assertThat;
+
+@RunWith(Parameterized.class)
 public class PolyTest {
+    @Parameterized.Parameters(name = "{0}")
+    public static Collection<Object[]> targets() {
+        return Arrays.asList(new Object[][]{
+                {"fileset", "types.FileSet"},
+                {"fileset-ant-type", "types.PolyTest$MyFileSet"},
+                {"path", "types.Path"},
+                {"path-ant-type", "types.PolyTest$MyPath"}
+        });
+    }
+
+    @Parameterized.Parameter
+    public String targetName;
+
+    @Parameterized.Parameter(1)
+    public String outcome;
 
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
@@ -37,27 +60,9 @@ public class PolyTest {
     }
 
     @Test
-    public void testFileSet() {
-        buildRule.executeTarget("fileset");
-        AntAssert.assertContains("types.FileSet", buildRule.getLog());
-    }
-
-    @Test
-    public void testFileSetAntType() {
-        buildRule.executeTarget("fileset-ant-type");
-        AntAssert.assertContains("types.PolyTest$MyFileSet", buildRule.getLog());
-    }
-
-    @Test
-    public void testPath() {
-        buildRule.executeTarget("path");
-        AntAssert.assertContains("types.Path", buildRule.getLog());
-    }
-
-    @Test
-    public void testPathAntType() {
-        buildRule.executeTarget("path-ant-type");
-        AntAssert.assertContains("types.PolyTest$MyPath", buildRule.getLog());
+    public void test() {
+        buildRule.executeTarget(targetName);
+        assertThat(buildRule.getLog(), containsString(outcome));
     }
 
     public static class MyFileSet extends FileSet {

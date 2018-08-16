@@ -27,6 +27,7 @@ import java.util.Vector;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.Redirector;
+import org.apache.tools.ant.util.MergingMapper;
 
 /**
  * Element representation of a <code>Redirector</code>.
@@ -463,16 +464,16 @@ public class RedirectorElement extends DataType {
         }
         dieOnCircularReference();
         if (alwaysLog != null) {
-            redirector.setAlwaysLog(alwaysLog.booleanValue());
+            redirector.setAlwaysLog(alwaysLog);
         }
         if (logError != null) {
-            redirector.setLogError(logError.booleanValue());
+            redirector.setLogError(logError);
         }
         if (append != null) {
-            redirector.setAppend(append.booleanValue());
+            redirector.setAppend(append);
         }
         if (createEmptyFiles != null) {
-            redirector.setCreateEmptyFiles(createEmptyFiles.booleanValue());
+            redirector.setCreateEmptyFiles(createEmptyFiles);
         }
         if (outputProperty != null) {
             redirector.setOutputProperty(outputProperty);
@@ -484,7 +485,7 @@ public class RedirectorElement extends DataType {
             redirector.setInputString(inputString);
         }
         if (logInputString != null) {
-            redirector.setLogInputString(logInputString.booleanValue());
+            redirector.setLogInputString(logInputString);
         }
         if (inputMapper != null) {
             String[] inputTargets = null;
@@ -556,8 +557,7 @@ public class RedirectorElement extends DataType {
      */
     protected Mapper createMergeMapper(File destfile) {
         Mapper result = new Mapper(getProject());
-        result.setClassname(
-            org.apache.tools.ant.util.MergingMapper.class.getName());
+        result.setClassname(MergingMapper.class.getName());
         result.setTo(destfile.getAbsolutePath());
         return result;
     }
@@ -573,12 +573,12 @@ public class RedirectorElement extends DataType {
         }
         //remove any null elements
         ArrayList<File> list = new ArrayList<>(name.length);
-        for (int i = 0; i < name.length; i++) {
-            if (name[i] != null) {
-                list.add(getProject().resolveFile(name[i]));
+        for (String n : name) {
+            if (n != null) {
+                list.add(getProject().resolveFile(n));
             }
         }
-        return (File[]) (list.toArray(new File[list.size()]));
+        return list.toArray(new File[list.size()]);
     }
 
     /**
@@ -597,11 +597,10 @@ public class RedirectorElement extends DataType {
         if (isReference()) {
             super.dieOnCircularReference(stk, p);
         } else {
-            Mapper[] m = new Mapper[] {inputMapper, outputMapper, errorMapper};
-            for (int i = 0; i < m.length; i++) {
-                if (m[i] != null) {
-                    stk.push(m[i]);
-                    m[i].dieOnCircularReference(stk, p);
+            for (Mapper m : Arrays.asList(inputMapper, outputMapper, errorMapper)) {
+                if (m != null) {
+                    stk.push(m);
+                    m.dieOnCircularReference(stk, p);
                     stk.pop();
                 }
             }

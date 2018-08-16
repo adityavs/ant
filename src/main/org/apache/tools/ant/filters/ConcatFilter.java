@@ -191,14 +191,12 @@ public final class ConcatFilter extends BaseParamFilterReader
         // get parameters
         final Parameter[] params = getParameters();
         if (params != null) {
-            for (int i = 0; i < params.length; i++) {
-                if ("prepend".equals(params[i].getName())) {
-                    setPrepend(new File(params[i].getValue()));
-                    continue;
-                }
-                if ("append".equals(params[i].getName())) {
-                    setAppend(new File(params[i].getValue()));
-                    continue;
+            for (Parameter param : params) {
+                final String paramName = param.getName();
+                if ("prepend".equals(paramName)) {
+                    setPrepend(new File(param.getValue()));
+                } else if ("append".equals(paramName)) {
+                    setAppend(new File(param.getValue()));
                 }
             }
         }

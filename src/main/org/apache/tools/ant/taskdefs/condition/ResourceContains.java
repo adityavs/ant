@@ -88,8 +88,7 @@ public class ResourceContains implements Condition {
                         o = rc.iterator().next();
                     }
                 } else {
-                    throw new BuildException("Illegal value at '%s': %s", refid,
-                        o);
+                    throw new BuildException("Illegal value at '%s': %s", refid, o);
                 }
             }
             this.resource = (Resource) o;
@@ -136,7 +135,7 @@ public class ResourceContains implements Condition {
     public synchronized boolean eval() throws BuildException {
         validate();
 
-        if (substring.length() == 0) {
+        if (substring.isEmpty()) {
             if (getProject() != null) {
                 getProject().log("Substring is empty; returning true",
                                  Project.MSG_VERBOSE);
@@ -155,7 +154,7 @@ public class ResourceContains implements Condition {
                 contents = contents.toLowerCase();
                 sub = sub.toLowerCase();
             }
-            return contents.indexOf(sub) >= 0;
+            return contents.contains(sub);
         } catch (IOException e) {
             throw new BuildException("There was a problem accessing resource : " + resource);
         }

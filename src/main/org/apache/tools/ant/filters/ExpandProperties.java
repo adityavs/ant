@@ -19,7 +19,6 @@ package org.apache.tools.ant.filters;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.util.Properties;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
@@ -98,13 +97,7 @@ public final class ExpandProperties
                 if (propertySet == null) {
                     getProperty = PropertyHelper.getPropertyHelper(project);
                 } else {
-                    final Properties props = propertySet.getProperties();
-                    getProperty = new GetProperty() {
-
-                        public Object getProperty(String name) {
-                            return props.getProperty(name);
-                        }
-                    };
+                    getProperty = propertySet.getProperties()::getProperty;
                 }
                 Object expanded = new ParseProperties(project, PropertyHelper
                                                       .getPropertyHelper(project)

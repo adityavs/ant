@@ -21,6 +21,7 @@ package org.apache.tools.ant.taskdefs;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -40,7 +41,6 @@ import org.apache.tools.ant.types.FilterSetCollection;
 import org.apache.tools.ant.types.Mapper;
 import org.apache.tools.ant.types.Resource;
 import org.apache.tools.ant.types.ResourceCollection;
-import org.apache.tools.ant.types.ResourceFactory;
 import org.apache.tools.ant.types.resources.FileProvider;
 import org.apache.tools.ant.types.resources.FileResource;
 import org.apache.tools.ant.util.FileNameMapper;
@@ -50,6 +50,7 @@ import org.apache.tools.ant.util.IdentityMapper;
 import org.apache.tools.ant.util.LinkedHashtable;
 import org.apache.tools.ant.util.ResourceUtils;
 import org.apache.tools.ant.util.SourceFileScanner;
+import org.apache.tools.ant.util.StringUtils;
 
 /**
  * <p>Copies a file or directory to a new file
@@ -70,8 +71,9 @@ public class Copy extends Task {
     private static final String MSG_WHEN_COPYING_EMPTY_RC_TO_FILE =
         "Cannot perform operation from directory to file.";
 
+    @Deprecated
+    static final String LINE_SEPARATOR = StringUtils.LINE_SEP;
     static final File NULL_FILE_PLACEHOLDER = new File("/NULL_FILE");
-    static final String LINE_SEPARATOR = System.getProperty("line.separator");
     // CheckStyle:VisibilityModifier OFF - bc
     protected File file = null;     // the source file
     protected File destFile = null; // the destination file
@@ -503,14 +505,12 @@ public class Copy extends Task {
                     }
                     final File fromDir = fs.getDir(getProject());
 
-                    final String[] srcFiles = ds.getIncludedFiles();
-                    final String[] srcDirs = ds.getIncludedDirectories();
                     if (!flatten && mapperElement == null
                         && ds.isEverythingIncluded() && !fs.hasPatterns()) {
                         completeDirMap.put(fromDir, destDir);
                     }
-                    add(fromDir, srcFiles, filesByBasedir);
-                    add(fromDir, srcDirs, dirsByBasedir);
+                    add(fromDir, ds.getIncludedFiles(), filesByBasedir);
+                    add(fromDir, ds.getIncludedDirectories(), dirsByBasedir);
                     baseDirs.add(fromDir);
                 } else { // not a fileset or contains non-file resources
 
@@ -773,25 +773,27 @@ public class Copy extends Task {
                             final FileNameMapper mapper, final Hashtable<String, String[]> map) {
         String[] toCopy = null;
         if (forceOverwrite) {
-            final Vector<String> v = new Vector<String>();
-            for (int i = 0; i < names.length; i++) {
-                if (mapper.mapFileName(names[i]) != null) {
-                    v.addElement(names[i]);
+            final List<String> v = new ArrayList<>();
+            for (String name : names) {
+                if (mapper.mapFileName(name) != null) {
+                    v.add(name);
                 }
             }
-            toCopy = new String[v.size()];
-            v.copyInto(toCopy);
+            toCopy = v.toArray(new String[v.size()]);
         } else {
             final SourceFileScanner ds = new SourceFileScanner(this);
             toCopy = ds.restrict(names, fromDir, toDir, mapper, granularity);
         }
-        for (int i = 0; i < toCopy.length; i++) {
-            final File src = new File(fromDir, toCopy[i]);
-            final String[] mappedFiles = mapper.mapFileName(toCopy[i]);
+        for (String name : toCopy) {
+            final File src = new File(fromDir, name);
+            final String[] mappedFiles = mapper.mapFileName(name);
+            if (mappedFiles == null || mappedFiles.length == 0) {
+                continue;
+            }
 
             if (!enableMultipleMappings) {
                 map.put(src.getAbsolutePath(),
-                        new String[] {new File(toDir, mappedFiles[0]).getAbsolutePath()});
+                        new String[]{new File(toDir, mappedFiles[0]).getAbsolutePath()});
             } else {
                 // reuse the array created by the mapper
                 for (int k = 0; k < mappedFiles.length; k++) {
@@ -817,36 +819,31 @@ public class Copy extends Task {
         Resource[] toCopy;
         if (forceOverwrite) {
             final List<Resource> v = new ArrayList<>();
-            for (int i = 0; i < fromResources.length; i++) {
-                if (mapper.mapFileName(fromResources[i].getName()) != null) {
-                    v.add(fromResources[i]);
+            for (Resource rc : fromResources) {
+                if (mapper.mapFileName(rc.getName()) != null) {
+                    v.add(rc);
                 }
             }
             toCopy = v.toArray(new Resource[v.size()]);
         } else {
-            toCopy = ResourceUtils.selectOutOfDateSources(this, fromResources,
-                                                          mapper,
-                                                          (ResourceFactory) name -> new FileResource(toDir, name),
-                                                          granularity);
+            toCopy = ResourceUtils.selectOutOfDateSources(this, fromResources, mapper,
+                    name -> new FileResource(toDir, name), granularity);
         }
-        for (int i = 0; i < toCopy.length; i++) {
-            final String[] mappedFiles = mapper.mapFileName(toCopy[i].getName());
-            for (String mappedFile : mappedFiles) {
-                if (mappedFile == null) {
-                    throw new BuildException(
-                        "Can't copy a resource without a name if the mapper doesn't provide one.");
-                }
+        for (Resource rc : toCopy) {
+            final String[] mappedFiles = mapper.mapFileName(rc.getName());
+            if (mappedFiles == null || mappedFiles.length == 0) {
+                throw new BuildException("Can't copy a resource without a"
+                        + " name if the mapper doesn't"
+                        + " provide one.");
             }
-
             if (!enableMultipleMappings) {
-                map.put(toCopy[i],
-                        new String[] {new File(toDir, mappedFiles[0]).getAbsolutePath()});
+                map.put(rc, new String[]{new File(toDir, mappedFiles[0]).getAbsolutePath()});
             } else {
                 // reuse the array created by the mapper
                 for (int k = 0; k < mappedFiles.length; k++) {
                     mappedFiles[k] = new File(toDir, mappedFiles[k]).getAbsolutePath();
                 }
-                map.put(toCopy[i], mappedFiles);
+                map.put(rc, mappedFiles);
             }
         }
         return map;
@@ -864,9 +861,8 @@ public class Copy extends Task {
 
             for (final Map.Entry<String, String[]> e : fileCopyMap.entrySet()) {
                 final String fromFile = e.getKey();
-                final String[] toFiles = e.getValue();
 
-                for (final String toFile : toFiles) {
+                for (final String toFile : e.getValue()) {
                     if (fromFile.equals(toFile)) {
                         log("Skipping self-copy of " + fromFile, verbosity);
                         continue;
@@ -913,7 +909,7 @@ public class Copy extends Task {
                 for (String dir : dirs) {
                     final File d = new File(dir);
                     if (!d.exists()) {
-                        if (!(d.mkdirs() || d.isDirectory())) {
+                        if (!d.mkdirs() && !d.isDirectory()) {
                             log("Unable to create directory "
                                 + d.getAbsolutePath(), Project.MSG_ERR);
                         } else {
@@ -1018,12 +1014,8 @@ public class Copy extends Task {
     private static void add(File baseDir, final String[] names, final Map<File, List<String>> m) {
         if (names != null) {
             baseDir = getKeyFile(baseDir);
-            List<String> l = m.get(baseDir);
-            if (l == null) {
-                l = new ArrayList<>(names.length);
-                m.put(baseDir, l);
-            }
-            l.addAll(java.util.Arrays.asList(names));
+            List<String> l = m.computeIfAbsent(baseDir, k -> new ArrayList<>(names.length));
+            l.addAll(Arrays.asList(names));
         }
     }
 
@@ -1089,16 +1081,11 @@ public class Copy extends Task {
             }
             message.append(ex.getMessage());
         }
-        if (ex.getClass().getName().indexOf("MalformedInput") != -1) {
-            message.append(LINE_SEPARATOR);
-            message.append(
-                "This is normally due to the input file containing invalid");
-             message.append(LINE_SEPARATOR);
-            message.append("bytes for the character encoding used : ");
-            message.append(
-                (inputEncoding == null
-                 ? fileUtils.getDefaultEncoding() : inputEncoding));
-            message.append(LINE_SEPARATOR);
+        if (ex.getClass().getName().contains("MalformedInput")) {
+            message.append(String.format(
+                    "%nThis is normally due to the input file containing invalid"
+                            + "%nbytes for the character encoding used : %s%n",
+                    inputEncoding == null ? fileUtils.getDefaultEncoding() : inputEncoding));
         }
         return message.toString();
     }

@@ -125,7 +125,7 @@ public class ExecTask extends Task {
      */
     public void setTimeout(Integer value) {
         setTimeout(
-            (value == null) ? null : Long.valueOf(value.intValue()));
+            (value == null) ? null : (long) value);
     }
 
     /**
@@ -446,9 +446,9 @@ public class ExecTask extends Task {
             Path p = null;
             String[] environment = env.getVariables();
             if (environment != null) {
-                for (int i = 0; i < environment.length; i++) {
-                    if (isPath(environment[i])) {
-                        p = new Path(getProject(), getPath(environment[i]));
+                for (String variable : environment) {
+                    if (isPath(variable)) {
+                        p = new Path(getProject(), getPath(variable));
                         break;
                     }
                 }
@@ -460,10 +460,9 @@ public class ExecTask extends Task {
                 }
             }
             if (p != null) {
-                String[] dirs = p.list();
-                for (int i = 0; i < dirs.length; i++) {
+                for (String pathname : p.list()) {
                     executableFile
-                        = FILE_UTILS.resolveFile(new File(dirs[i]), exec);
+                            = FILE_UTILS.resolveFile(new File(pathname), exec);
                     if (executableFile.exists()) {
                         return executableFile.getAbsolutePath();
                     }
@@ -564,7 +563,7 @@ public class ExecTask extends Task {
         //for the current os.name
         String myos = System.getProperty("os.name");
         log("Current OS is " + myos, Project.MSG_VERBOSE);
-        if ((os != null) && (os.indexOf(myos) < 0)) {
+        if (os != null && !os.contains(myos)) {
             // this command will be executed only on the specified OS
             log("This OS, " + myos
                     + " was not found in the specified list of valid OSes: " + os,
@@ -605,9 +604,9 @@ public class ExecTask extends Task {
         exe.setVMLauncher(vmLauncher);
         String[] environment = env.getVariables();
         if (environment != null) {
-            for (int i = 0; i < environment.length; i++) {
-                log("Setting environment variable: " + environment[i],
-                    Project.MSG_VERBOSE);
+            for (String variable : environment) {
+                log("Setting environment variable: " + variable,
+                        Project.MSG_VERBOSE);
             }
         }
         exe.setNewenvironment(newEnvironment);
@@ -700,7 +699,7 @@ public class ExecTask extends Task {
      */
     protected ExecuteWatchdog createWatchdog() throws BuildException {
         return (timeout == null)
-            ? null : new ExecuteWatchdog(timeout.longValue());
+            ? null : new ExecuteWatchdog(timeout);
     }
 
     /**

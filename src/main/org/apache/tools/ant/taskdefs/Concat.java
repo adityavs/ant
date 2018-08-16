@@ -57,7 +57,6 @@ import org.apache.tools.ant.util.ConcatResourceInputStream;
 import org.apache.tools.ant.util.FileUtils;
 import org.apache.tools.ant.util.ReaderInputStream;
 import org.apache.tools.ant.util.ResourceUtils;
-import org.apache.tools.ant.util.StringUtils;
 
 /**
  * This class contains the 'concat' task, used to concatenate a series
@@ -185,12 +184,9 @@ public class Concat extends Task implements ResourceCollection {
                 value = "";
             }
             if (trimLeading) {
-                char[] current = value.toCharArray();
-                StringBuilder b = new StringBuilder(current.length);
+                StringBuilder b = new StringBuilder();
                 boolean startOfLine = true;
-                int pos = 0;
-                while (pos < current.length) {
-                    char ch = current[pos++];
+                for (final char ch : value.toCharArray()) {
                     if (startOfLine) {
                         if (ch == ' ' || ch == '\t') {
                             continue;
@@ -217,7 +213,7 @@ public class Concat extends Task implements ResourceCollection {
 
     /**
      * This class reads from each of the source files in turn.
-     * The concatentated result can then be filtered as
+     * The concatenated result can then be filtered as
      * a single stream.
      */
     private final class MultiReader<S> extends Reader {
@@ -355,9 +351,7 @@ public class Concat extends Task implements ResourceCollection {
          * add a character to the lastchars buffer
          */
         private void addLastChar(char ch) {
-            for (int i = lastChars.length - 2; i >= 0; --i) {
-                lastChars[i] = lastChars[i + 1];
-            }
+            System.arraycopy(lastChars, 1, lastChars, 0, lastChars.length - 2 + 1);
             lastChars[lastChars.length - 1] = ch;
         }
 
@@ -393,7 +387,7 @@ public class Concat extends Task implements ResourceCollection {
                 return result;
             }
             Reader resourceReader = getFilteredReader(
-                    new MultiReader<Resource>(c.iterator(), resourceReaderFactory));
+                    new MultiReader<>(c.iterator(), resourceReaderFactory));
             Reader rdr;
             if (header == null && footer == null) {
                 rdr = resourceReader;
@@ -421,7 +415,7 @@ public class Concat extends Task implements ResourceCollection {
                         readers[pos] = getFilteredReader(readers[pos]);
                     }
                 }
-                rdr = new MultiReader<Reader>(Arrays.asList(readers).iterator(),
+                rdr = new MultiReader<>(Arrays.asList(readers).iterator(),
                         identityReaderFactory);
             }
             return outputEncoding == null ? new ReaderInputStream(rdr)
@@ -505,12 +499,7 @@ public class Concat extends Task implements ResourceCollection {
         }
     };
 
-    private ReaderFactory<Reader> identityReaderFactory = new ReaderFactory<Reader>() {
-        @Override
-        public Reader getReader(Reader o) {
-            return o;
-        }
-    };
+    private ReaderFactory<Reader> identityReaderFactory = o -> o;
 
     /**
      * Construct a new Concat task.
@@ -535,7 +524,7 @@ public class Concat extends Task implements ResourceCollection {
         binary = false;
         outputWriter = null;
         textBuffer = null;
-        eolString = StringUtils.LINE_SEP;
+        eolString = System.lineSeparator();
         rc = null;
         ignoreEmpty = true;
         force = false;
@@ -632,7 +621,7 @@ public class Concat extends Task implements ResourceCollection {
      * Sets the behavior when no source resource files are available. If set to
      * <code>false</code> the destination file will always be created.
      * Defaults to <code>true</code>.
-     * @param ignoreEmpty if false honour destinationfile creation.
+     * @param ignoreEmpty if false, honour destination file creation.
      * @since Ant 1.8.0
      */
     public void setIgnoreEmpty(boolean ignoreEmpty) {
@@ -700,14 +689,14 @@ public class Concat extends Task implements ResourceCollection {
      */
     public void addFilterChain(FilterChain filterChain) {
         if (filterChains == null) {
-            filterChains = new Vector<FilterChain>();
+            filterChains = new Vector<>();
         }
         filterChains.addElement(filterChain);
     }
 
     /**
      * This method adds text which appears in the 'concat' element.
-     * @param text the text to be concated.
+     * @param text the text to be concatenated.
      */
     public void addText(String text) {
         if (textBuffer == null) {
@@ -930,11 +919,8 @@ public class Concat extends Task implements ResourceCollection {
     }
 
     private boolean isUpToDate(ResourceCollection c) {
-        if (dest == null || forceOverwrite) {
-            return false;
-        }
-        return c.stream().noneMatch(r -> SelectorUtils.isOutOfDate(r, dest,
-            FILE_UTILS.getFileTimestampGranularity()));
+        return dest != null && !forceOverwrite
+                && c.stream().noneMatch(r -> SelectorUtils.isOutOfDate(r, dest, FILE_UTILS.getFileTimestampGranularity()));
     }
 
     /**

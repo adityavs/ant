@@ -22,10 +22,10 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Enumeration;
+import java.util.ArrayList;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Properties;
-import java.util.Vector;
 
 import org.apache.tools.ant.BuildFileRule;
 import org.apache.tools.ant.Project;
@@ -35,8 +35,11 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 /**
  */
@@ -145,10 +148,7 @@ public class XmlPropertyTest {
      */
     private void doTest(String msg, boolean keepRoot, boolean collapse,
                         boolean semantic, boolean include, boolean localRoot) throws IOException {
-        Enumeration iter =
-            getFiles(new File(System.getProperty("root"), "src/etc/testcases/taskdefs/xmlproperty/inputs"));
-        while (iter.hasMoreElements()) {
-            File inputFile = (File) iter.nextElement();
+        for (File inputFile : getFiles(buildRule.getProject().resolveFile("xmlproperty/inputs"))) {
             // What's the working directory?  If local, then its the
             // folder of the input file.  Otherwise, its the "current" dir..
             File workingDir;
@@ -157,7 +157,6 @@ public class XmlPropertyTest {
             } else {
                 workingDir = FILE_UTILS.resolveFile(new File("."), ".");
             }
-
 
             File propertyFile = getGoldfile(inputFile, keepRoot, collapse,
                                             semantic, include, localRoot);
@@ -209,11 +208,9 @@ public class XmlPropertyTest {
     private static void ensureProperties(String msg, File inputFile,
                                           File workingDir, Project p,
                                           Properties properties) {
-        Hashtable xmlproperties = p.getProperties();
+        Hashtable<String, Object> xmlproperties = p.getProperties();
         // Every key identified by the Properties must have been loaded.
-        Enumeration<?> propertyKeyEnum = properties.propertyNames();
-        while (propertyKeyEnum.hasMoreElements()) {
-            String currentKey = propertyKeyEnum.nextElement().toString();
+        for (String currentKey : properties.stringPropertyNames()) {
             String assertMsg = msg + "-" + inputFile.getName()
                 + " Key=" + currentKey;
 
@@ -229,18 +226,13 @@ public class XmlPropertyTest {
                 // *value* of the Path object, though...
                 Object obj = p.getReferences().get(currentKey);
 
-                if (obj == null) {
-                    fail(assertMsg + " Object ID does not exist.");
-                }
+                assertNotEquals(assertMsg + " Object ID does not exist.", null, obj);
 
                 // What is the property supposed to be?
-                propertyValue =
-                    propertyValue.substring(3, propertyValue.length());
+                propertyValue = propertyValue.substring(3);
                 if (propertyValue.equals("path")) {
-                    if (!(obj instanceof Path)) {
-                        fail(assertMsg + " Path ID is a "
-                             + obj.getClass().getName());
-                    }
+                    assertThat(assertMsg + " Path ID is a " + obj.getClass().getName(),
+                            obj, instanceOf(Path.class));
                 } else {
                     assertEquals(assertMsg, propertyValue, obj.toString());
                 }
@@ -251,8 +243,7 @@ public class XmlPropertyTest {
                     // The property is the name of a file.  We are testing
                     // a location attribute, so we need to resolve the given
                     // file name in the provided folder.
-                    String fileName =
-                        propertyValue.substring(5, propertyValue.length());
+                    String fileName = propertyValue.substring(5);
                     File f = new File(workingDir, fileName);
                     propertyValue = f.getAbsolutePath();
                 }
@@ -266,31 +257,19 @@ public class XmlPropertyTest {
     /**
      * Debugging method to print the properties in the given hashtable
      */
-    private static void printProperties(Hashtable xmlproperties) {
-        Enumeration keyEnum = xmlproperties.keys();
-        while (keyEnum.hasMoreElements()) {
-            String currentKey = keyEnum.nextElement().toString();
-            System.out.println(currentKey + " = "
-                               + xmlproperties.get(currentKey));
-        }
+    @SuppressWarnings("unused")
+    private static void printProperties(Hashtable<Object, Object> xmlproperties) {
+        xmlproperties.forEach((key, value) -> System.out.println(key + " = " + value));
     }
 
     /**
      * Ensure all references loaded by the project are valid.
      */
-    private static void ensureReferences (String msg, File inputFile,
-                                          Hashtable references) {
-        Enumeration referenceKeyEnum = references.keys();
-        while(referenceKeyEnum.hasMoreElements()){
-            String currentKey = referenceKeyEnum.nextElement().toString();
-            Object currentValue = references.get(currentKey);
-
-            if (!(currentValue instanceof Path) && !(currentValue instanceof String)
-                    && !currentKey.startsWith("ant.")) {
-                fail(msg + "-" + inputFile.getName() + " Key="
-                        + currentKey + " is not a recognized type.");
-            }
-        }
+    private static void ensureReferences(String msg, File inputFile,
+                                         Hashtable<String, Object> references) {
+        references.forEach((key, value) -> assertTrue(msg + "-" + inputFile.getName()
+                + " Key=" + key + " is not a recognized type.",
+                value instanceof Path || value instanceof String || key.startsWith("ant.")));
     }
 
     /**
@@ -337,32 +316,30 @@ public class XmlPropertyTest {
      * Retrieve a list of xml files in the specified folder
      * and below.
      */
-    private static Enumeration getFiles (final File startingDir) {
-        Vector result = new Vector();
+    private static List<File> getFiles(final File startingDir) {
+        List<File> result = new ArrayList<>();
         getFiles(startingDir, result);
-        return result.elements();
+        return result;
     }
 
     /**
      * Collect a list of xml files in the specified folder
      * and below.
      */
-    private static void getFiles (final File startingDir, Vector collect) {
-        FileFilter filter = new FileFilter() {
-            public boolean accept (File file) {
-                if (file.isDirectory()) {
-                    return true;
-                } else {
-                    return (file.getPath().indexOf("taskdefs") > 0 &&
-                            file.getPath().toLowerCase().endsWith(".xml"));
-                }
+    private static void getFiles(final File startingDir, List<File> collect) {
+        FileFilter filter = file -> {
+            if (file.isDirectory()) {
+                return true;
+            } else {
+                return file.getPath().contains("taskdefs")
+                        && file.getPath().toLowerCase().endsWith(".xml");
             }
         };
 
         File[] files = startingDir.listFiles(filter);
         for (File f : files) {
             if (!f.isDirectory()) {
-                collect.addElement(f);
+                collect.add(f);
             } else {
                 getFiles(f, collect);
             }

@@ -36,9 +36,9 @@ import java.util.stream.Stream;
  * It is used at boot time in the launcher, and cannot make use of any of Ant's other classes.
  * <p>
  * This is a surprisingly brittle piece of code, and has had lots of bugs filed against it:
- * <a href="http://issues.apache.org/bugzilla/show_bug.cgi?id=42275">running ant off a network share can cause Ant to fail</a>,
- * <a href="http://issues.apache.org/bugzilla/show_bug.cgi?id=8031">use File.toURI().toURL().toExternalForm()</a>,
- * <a href="http://issues.apache.org/bugzilla/show_bug.cgi?id=42222">Locator implementation not encoding URI strings properly: spaces in paths</a>.
+ * <a href="https://issues.apache.org/bugzilla/show_bug.cgi?id=42275">running ant off a network share can cause Ant to fail</a>,
+ * <a href="https://issues.apache.org/bugzilla/show_bug.cgi?id=8031">use File.toURI().toURL().toExternalForm()</a>,
+ * <a href="https://issues.apache.org/bugzilla/show_bug.cgi?id=42222">Locator implementation not encoding URI strings properly: spaces in paths</a>.
  * It also breaks Eclipse 3.3 Betas:
  * <a href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=183283">Exception if installation path has spaces</a>.
  * <p>
@@ -86,10 +86,7 @@ public final class Locator {
         gAfterEscaping2[DEL] = 'F';
         char[] escChs = {' ', '<', '>', '#', '%', '"', '{', '}',
                          '|', '\\', '^', '~', '[', ']', '`'};
-        int len = escChs.length;
-        char ch;
-        for (int i = 0; i < len; i++) {
-            ch = escChs[i];
+        for (char ch : escChs) {
             gNeedEscaping[ch] = true;
             gAfterEscaping1[ch] = gHexChs[ch >> NIBBLE];
             gAfterEscaping2[ch] = gHexChs[ch & NIBBLE_MASK];
@@ -157,7 +154,7 @@ public final class Locator {
      * <p>Prior to Java 1.4,<!-- TODO is JDK version actually relevant? -->
      * swallows '%' that are not followed by two characters.</p>
      *
-     * See <a href="http://www.w3.org/TR/xml11/#dt-sysid">dt-sysid</a>
+     * See <a href="https://www.w3.org/TR/xml11/#dt-sysid">dt-sysid</a>
      * which makes some mention of how
      * characters not supported by URI Reference syntax should be escaped.
      *
@@ -250,7 +247,7 @@ public final class Locator {
             int posi = cwd.indexOf(':');
             boolean pathStartsWithFileSeparator = path.startsWith(File.separator);
             boolean pathStartsWithUNC = path.startsWith("" + File.separator + File.separator);
-            if ((posi > 0) && pathStartsWithFileSeparator && !pathStartsWithUNC) {
+            if (posi > 0 && pathStartsWithFileSeparator && !pathStartsWithUNC) {
                 path = cwd.substring(0, posi + 1) + path;
             }
         } catch (UnsupportedEncodingException exc) {
@@ -285,7 +282,7 @@ public final class Locator {
      * @since Ant 1.7
      */
     public static String decodeUri(String uri) throws UnsupportedEncodingException {
-        if (uri.indexOf('%') == -1) {
+        if (!uri.contains("%")) {
             return uri;
         }
         ByteArrayOutputStream sb = new ByteArrayOutputStream(uri.length());
@@ -475,7 +472,7 @@ public final class Locator {
      */
     public static URL[] getLocationURLs(File location,
                                         final String... extensions)
-         throws MalformedURLException {
+            throws MalformedURLException {
         URL[] urls = new URL[0];
 
         if (!location.exists()) {
@@ -485,8 +482,8 @@ public final class Locator {
             urls = new URL[1];
             String path = location.getPath();
             String littlePath = path.toLowerCase(Locale.ENGLISH);
-            for (int i = 0; i < extensions.length; ++i) {
-                if (littlePath.endsWith(extensions[i])) {
+            for (String extension : extensions) {
+                if (littlePath.endsWith(extension)) {
                     urls[0] = fileToURL(location);
                     break;
                 }
@@ -495,7 +492,7 @@ public final class Locator {
         }
         File[] matches = location.listFiles((dir, name) -> {
             String littleName = name.toLowerCase(Locale.ENGLISH);
-            return Stream.of(extensions).anyMatch(x -> littleName.endsWith(x));
+            return Stream.of(extensions).anyMatch(littleName::endsWith);
         });
         urls = new URL[matches.length];
         for (int i = 0; i < matches.length; ++i) {

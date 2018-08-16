@@ -31,12 +31,12 @@
   -->
   <property name="Name" value="Apache Ant"/>
   <property name="name" value="ant"/>
-  <!-- this is the groupId of ant in the Maven repository -->
+  <!-- this is the directory corresponding to groupId of Ant in the Maven repository -->
   <property name="groupid" value="org/apache/ant"/>
-  <property name="project.version" value="1.10.2alpha"/>
+  <property name="project.version" value="1.10.6alpha"/>
   <!-- pom.version is used when doing a distribution and must match with what is checked in under src/etc/poms -->
-  <property name="pom.version" value="1.10.2-SNAPSHOT"/>
-  <property name="manifest-version" value="1.10.2"/>
+  <property name="pom.version" value="1.10.6-SNAPSHOT"/>
+  <property name="manifest-version" value="1.10.6"/>
   <property name="bootstrap.jar" value="ant-bootstrap.jar"/>
 
   <property name="ant.package" value="org/apache/tools/ant"/>
@@ -45,7 +45,7 @@
   <property name="optional.package" value="${taskdefs.package}/optional"/>
   <property name="type.package" value="${ant.package}/types"/>
   <property name="optional.type.package" value="${type.package}/optional"/>
-  <property name="apache.resolver.type.package" value="${ant.package}/types/resolver"/>
+  <property name="apache.resolver.type.package" value="${type.package}/resolver"/>
   <property name="util.package" value="${ant.package}/util"/>
   <property name="regexp.package" value="${util.package}/regexp"/>
 
@@ -60,14 +60,13 @@
   <property name="src.dir" value="src"/>
   <property name="java.dir" value="${src.dir}/main"/>
   <property name="script.dir" value="${src.dir}/script"/>
-  <property name="lib.dir" value="lib"/>
-  <property name="manual.dir" value="manual"/>
-  <property name="etc.dir" value="${src.dir}/etc"/>
+  <property name="resource.dir" value="${src.dir}/resources"/>
   <property name="src.junit" value="${src.dir}/tests/junit"/>
   <property name="src.antunit" value="${src.dir}/tests/antunit"/>
-  <property name="tests.etc.dir" value="${src.dir}/etc/testcases"/>
-  <property name="manifest" value="${src.dir}/etc/manifest"/>
-  <property name="resource.dir" value="${src.dir}/resources"/>
+  <property name="etc.dir" value="${src.dir}/etc"/>
+  <property name="tests.etc.dir" value="${etc.dir}/testcases"/>
+  <property name="lib.dir" value="lib"/>
+  <property name="manual.dir" value="manual"/>
 
   <!--
        ===================================================================
@@ -84,12 +83,11 @@
   <property name="build.tests.javadocs" value="${build.dir}/javadocs.test/"/>
   <property name="build.junit.xml" location="${build.tests}/xml"/>
   <property name="build.junit.tmpdir" location="${build.tests}/tmp"/>
+  <property name="build.junit.reports" location="${build.tests}/reports"/>
   <property name="antunit.xml" location="${build.dir}/antunit/xml"/>
   <property name="antunit.tmpdir" location="${build.dir}/antunit/tmp"/>
   <property name="antunit.reports" location="${build.dir}/antunit/reports"/>
   <property name="antunit.loglevel" value="none"/>
-  <property name="build.junit.reports" location="${build.tests}/reports"/>
-  <property name="manifest.tmp" value="${build.dir}/optional.manifest"/>
   <!-- the absolute path -->
   <property name="build.tests.value" location="${build.tests}"/>
   <property name="build.pkg.dir" value="${build.dir}/pkg"/>
@@ -210,6 +208,26 @@
       </or>
   </selector>
 
+  <selector id="needs.junitlauncher">
+    <filename name="${optional.package}/junitlauncher/"/>
+  </selector>
+
+  <selector id="needs.junit.engine.vintage">
+    <or>
+      <!-- we need JUnit vintage engine only in tests where we test the junitlauncher task -->
+      <filename name="${optional.package}/junitlauncher/**/*"/>
+      <filename name="org/example/junitlauncher/vintage/**/*"/>
+    </or>
+  </selector>
+
+  <selector id="needs.junit.engine.jupiter">
+    <or>
+      <!-- we need JUnit jupiter engine only in tests where we test the junitlauncher task -->
+      <filename name="${optional.package}/junitlauncher/**/*"/>
+      <filename name="org/example/junitlauncher/jupiter/**/*"/>
+    </or>
+  </selector>
+
   <selector id="needs.apache-regexp">
     <filename name="${regexp.package}/JakartaRegexp*"/>
   </selector>
@@ -265,13 +283,21 @@
     <filename name="${optional.package}/ANTLR*"/>
   </selector>
 
+  <selector id="needs.imageio">
+    <or>
+      <filename name="${optional.package}/image/ImageIO*"/>
+      <filename name="${optional.type.package}/imageio/"/>
+    </or>
+  </selector>
+
   <selector id="needs.jmf">
     <filename name="${optional.package}/sound/"/>
   </selector>
 
   <selector id="needs.jai">
     <or>
-      <filename name="${optional.package}/image/"/>
+      <filename name="${optional.package}/image/Image.*"/>
+      <filename name="${optional.package}/image/ImageTest.*"/>
       <filename name="${optional.type.package}/image/"/>
     </or>
   </selector>
@@ -317,6 +343,7 @@
         <selector refid="needs.apache-xalan2"/>
         <selector refid="needs.commons-logging"/>
         <selector refid="needs.commons-net"/>
+        <selector refid="needs.imageio"/>
         <selector refid="needs.jai"/>
         <selector refid="needs.javamail"/>
         <selector refid="needs.jdepend"/>
@@ -324,6 +351,7 @@
         <selector refid="needs.jsch"/>
         <selector refid="needs.junit"/>
         <selector refid="needs.junit4"/>
+        <selector refid="needs.junitlauncher"/>
         <selector refid="needs.netrexx"/>
         <selector refid="needs.swing"/>
         <selector refid="needs.xz"/>
@@ -407,6 +435,15 @@
     <available property="junit4.present"
                classname="org.junit.Test"
                classpathref="classpath" ignoresystemclasses="${ignoresystemclasses}"/>
+    <available property="junitlauncher.present"
+               classname="org.junit.platform.launcher.Launcher"
+               classpathref="classpath" ignoresystemclasses="${ignoresystemclasses}"/>
+    <available property="junit.engine.vintage.present"
+               classname="org.junit.vintage.engine.VintageTestEngine"
+               classpathref="classpath" ignoresystemclasses="${ignoresystemclasses}"/>
+    <available property="junit.engine.jupiter.present"
+               classname="org.junit.jupiter.engine.JupiterTestEngine"
+               classpathref="classpath" ignoresystemclasses="${ignoresystemclasses}"/>
     <available property="antunit.present"
                classname="org.apache.ant.antunit.AntUnit"
                classpathref="classpath" ignoresystemclasses="${ignoresystemclasses}"/>
@@ -422,6 +459,9 @@
     <available property="apache.oro.present"
                classname="org.apache.oro.text.regex.Perl5Matcher"
                classpathref="classpath" ignoresystemclasses="${ignoresystemclasses}"/>
+    <available property="imageio.present"
+               classname="javax.imageio.ImageIO"
+               classpathref="classpath"/>
     <available property="jmf.present"
                classname="javax.sound.sampled.Clip"
                classpathref="classpath"/>
@@ -564,10 +604,12 @@
         <not>
           <or>
             <selector refid="not.in.kaffe" if="kaffe"/>
-
             <selector refid="needs.apache-resolver" unless="apache.resolver.present"/>
             <selector refid="needs.junit" unless="junit.present"/> <!-- TODO should perhaps use -source 1.4? -->
             <selector refid="needs.junit4" unless="junit4.present"/>
+            <selector refid="needs.junitlauncher" unless="junitlauncher.present"/>
+            <selector refid="needs.junit.engine.vintage" unless="junit.engine.vintage.present"/>
+            <selector refid="needs.junit.engine.jupiter" unless="junit.engine.jupiter.present"/>
             <selector refid="needs.apache-regexp" unless="apache.regexp.present"/>
             <selector refid="needs.apache-oro" unless="apache.oro.present"/>
             <selector refid="needs.apache-bcel" unless="bcel.present"/>
@@ -578,6 +620,7 @@
             <selector refid="needs.netrexx" unless="netrexx.present"/>
             <selector refid="needs.commons-net" unless="commons.net.present"/>
             <selector refid="needs.antlr" unless="antlr.present"/>
+            <selector refid="needs.imageio" unless="imageio.present"/>
             <selector refid="needs.jmf" unless="jmf.present"/>
             <selector refid="needs.jai" unless="jai.present"/>
             <selector refid="needs.jdepend" unless="jdepend.present"/>
@@ -613,6 +656,8 @@
       <fileset dir="${etc.dir}">
         <include name="junit-frames.xsl"/>
         <include name="junit-noframes.xsl"/>
+        <include name="junit-frames-saxon.xsl"/>
+        <include name="junit-noframes-saxon.xsl"/>
       </fileset>
     </copy>
   </target>
@@ -636,28 +681,8 @@
       <mapper type="glob" from="*" to="*.txt"/>
     </copy>
 
-    <copy file="${manifest}" tofile="${manifest.tmp}"/>
-    <manifest file="${manifest.tmp}">
-      <section name="${optional.package}/">
-        <attribute name="Extension-name"
-                   value="org.apache.tools.ant"/>
-        <attribute name="Specification-Title"
-                   value="Apache Ant"/>
-        <attribute name="Specification-Version"
-                   value="${manifest-version}"/>
-        <attribute name="Specification-Vendor"
-                   value="Apache Software Foundation"/>
-        <attribute name="Implementation-Title"
-                   value="org.apache.tools.ant"/>
-        <attribute name="Implementation-Version"
-                   value="${manifest-version}"/>
-        <attribute name="Implementation-Vendor"
-                   value="Apache Software Foundation"/>
-      </section>
-    </manifest>
-
     <jar destfile="${build.lib}/${name}-launcher.jar"
-         basedir="${build.classes}"
+         basedir="${build.classes}" index="true"
          whenmanifestonly="fail">
       <selector refid="ant.launcher"/>
       <metainf dir="${build.dir}">
@@ -670,8 +695,7 @@
     </jar>
 
     <jar destfile="${build.lib}/${name}.jar"
-         basedir="${build.classes}"
-         manifest="${manifest}"
+         basedir="${build.classes}" index="true"
          whenmanifestonly="fail">
       <!-- Verification: (cd dist/lib; for j in *.jar; do jar tf $j; done) | egrep -v '/$|META-INF/MANIFEST\.MF' | sort | uniq -d -->
       <selector refid="ant.core"/>
@@ -679,10 +703,10 @@
         <include name="LICENSE.txt"/>
         <include name="NOTICE.txt"/>
       </metainf>
-
       <manifest>
+        <attribute name="Main-Class" value="org.apache.tools.ant.Main"/>
         <section name="${ant.package}/">
-          <attribute name="Extension-name"
+          <attribute name="Extension-Name"
                      value="org.apache.tools.ant"/>
           <attribute name="Specification-Title"
                      value="Apache Ant"/>
@@ -706,7 +730,6 @@
 
     <jar destfile="${build.lib}/${bootstrap.jar}"
          basedir="${build.classes}"
-         manifest="${manifest}"
          whenmanifestonly="fail">
       <include name="${ant.package}/Main.class"/>
       <metainf dir="${build.dir}">
@@ -714,8 +737,8 @@
         <include name="NOTICE.txt"/>
       </metainf>
       <manifest>
-        <attribute name="Class-Path"
-                   value="ant.jar xalan.jar"/>
+        <attribute name="Main-Class" value="org.apache.tools.ant.Main"/>
+        <attribute name="Class-Path" value="ant.jar xalan.jar"/>
       </manifest>
     </jar>
 
@@ -723,14 +746,31 @@
       <attribute name="dep"/>
       <sequential>
         <jar destfile="${build.lib}/${optional.jars.prefix}-@{dep}.jar"
-             basedir="${build.classes}"
-             manifest="${manifest.tmp}"
+             basedir="${build.classes}" index="true"
              whenmanifestonly="${optional.jars.whenmanifestonly}">
           <selector refid="needs.@{dep}"/>
           <metainf dir="${build.dir}">
             <include name="LICENSE.txt"/>
             <include name="NOTICE.txt"/>
           </metainf>
+          <manifest>
+            <section name="${optional.package}/">
+              <attribute name="Extension-Name"
+                         value="org.apache.tools.ant"/>
+              <attribute name="Specification-Title"
+                         value="Apache Ant"/>
+              <attribute name="Specification-Version"
+                         value="${manifest-version}"/>
+              <attribute name="Specification-Vendor"
+                         value="Apache Software Foundation"/>
+              <attribute name="Implementation-Title"
+                         value="org.apache.tools.ant"/>
+              <attribute name="Implementation-Version"
+                         value="${manifest-version}"/>
+              <attribute name="Implementation-Vendor"
+                         value="Apache Software Foundation"/>
+            </section>
+          </manifest>
         </jar>
       </sequential>
     </macrodef>
@@ -738,6 +778,7 @@
     <optional-jar dep="apache-resolver"/>
     <optional-jar dep="junit"/>
     <optional-jar dep="junit4"/>
+    <optional-jar dep="junitlauncher"/>
     <optional-jar dep="apache-regexp"/>
     <optional-jar dep="apache-oro"/>
     <optional-jar dep="apache-bcel"/>
@@ -748,6 +789,7 @@
     <optional-jar dep="netrexx"/>
     <optional-jar dep="commons-net"/>
     <optional-jar dep="antlr"/>
+    <optional-jar dep="imageio"/>
     <optional-jar dep="jmf"/>
     <optional-jar dep="jai"/>
     <optional-jar dep="swing"/>
@@ -766,7 +808,7 @@
       We cannot build the test jar unless JUnit is present,
       as JUnit is needed to compile the test classes.
     </fail>
-    <jar destfile="${build.lib}/${name}-testutil.jar"
+    <jar destfile="${build.lib}/${name}-testutil.jar" index="true"
          basedir="${build.tests}">
       <patternset refid="useful.tests"/>
       <metainf dir="${build.dir}">
@@ -831,6 +873,7 @@
     <optional-src-jar dep="apache-resolver"/>
     <optional-src-jar dep="junit"/>
     <optional-src-jar dep="junit4"/>
+    <optional-src-jar dep="junitlauncher"/>
     <optional-src-jar dep="apache-regexp"/>
     <optional-src-jar dep="apache-oro"/>
     <optional-src-jar dep="apache-bcel"/>
@@ -841,6 +884,7 @@
     <optional-src-jar dep="netrexx"/>
     <optional-src-jar dep="commons-net"/>
     <optional-src-jar dep="antlr"/>
+    <optional-src-jar dep="imageio"/>
     <optional-src-jar dep="jmf"/>
     <optional-src-jar dep="jai"/>
     <optional-src-jar dep="swing"/>
@@ -953,9 +997,9 @@
   <macrodef name="checksums">
     <element name="resources" implicit="true"/>
     <sequential>
-      <checksums-mvn>
+      <checksum algorithm="sha1">
         <resources/>
-      </checksums-mvn>
+      </checksum>
       <checksum fileext=".sha512" algorithm="sha-512">
         <resources/>
       </checksum>
@@ -1319,13 +1363,11 @@
     <checksums>
       <fileset dir="${dist.base.binaries}/">
         <exclude name="**/*.asc"/>
-        <exclude name="**/*.md5"/>
         <exclude name="**/*.sha1"/>
         <exclude name="**/*.sha512"/>
       </fileset>
       <fileset dir="${dist.base.manual}/">
         <exclude name="**/*.asc"/>
-        <exclude name="**/*.md5"/>
         <exclude name="**/*.sha1"/>
         <exclude name="**/*.sha512"/>
       </fileset>
@@ -1371,7 +1413,6 @@
     <checksums>
       <fileset dir="${dist.base.source}/">
         <exclude name="**/*.asc"/>
-        <exclude name="**/*.md5"/>
         <exclude name="**/*.sha1"/>
         <exclude name="**/*.sha512"/>
       </fileset>
@@ -1807,6 +1848,10 @@ ${antunit.reports}
           <exclude name="org/example/"/>
           <exclude name="${taskdefs.package}/TaskdefTest*Task.java"/>
           <exclude name="${optional.package}/junit/TestFormatter.java"/>
+          <exclude name="${ant.package}/TestHelper.java"/>
+
+          <!-- JUnit 5 / junitlauncher tests that aren't meant to run by junit task -->
+          <exclude name="${optional.package}/junitlauncher/"/>
 
           <!-- interactive tests -->
           <exclude name="${taskdefs.package}/TestProcess.java"/>
@@ -1864,6 +1909,10 @@ ${antunit.reports}
           <!-- needs jasperc -->
           <exclude name="${optional.package}/JspcTest.java"
                    unless="jasper.present"/>
+
+          <!-- needs JavaMail -->
+          <exclude name="${taskdefs.package}/email/EmailTaskTest.java"
+                   unless="javamail.complete"/>
 
           <!--  These tests only passes if testcases and Ant classes have
                been loaded by the same classloader - will throw
@@ -1983,6 +2032,9 @@ ${antunit.reports}
       <fileset dir="${antunit.xml}" includes="TEST-*.xml"/>
     </length>
   </target>
+
+  <!-- JetBrains builds need this target -->
+  <target name="printFailingTests" depends="print-failing-tests"/>
 
   <target name="print-failing-tests">
     <property name="failingtests.dir" value="${build.dir}/errors"/>

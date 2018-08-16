@@ -86,14 +86,14 @@ public final class PrefixLines
 
         int ch = -1;
 
-        if (queuedData != null && queuedData.length() == 0) {
+        if (queuedData != null && queuedData.isEmpty()) {
             queuedData = null;
         }
 
         if (queuedData != null) {
             ch = queuedData.charAt(0);
             queuedData = queuedData.substring(1);
-            if (queuedData.length() == 0) {
+            if (queuedData.isEmpty()) {
                 queuedData = null;
             }
         } else {
@@ -153,9 +153,9 @@ public final class PrefixLines
     private void initialize() {
         Parameter[] params = getParameters();
         if (params != null) {
-            for (int i = 0; i < params.length; i++) {
-                if (PREFIX_KEY.equals(params[i].getName())) {
-                    prefix = params[i].getValue();
+            for (Parameter param : params) {
+                if (PREFIX_KEY.equals(param.getName())) {
+                    prefix = param.getValue();
                     break;
                 }
             }

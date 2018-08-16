@@ -21,10 +21,10 @@ package org.apache.tools.ant.util.regexp;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.util.Vector;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -53,18 +53,18 @@ public abstract class RegexpMatcherTest {
         reg.setPattern("aaaa");
         assertTrue("aaaa should match itself", reg.matches("aaaa"));
         assertTrue("aaaa should match xaaaa", reg.matches("xaaaa"));
-        assertTrue("aaaa shouldn\'t match xaaa", !reg.matches("xaaa"));
+        assertFalse("aaaa shouldn\'t match xaaa", reg.matches("xaaa"));
         reg.setPattern("^aaaa");
-        assertTrue("^aaaa shouldn\'t match xaaaa", !reg.matches("xaaaa"));
+        assertFalse("^aaaa shouldn\'t match xaaaa", reg.matches("xaaaa"));
         assertTrue("^aaaa should match aaaax", reg.matches("aaaax"));
         reg.setPattern("aaaa$");
-        assertTrue("aaaa$ shouldn\'t match aaaax", !reg.matches("aaaax"));
+        assertFalse("aaaa$ shouldn\'t match aaaax", reg.matches("aaaax"));
         assertTrue("aaaa$ should match xaaaa", reg.matches("xaaaa"));
         reg.setPattern("[0-9]+");
         assertTrue("[0-9]+ should match 123", reg.matches("123"));
         assertTrue("[0-9]+ should match 1", reg.matches("1"));
-        assertTrue("[0-9]+ shouldn\'t match \'\'", !reg.matches(""));
-        assertTrue("[0-9]+ shouldn\'t match a", !reg.matches("a"));
+        assertFalse("[0-9]+ shouldn\'t match \'\'", reg.matches(""));
+        assertFalse("[0-9]+ shouldn\'t match a", reg.matches("a"));
         reg.setPattern("[0-9]*");
         assertTrue("[0-9]* should match 123", reg.matches("123"));
         assertTrue("[0-9]* should match 1", reg.matches("1"));
@@ -72,37 +72,37 @@ public abstract class RegexpMatcherTest {
         assertTrue("[0-9]* should match a", reg.matches("a"));
         reg.setPattern("([0-9]+)=\\1");
         assertTrue("([0-9]+)=\\1 should match 1=1", reg.matches("1=1"));
-        assertTrue("([0-9]+)=\\1 shouldn\'t match 1=2", !reg.matches("1=2"));
+        assertFalse("([0-9]+)=\\1 shouldn\'t match 1=2", reg.matches("1=2"));
     }
 
     @Test
     public void testGroups() {
         reg.setPattern("aaaa");
-        Vector v = reg.getGroups("xaaaa");
+        Vector<String> v = reg.getGroups("xaaaa");
         assertEquals("No parens -> no extra groups", 1, v.size());
         assertEquals("Trivial match with no parens", "aaaa",
-                     (String) v.elementAt(0));
+                v.elementAt(0));
 
         reg.setPattern("(aaaa)");
         v = reg.getGroups("xaaaa");
         assertEquals("Trivial match with single paren", 2, v.size());
         assertEquals("Trivial match with single paren, full match", "aaaa",
-                     (String) v.elementAt(0));
+                v.elementAt(0));
         assertEquals("Trivial match with single paren, matched paren", "aaaa",
-                     (String) v.elementAt(0));
+                v.elementAt(0));
 
         reg.setPattern("(a+)b(b+)");
         v = reg.getGroups("xaabb");
         assertEquals(3, v.size());
-        assertEquals("aabb", (String) v.elementAt(0));
-        assertEquals("aa", (String) v.elementAt(1));
-        assertEquals("b", (String) v.elementAt(2));
+        assertEquals("aabb", v.elementAt(0));
+        assertEquals("aa", v.elementAt(1));
+        assertEquals("b", v.elementAt(2));
     }
 
     @Test
     public void testBugzillaReport14619() {
         reg.setPattern("^(.*)/src/((.*/)*)([a-zA-Z0-9_\\.]+)\\.java$");
-        Vector v = reg.getGroups("de/tom/src/Google.java");
+        Vector<String> v = reg.getGroups("de/tom/src/Google.java");
         assertEquals(5, v.size());
         assertEquals("de/tom", v.elementAt(1));
         assertEquals("", v.elementAt(2));
@@ -113,7 +113,7 @@ public abstract class RegexpMatcherTest {
     @Test
     public void testCaseInsensitiveMatch() {
         reg.setPattern("aaaa");
-        assertTrue("aaaa doesn't match AAaa", !reg.matches("AAaa"));
+        assertFalse("aaaa doesn't match AAaa", reg.matches("AAaa"));
         assertTrue("aaaa matches AAaa ignoring case",
                    reg.matches("AAaa", RegexpMatcher.MATCH_CASE_INSENSITIVE));
     }
@@ -122,55 +122,53 @@ public abstract class RegexpMatcherTest {
     // a line separator for regex (perl) is always a unix line (ie \n)
 
     @Test
-    public void testParagraphCharacter() throws IOException {
+    public void testParagraphCharacter() {
         reg.setPattern("end of text$");
-        assertTrue("paragraph character", !reg.matches("end of text\u2029"));
+        assertFalse("paragraph character", reg.matches("end of text\u2029"));
     }
 
     @Test
-    public void testLineSeparatorCharacter() throws IOException {
+    public void testLineSeparatorCharacter() {
         reg.setPattern("end of text$");
-        assertTrue("line-separator character", !reg.matches("end of text\u2028"));
+        assertFalse("line-separator character", reg.matches("end of text\u2028"));
     }
 
     @Test
-    public void testNextLineCharacter() throws IOException {
+    public void testNextLineCharacter() {
         reg.setPattern("end of text$");
-        assertTrue("next-line character", !reg.matches("end of text\u0085"));
+        assertFalse("next-line character", reg.matches("end of text\u0085"));
     }
 
     @Test
-    public void testStandaloneCR() throws IOException {
+    public void testStandaloneCR() {
         reg.setPattern("end of text$");
-        assertTrue("standalone CR", !reg.matches("end of text\r"));
+        assertFalse("standalone CR", reg.matches("end of text\r"));
     }
 
     @Test
-    public void testWindowsLineSeparator() throws IOException {
+    public void testWindowsLineSeparator() {
         reg.setPattern("end of text$");
-        assertTrue("Windows line separator", !reg.matches("end of text\r\n"));
+        assertFalse("Windows line separator", reg.matches("end of text\r\n"));
     }
 
     @Test
-    public void testWindowsLineSeparator2() throws IOException {
+    public void testWindowsLineSeparator2() {
         reg.setPattern("end of text\r$");
         assertTrue("Windows line separator", reg.matches("end of text\r\n"));
     }
 
     @Test
-    public void testUnixLineSeparator() throws IOException {
+    public void testUnixLineSeparator() {
         reg.setPattern("end of text$");
         assertTrue("Unix line separator", reg.matches("end of text\n"));
     }
 
     @Test
-    public void testMultiVersusSingleLine() throws IOException {
-        StringBuilder buf = new StringBuilder();
-        buf.append("Line1").append(UNIX_LINE);
-        buf.append("starttest Line2").append(UNIX_LINE);
-        buf.append("Line3 endtest").append(UNIX_LINE);
-        buf.append("Line4").append(UNIX_LINE);
-        String text = buf.toString();
+    public void testMultiVersusSingleLine() {
+        String text = "Line1" + UNIX_LINE +
+                "starttest Line2" + UNIX_LINE +
+                "Line3 endtest" + UNIX_LINE +
+                "Line4" + UNIX_LINE;
 
         doStartTest1(text);
         doStartTest2(text);
@@ -180,9 +178,9 @@ public abstract class RegexpMatcherTest {
 
     protected void doStartTest1(String text) {
         reg.setPattern("^starttest");
-        assertTrue("^starttest in default mode", !reg.matches(text));
-        assertTrue("^starttest in single line mode",
-               !reg.matches(text, RegexpMatcher.MATCH_SINGLELINE));
+        assertFalse("^starttest in default mode", reg.matches(text));
+        assertFalse("^starttest in single line mode",
+                reg.matches(text, RegexpMatcher.MATCH_SINGLELINE));
         assertTrue("^starttest in multi line mode",
                reg.matches(text, RegexpMatcher.MATCH_MULTILINE));
     }
@@ -198,11 +196,11 @@ public abstract class RegexpMatcherTest {
 
     protected void doEndTest1(String text) {
         reg.setPattern("endtest$");
-        assertTrue("endtest$ in default mode", !reg.matches(text));
-        assertTrue("endtest$ in single line mode",
-               !reg.matches(text, RegexpMatcher.MATCH_SINGLELINE));
+        assertFalse("endtest$ in default mode", reg.matches(text));
+        assertFalse("endtest$ in single line mode",
+                reg.matches(text, RegexpMatcher.MATCH_SINGLELINE));
         assertTrue("endtest$ in multi line mode",
-               reg.matches(text, RegexpMatcher.MATCH_MULTILINE));
+                reg.matches(text, RegexpMatcher.MATCH_MULTILINE));
     }
 
     protected void doEndTest2(String text) {

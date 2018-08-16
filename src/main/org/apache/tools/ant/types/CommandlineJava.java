@@ -18,7 +18,6 @@
 
 package org.apache.tools.ant.types;
 
-import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
@@ -108,16 +107,13 @@ public class CommandlineJava implements Cloneable {
         public void addDefinitionsToList(ListIterator<String> listIt) {
             String[] props = super.getVariables();
             if (props != null) {
-                for (int i = 0; i < props.length; i++) {
-                    listIt.add("-D" + props[i]);
+                for (String prop : props) {
+                    listIt.add("-D" + prop);
                 }
             }
             Properties propertySetProperties = mergePropertySets();
-            for (Enumeration<?> e = propertySetProperties.keys();
-                 e.hasMoreElements();) {
-                String key = (String) e.nextElement();
-                String value = propertySetProperties.getProperty(key);
-                listIt.add("-D" + key + "=" + value);
+            for (String key : propertySetProperties.stringPropertyNames()) {
+                listIt.add("-D" + key + "=" + propertySetProperties.getProperty(key));
             }
         }
 
@@ -140,10 +136,9 @@ public class CommandlineJava implements Cloneable {
             try {
                 sys = System.getProperties();
                 Properties p = new Properties();
-                for (Enumeration<?> e = sys.propertyNames(); e.hasMoreElements();) {
-                    String name = (String) e.nextElement();
+                for (String name : sys.stringPropertyNames()) {
                     String value = sys.getProperty(name);
-                    if (name != null && value != null) {
+                    if (value != null) {
                         p.put(name, value);
                     }
                 }
@@ -374,6 +369,28 @@ public class CommandlineJava implements Cloneable {
     }
 
     /**
+     * Set the source-file, to execute as single file source programs, a feature, available
+     * since Java 11.
+     *
+     * @param sourceFile The path to the source file
+     * @since Ant 1.10.5
+     */
+    public void setSourceFile(final String sourceFile) {
+        this.executableType = ExecutableType.SOURCE_FILE;
+        javaCommand.setExecutable(sourceFile);
+    }
+
+    /**
+     * @return Returns the source-file to execute, if this command line has
+     * been {@link #setSourceFile(String) configured for single file source program
+     * execution}. Else returns null.
+     * @since Ant 1.10.5
+     */
+    public String getSourceFile() {
+        return this.executableType == ExecutableType.SOURCE_FILE ? this.javaCommand.getExecutable() : null;
+    }
+
+    /**
      * Set the module to execute.
      * @param module  the module name.
      * @since 1.9.7
@@ -539,9 +556,11 @@ public class CommandlineJava implements Cloneable {
         } else if (executableType == ExecutableType.MODULE) {
             listIterator.add("-m");
         }
-        // this is the classname to run as well as its arguments.
+        // this is the classname/source-file to run as well as its arguments.
         // in case of ExecutableType.JAR, the executable is a jar file,
-        // in case of ExecutableType.MODULE, the executable is a module name, portentially including a class name.
+        // in case of ExecutableType.MODULE, the executable is a module name, potentially including a class name.
+        // in case of ExecutableType.SOURCE_FILE, the executable is a Java source file (ending in .java) or a shebang
+        // file containing Java source
         javaCommand.addCommandToList(listIterator);
     }
 
@@ -607,7 +626,7 @@ public class CommandlineJava implements Cloneable {
      * @return the total number of arguments in the java command line.
      * @see #getCommandline()
      * @deprecated since 1.7.
-     *             Please dont use this, it effectively creates the
+     *             Please don't use this, it effectively creates the
      *             entire command.
      */
     @Deprecated
@@ -720,7 +739,7 @@ public class CommandlineJava implements Cloneable {
      * @throws CloneNotSupportedException never.
      */
     @Override
-    public CommandlineJava clone() throws CloneNotSupportedException {
+    public Object clone() throws CloneNotSupportedException {
         try {
             CommandlineJava c = (CommandlineJava) super.clone();
             c.vmCommand = (Commandline) vmCommand.clone();
@@ -761,8 +780,8 @@ public class CommandlineJava implements Cloneable {
      * @since Ant 1.6
      */
     public boolean haveClasspath() {
-        Path fullClasspath = classpath != null ? classpath.concatSystemClasspath("ignore") : null;
-        return fullClasspath != null && fullClasspath.toString().trim().length() > 0;
+        Path fullClasspath = classpath == null ? null : classpath.concatSystemClasspath("ignore");
+        return fullClasspath != null && !fullClasspath.toString().trim().isEmpty();
     }
 
     /**
@@ -892,6 +911,11 @@ public class CommandlineJava implements Cloneable {
         /**
          * Module execution.
          */
-        MODULE
+        MODULE,
+
+        /**
+         * Source file (introduced in Java 11)
+         */
+        SOURCE_FILE,
     }
 }

@@ -25,9 +25,11 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertThat;
 
 public class LocationTest {
 
@@ -42,17 +44,17 @@ public class LocationTest {
     @Test
     public void testPlainTask() {
         buildRule.executeTarget("testPlainTask");
-        Echo e = (Echo) buildRule.getProject().getReference("echo");
-        assertFalse(e.getLocation() == Location.UNKNOWN_LOCATION);
-        assertFalse(e.getLocation().getLineNumber() == 0);
+        Echo e = buildRule.getProject().getReference("echo");
+        assertNotSame(e.getLocation(), Location.UNKNOWN_LOCATION);
+        assertNotEquals(0, e.getLocation().getLineNumber());
     }
 
     @Test
     public void testStandaloneType() {
         buildRule.executeTarget("testStandaloneType");
-        Echo e = (Echo) buildRule.getProject().getReference("echo2");
-        FileSet f = (FileSet) buildRule.getProject().getReference("fs");
-        assertFalse(f.getLocation() == Location.UNKNOWN_LOCATION);
+        Echo e = buildRule.getProject().getReference("echo2");
+        FileSet f = buildRule.getProject().getReference("fs");
+        assertNotSame(f.getLocation(), Location.UNKNOWN_LOCATION);
         assertEquals(e.getLocation().getLineNumber() + 1,
                      f.getLocation().getLineNumber());
     }
@@ -60,28 +62,26 @@ public class LocationTest {
     @Test
     public void testConditionTask() {
         buildRule.executeTarget("testConditionTask");
-        TaskAdapter ta = (TaskAdapter) buildRule.getProject().getReference("cond");
+        TaskAdapter ta = buildRule.getProject().getReference("cond");
         ConditionTask c = (ConditionTask) ta.getProxy();
-        assertFalse(c.getLocation() == Location.UNKNOWN_LOCATION);
-        assertFalse(c.getLocation().getLineNumber() == 0);
+        assertNotSame(c.getLocation(), Location.UNKNOWN_LOCATION);
+        assertNotEquals(0, c.getLocation().getLineNumber());
     }
 
     @Test
     public void testMacrodefWrappedTask() {
         buildRule.executeTarget("testMacrodefWrappedTask");
-        Echo e = (Echo) buildRule.getProject().getReference("echo3");
-        assertTrue(buildRule.getLog().indexOf("Line: "
-                                    + (e.getLocation().getLineNumber() + 1))
-                   > -1);
+        Echo e = buildRule.getProject().getReference("echo3");
+        assertThat(buildRule.getLog(),
+                containsString("Line: " + (e.getLocation().getLineNumber() + 1)));
     }
 
     @Test
     public void testPresetdefWrappedTask() {
         buildRule.executeTarget("testPresetdefWrappedTask");
-        Echo e = (Echo) buildRule.getProject().getReference("echo4");
-        assertTrue(buildRule.getLog().indexOf("Line: "
-                                    + (e.getLocation().getLineNumber() + 1))
-                   > -1);
+        Echo e = buildRule.getProject().getReference("echo4");
+        assertThat(buildRule.getLog(),
+                containsString("Line: " + (e.getLocation().getLineNumber() + 1)));
     }
 
     public static class EchoLocation extends Task {

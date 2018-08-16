@@ -82,7 +82,7 @@ import java.util.Properties;
 public class LayoutPreservingProperties extends Properties {
     private static final long serialVersionUID = 1L;
 
-    private String LS = StringUtils.LINE_SEP;
+    private String eol = System.lineSeparator();
 
     /**
      * Logical lines have escaping and line continuation taken care
@@ -180,13 +180,13 @@ public class LayoutPreservingProperties extends Properties {
 
         if (keyedPairLines.containsKey(key)) {
             final Integer i = keyedPairLines.get(key);
-            final Pair p = (Pair) logicalLines.get(i.intValue());
+            final Pair p = (Pair) logicalLines.get(i);
             p.setValue(value);
         } else {
             key = escapeName(key);
             final Pair p = new Pair(key, value);
             p.setNew(true);
-            keyedPairLines.put(key, Integer.valueOf(logicalLines.size()));
+            keyedPairLines.put(key, logicalLines.size());
             logicalLines.add(p);
         }
     }
@@ -204,15 +204,15 @@ public class LayoutPreservingProperties extends Properties {
         final Integer i = keyedPairLines.remove(key);
         if (null != i) {
             if (removeComments) {
-                removeCommentsEndingAt(i.intValue());
+                removeCommentsEndingAt(i);
             }
-            logicalLines.set(i.intValue(), null);
+            logicalLines.set(i, null);
         }
         return obj;
     }
 
     @Override
-    public LayoutPreservingProperties clone() {
+    public Object clone() {
         final LayoutPreservingProperties dolly =
             (LayoutPreservingProperties) super.clone();
         dolly.keyedPairLines = new HashMap<>(this.keyedPairLines);
@@ -222,7 +222,7 @@ public class LayoutPreservingProperties extends Properties {
             final LogicalLine line = dolly.logicalLines.get(j);
             if (line instanceof Pair) {
                 final Pair p = (Pair) line;
-                dolly.logicalLines.set(j, p.clone());
+                dolly.logicalLines.set(j, (Pair) p.clone());
             }
             // no reason to clone other lines are they are immutable
         }
@@ -266,7 +266,7 @@ public class LayoutPreservingProperties extends Properties {
         final int totalLines = logicalLines.size();
 
         if (header != null) {
-            osw.write("#" + header + LS);
+            osw.write("#" + header + eol);
             if (totalLines > 0
                 && logicalLines.get(0) instanceof Comment
                 && header.equals(logicalLines.get(0).toString().substring(1))) {
@@ -288,20 +288,20 @@ public class LayoutPreservingProperties extends Properties {
                 // not an existing date comment
             }
         }
-        osw.write("#" + DateUtils.getDateForHeader() + LS);
+        osw.write("#" + DateUtils.getDateForHeader() + eol);
 
         boolean writtenSep = false;
         for (LogicalLine line : logicalLines.subList(skipLines, totalLines)) {
             if (line instanceof Pair) {
                 if (((Pair) line).isNew()) {
                     if (!writtenSep) {
-                        osw.write(LS);
+                        osw.write(eol);
                         writtenSep = true;
                     }
                 }
-                osw.write(line.toString() + LS);
+                osw.write(line.toString() + eol);
             } else if (line != null) {
-                osw.write(line.toString() + LS);
+                osw.write(line.toString() + eol);
             }
         }
         osw.close();
@@ -331,14 +331,14 @@ public class LayoutPreservingProperties extends Properties {
         final StringBuilder fileBuffer = new StringBuilder();
         final StringBuilder logicalLineBuffer = new StringBuilder();
         while (s != null) {
-            fileBuffer.append(s).append(LS);
+            fileBuffer.append(s).append(eol);
 
             if (continuation) {
                 // put in the line feed that was removed
                 s = "\n" + s;
             } else {
                 // could be a comment, if first non-whitespace is a # or !
-                comment = s.matches("^( |\t|\f)*(#|!).*");
+                comment = s.matches("^[ \t\f]*[#!].*");
             }
 
             // continuation if not a comment and the line ends is an
@@ -353,7 +353,7 @@ public class LayoutPreservingProperties extends Properties {
                 LogicalLine line;
                 if (comment) {
                     line = new Comment(logicalLineBuffer.toString());
-                } else if (logicalLineBuffer.toString().trim().length() == 0) {
+                } else if (logicalLineBuffer.toString().trim().isEmpty()) {
                     line = new Blank();
                 } else {
                     line = new Pair(logicalLineBuffer.toString());
@@ -363,7 +363,7 @@ public class LayoutPreservingProperties extends Properties {
                         // the new one
                         remove(key);
                     }
-                    keyedPairLines.put(key, Integer.valueOf(logicalLines.size()));
+                    keyedPairLines.put(key, logicalLines.size());
                 }
                 logicalLines.add(line);
                 logicalLineBuffer.setLength(0);
@@ -390,7 +390,7 @@ public class LayoutPreservingProperties extends Properties {
         boolean hasCR = false;
         // when reaching EOF before the first EOL, assume native line
         // feeds
-        LS = StringUtils.LINE_SEP;
+        eol = System.lineSeparator();
 
         while (ch >= 0) {
             if (hasCR && ch != '\n') {
@@ -400,10 +400,10 @@ public class LayoutPreservingProperties extends Properties {
             }
 
             if (ch == '\r') {
-                LS = "\r";
+                eol = "\r";
                 hasCR = true;
             } else if (ch == '\n') {
-                LS = hasCR ? "\r\n" : "\n";
+                eol = hasCR ? "\r\n" : "\n";
                 break;
             } else {
                 sb.append((char) ch);
@@ -544,8 +544,7 @@ public class LayoutPreservingProperties extends Properties {
         final String escaped = "tfrn\\:=#!";
         final StringBuilder buffy = new StringBuilder(s.length());
         boolean leadingSpace = true;
-        for (int i = 0; i < ch.length; i++) {
-            final char c = ch[i];
+        for (final char c : ch) {
             if (c == ' ') {
                 if (escapeAllSpaces || leadingSpace) {
                     buffy.append("\\");
@@ -555,7 +554,7 @@ public class LayoutPreservingProperties extends Properties {
             }
             final int p = forEscaping.indexOf(c);
             if (p != -1) {
-                buffy.append("\\").append(escaped.substring(p, p + 1));
+                buffy.append("\\").append(escaped, p, p + 1);
             } else if (c < 0x0020 || c > 0x007e) {
                 buffy.append(escapeUnicode(c));
             } else {
@@ -705,10 +704,10 @@ public class LayoutPreservingProperties extends Properties {
         }
 
         @Override
-        public Pair clone() {
-            Pair dolly = null;
+        public Object clone() {
+            Object dolly = null;
             try {
-                dolly = (Pair) super.clone();
+                dolly = super.clone();
             } catch (final CloneNotSupportedException e) {
                 // should be fine
                 e.printStackTrace(); //NOSONAR
@@ -725,7 +724,7 @@ public class LayoutPreservingProperties extends Properties {
                 setValue(null);
             } else {
                 name = text.substring(0, pos);
-                setValue(text.substring(pos + 1, text.length()));
+                setValue(text.substring(pos + 1));
             }
             // trim leading whitespace only
             name = stripStart(name, " \t\f");

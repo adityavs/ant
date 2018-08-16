@@ -32,7 +32,7 @@ import java.util.regex.Pattern;
 /**
  * Helper methods to deal with date/time formatting with a specific
  * defined format (<a href="http://www.w3.org/TR/NOTE-datetime">ISO8601</a>)
- * or a plurialization correct elapsed time in minutes and seconds.
+ * or a correct pluralization of elapsed time in minutes and seconds.
  *
  * @since Ant 1.5
  *
@@ -98,12 +98,7 @@ public final class DateUtils {
      * @since Ant 1.10.2
      */
     public static final ThreadLocal<DateFormat> EN_US_DATE_FORMAT_MIN =
-        new ThreadLocal<DateFormat>() {
-            @Override
-            protected DateFormat initialValue() {
-                return new SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.US);
-            }
-        };
+            ThreadLocal.withInitial(() -> new SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.US));
 
     /**
      * Provides a thread-local US-style date format. Exactly as used by
@@ -112,12 +107,7 @@ public final class DateUtils {
      * @since Ant 1.10.2
      */
     public static final ThreadLocal<DateFormat> EN_US_DATE_FORMAT_SEC =
-        new ThreadLocal<DateFormat>() {
-            @Override
-            protected DateFormat initialValue() {
-                return new SimpleDateFormat("MM/dd/yyyy hh:mm:ss a", Locale.US);
-            }
-        };
+            ThreadLocal.withInitial(() -> new SimpleDateFormat("MM/dd/yyyy hh:mm:ss a", Locale.US));
 
     static {
         MINUTE_SECONDS.setFormat(0, MINUTES_FORMAT);
@@ -167,8 +157,7 @@ public final class DateUtils {
     public static String formatElapsedTime(long millis) {
         long seconds = millis / ONE_SECOND;
         long minutes = seconds / ONE_MINUTE;
-        Object[] args = {new Long(minutes), new Long(seconds % ONE_MINUTE)};
-        return MINUTE_SECONDS.format(args);
+        return MINUTE_SECONDS.format(new Object[]{minutes, seconds % ONE_MINUTE});
     }
 
     /**
@@ -329,14 +318,12 @@ public final class DateUtils {
         }
     }
 
-    final private static ThreadLocal<DateFormat> iso8601WithTimeZone =
-        new ThreadLocal<DateFormat>() {
-            @Override protected DateFormat initialValue() {
+    private static final ThreadLocal<DateFormat> iso8601WithTimeZone =
+            ThreadLocal.withInitial(() -> {
               // An arbitrary easy-to-read format to normalize to.
               return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS Z");
-            }
-        };
-    final private static Pattern iso8601normalizer = Pattern.compile(
+            });
+    private static final Pattern iso8601normalizer = Pattern.compile(
         "^(\\d{4,}-\\d{2}-\\d{2})[Tt ]" +           // yyyy-MM-dd
         "(\\d{2}:\\d{2}(:\\d{2}(\\.\\d{3})?)?) ?" + // HH:mm:ss.SSS
         "(?:Z|([+-]\\d{2})(?::?(\\d{2}))?)?$");     // Z

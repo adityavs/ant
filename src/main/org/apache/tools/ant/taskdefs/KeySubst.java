@@ -43,11 +43,12 @@ import org.apache.tools.ant.util.StringUtils;
  * @deprecated KeySubst is deprecated since Ant 1.1. Use Filter + Copy
  * instead.
  */
+@Deprecated
 public class KeySubst extends Task {
     private File source = null;
     private File dest = null;
     private String sep = "*";
-    private Hashtable<String, String> replacements = new Hashtable<String, String>();
+    private Hashtable<String, String> replacements = new Hashtable<>();
 
     /**
      * Do the execution.
@@ -71,7 +72,7 @@ public class KeySubst extends Task {
             String newline = null;
             line = br.readLine();
             while (line != null) {
-                if (line.length() == 0) {
+                if (line.isEmpty()) {
                     bw.newLine();
                 } else {
                     newline = KeySubst.replace(line, replacements);
@@ -127,7 +128,7 @@ public class KeySubst extends Task {
      * @param keys a <code>String</code> value
      */
     public void setKeys(String keys) {
-        if (keys != null && keys.length() > 0) {
+        if (keys != null && !keys.isEmpty()) {
             StringTokenizer tok =
             new StringTokenizer(keys, this.sep, false);
             while (tok.hasMoreTokens()) {
@@ -149,7 +150,7 @@ public class KeySubst extends Task {
      */
     public static void main(String[] args) {
         try {
-            Hashtable<String, String> hash = new Hashtable<String, String>();
+            Hashtable<String, String> hash = new Hashtable<>();
             hash.put("VERSION", "1.0.3");
             hash.put("b", "ffff");
             System.out.println(KeySubst.replace("$f ${VERSION} f ${b} jj $",
@@ -176,7 +177,7 @@ public class KeySubst extends Task {
         while ((index = origString.indexOf("${", i)) > -1) {
             key = origString.substring(index + 2, origString.indexOf("}",
                                        index + 3));
-            finalString.append(origString.substring(i, index));
+            finalString.append(origString, i, index);
             if (keys.containsKey(key)) {
                 finalString.append(keys.get(key));
             } else {

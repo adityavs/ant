@@ -28,7 +28,6 @@ import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Vector;
 
 import org.apache.tools.ant.BuildException;
@@ -38,7 +37,6 @@ import org.apache.tools.ant.taskdefs.condition.Os;
 import org.apache.tools.ant.taskdefs.launcher.CommandLauncher;
 import org.apache.tools.ant.types.Commandline;
 import org.apache.tools.ant.util.FileUtils;
-import org.apache.tools.ant.util.StringUtils;
 
 /**
  * Runs an external program.
@@ -135,30 +133,30 @@ public class Execute {
                 procEnvironment = getVMSLogicals(in);
                 return procEnvironment;
             }
-            String var = null;
-            String line, lineSep = StringUtils.LINE_SEP;
+            StringBuilder var = null;
+            String line;
             while ((line = in.readLine()) != null) {
-                if (line.indexOf('=') == -1) {
-                    // Chunk part of previous env var (UNIX env vars can
-                    // contain embedded new lines).
-                    if (var == null) {
-                        var = lineSep + line;
-                    } else {
-                        var += lineSep + line;
-                    }
-                } else {
+                if (line.contains("=")) {
                     // New env var...append the previous one if we have it.
                     if (var != null) {
-                        int eq = var.indexOf('=');
+                        int eq = var.toString().indexOf('=');
                         procEnvironment.put(var.substring(0, eq),
                                             var.substring(eq + 1));
                     }
-                    var = line;
+                    var = new StringBuilder(line);
+                } else {
+                    // Chunk part of previous env var (UNIX env vars can
+                    // contain embedded new lines).
+                    if (var == null) {
+                        var = new StringBuilder(System.lineSeparator() + line);
+                    } else {
+                        var.append(System.lineSeparator()).append(line);
+                    }
                 }
             }
             // Since we "look ahead" before adding, there's one last env var.
             if (var != null) {
-                int eq = var.indexOf('=');
+                int eq = var.toString().indexOf('=');
                 procEnvironment.put(var.substring(0, eq), var.substring(eq + 1));
             }
         } catch (IOException exc) {
@@ -178,9 +176,7 @@ public class Execute {
     @Deprecated
     public static synchronized Vector<String> getProcEnvironment() {
         Vector<String> v = new Vector<>();
-        for (Entry<String, String> entry : getEnvironmentVariables().entrySet()) {
-            v.add(entry.getKey() + "=" + entry.getValue());
-        }
+        getEnvironmentVariables().forEach((key, value) -> v.add(key + "=" + value));
         return v;
     }
 
@@ -614,8 +610,7 @@ public class Execute {
         }
         Map<String, String> osEnv =
             new LinkedHashMap<>(getEnvironmentVariables());
-        for (int i = 0; i < env.length; i++) {
-            String keyValue = env[i];
+        for (String keyValue : env) {
             String key = keyValue.substring(0, keyValue.indexOf('='));
             // Find the key in the current environment copy
             // and remove it.

@@ -21,25 +21,27 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.util.Enumeration;
 import java.util.Hashtable;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
+import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
 
 import org.apache.tools.ant.AntClassLoader;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.Java;
-import org.apache.tools.ant.taskdefs.optional.ejb.EjbJar.DTDLocation;
 import org.apache.tools.ant.types.Environment;
 import org.apache.tools.ant.types.Path;
 import org.apache.tools.ant.util.FileUtils;
 
 /**
- * Websphere deployment tool that augments the ejbjar task.
- * Searches for the websphere specific deployment descriptors and
- * adds them to the final ejb jar file. Websphere has two specific descriptors for session
+ * WebSphere deployment tool that augments the ejbjar task.
+ * Searches for the WebSphere specific deployment descriptors and
+ * adds them to the final ejb jar file. WebSphere has two specific descriptors for session
  * beans:
  * <ul>
  *    <li>ibm-ejb-jar-bnd.xmi</li>
@@ -53,7 +55,7 @@ import org.apache.tools.ant.util.FileUtils;
  * In terms of WebSphere, the generation of container code and stubs is
  * called <code>deployment</code>. This step can be performed by the websphere
  * element as part of the jar generation process. If the switch
- * <code>ejbdeploy</code> is on, the ejbdeploy tool from the websphere toolset
+ * <code>ejbdeploy</code> is on, the ejbdeploy tool from the WebSphere toolset
  * is called for every ejb-jar. Unfortunately, this step only works, if you
  * use the ibm jdk. Otherwise, the rmic (called by ejbdeploy) throws a
  * ClassFormatError. Be sure to switch ejbdeploy off, if run ant with
@@ -78,7 +80,7 @@ public class WebsphereDeploymentTool extends GenericDeploymentTool {
 
     private static final FileUtils FILE_UTILS = FileUtils.getFileUtils();
 
-    /** Instance variable that stores the suffix for the websphere jarfile. */
+    /** Instance variable that stores the suffix for the WebSphere jarfile. */
     private String jarSuffix = ".jar";
 
     /** Instance variable that stores the location of the ejb 1.1 DTD file. */
@@ -95,7 +97,7 @@ public class WebsphereDeploymentTool extends GenericDeploymentTool {
     /** Indicates if the old CMP location convention is to be used. */
     private boolean newCMP = false;
 
-    /** The classpath to the websphere classes. */
+    /** The classpath to the WebSphere classes. */
     private Path wasClasspath = null;
 
     /** The DB Vendor name, the EJB is persisted against */
@@ -134,12 +136,12 @@ public class WebsphereDeploymentTool extends GenericDeploymentTool {
     /** the scratchdir for the ejbdeploy operation */
     private String tempdir = "_ejbdeploy_temp";
 
-    /** the home directory for websphere */
+    /** the home directory for WebSphere */
     private File websphereHome;
 
     /**
-     * Get the classpath to the websphere classpaths.
-     * @return the websphere classpath.
+     * Get the classpath to the WebSphere classpaths.
+     * @return the WebSphere classpath.
      */
     public Path createWASClasspath() {
         if (wasClasspath == null) {
@@ -149,8 +151,8 @@ public class WebsphereDeploymentTool extends GenericDeploymentTool {
     }
 
     /**
-     * Set the websphere classpath.
-     * @param wasClasspath the websphere classpath.
+     * Set the WebSphere classpath.
+     * @param wasClasspath the WebSphere classpath.
      */
     public void setWASClasspath(Path wasClasspath) {
         this.wasClasspath = wasClasspath;
@@ -325,10 +327,10 @@ public class WebsphereDeploymentTool extends GenericDeploymentTool {
 
     /**
      * Set the value of the newCMP scheme. The old CMP scheme locates the
-     * websphere CMP descriptor based on the naming convention where the
-     * websphere CMP file is expected to be named with the bean name as the
+     * WebSphere CMP descriptor based on the naming convention where the
+     * WebSphere CMP file is expected to be named with the bean name as the
      * prefix. Under this scheme the name of the CMP descriptor does not match
-     * the name actually used in the main websphere EJB descriptor. Also,
+     * the name actually used in the main WebSphere EJB descriptor. Also,
      * descriptors which contain multiple CMP references could not be used.
      * @param newCMP a <code>boolean</code> value.
      */
@@ -353,9 +355,7 @@ public class WebsphereDeploymentTool extends GenericDeploymentTool {
         // any supplied by the user
         handler.registerDTD(PUBLICID_EJB11, ejb11DTD);
 
-        for (DTDLocation dtdLocation : getConfig().dtdLocations) {
-            handler.registerDTD(dtdLocation.getPublicId(), dtdLocation.getLocation());
-        }
+        getConfig().dtdLocations.forEach(l -> handler.registerDTD(l.getPublicId(), l.getLocation()));
         return handler;
     }
 
@@ -372,9 +372,7 @@ public class WebsphereDeploymentTool extends GenericDeploymentTool {
                 }
             };
 
-        for (DTDLocation dtdLocation : getConfig().dtdLocations) {
-            handler.registerDTD(dtdLocation.getPublicId(), dtdLocation.getLocation());
-        }
+        getConfig().dtdLocations.forEach(l -> handler.registerDTD(l.getPublicId(), l.getLocation()));
         return handler;
     }
 
@@ -517,12 +515,12 @@ public class WebsphereDeploymentTool extends GenericDeploymentTool {
     }
 
     /**
-     * Helper method invoked by execute() for each websphere jar to be built.
+     * Helper method invoked by execute() for each WebSphere jar to be built.
      * Encapsulates the logic of constructing a java task for calling
      * websphere.ejbdeploy and executing it.
      *
      * @param sourceJar java.io.File representing the source (EJB1.1) jarfile.
-     * @param destJar java.io.File representing the destination, websphere
+     * @param destJar java.io.File representing the destination, WebSphere
      *      jarfile.
      */
     private void buildWebsphereJar(File sourceJar, File destJar) {
@@ -553,7 +551,7 @@ public class WebsphereDeploymentTool extends GenericDeploymentTool {
                 javaTask.createArg().setValue(destJar.getPath());
                 javaTask.createArg().setLine(getOptions());
                 if (getCombinedClasspath() != null
-                    && getCombinedClasspath().toString().length() > 0) {
+                    && !getCombinedClasspath().toString().isEmpty()) {
                     javaTask.createArg().setValue("-cp");
                     javaTask.createArg().setValue(getCombinedClasspath().toString());
                 }
@@ -625,27 +623,27 @@ public class WebsphereDeploymentTool extends GenericDeploymentTool {
     }
 
     /**
-     * Helper method to check to see if a websphere EBJ1.1 jar needs to be
+     * Helper method to check to see if a WebSphere EJB 1.1 jar needs to be
      * rebuilt using ejbdeploy. Called from writeJar it sees if the "Bean"
      * classes are the only thing that needs to be updated and either updates
      * the Jar with the Bean classfile or returns true, saying that the whole
-     * websphere jar needs to be regened with ejbdeploy. This allows faster
+     * WebSphere jar needs to be regenerated with ejbdeploy. This allows faster
      * build times for working developers. <p>
      *
-     * The way websphere ejbdeploy works is it creates wrappers for the
+     * The way WebSphere ejbdeploy works is it creates wrappers for the
      * publicly defined methods as they are exposed in the remote interface.
      * If the actual bean changes without changing the the method signatures
      * then only the bean classfile needs to be updated and the rest of the
-     * websphere jar file can remain the same. If the Interfaces, ie. the
+     * WebSphere jar file can remain the same. If the Interfaces, ie. the
      * method signatures change or if the xml deployment descriptors changed,
      * the whole jar needs to be rebuilt with ejbdeploy. This is not strictly
      * true for the xml files. If the JNDI name changes then the jar doesn't
      * have to be rebuild, but if the resources references change then it
-     * does. At this point the websphere jar gets rebuilt if the xml files
+     * does. At this point the WebSphere jar gets rebuilt if the xml files
      * change at all.
      *
      * @param genericJarFile java.io.File The generic jar file.
-     * @param websphereJarFile java.io.File The websphere jar file to check to
+     * @param websphereJarFile java.io.File The WebSphere jar file to check to
      *      see if it needs to be rebuilt.
      * @return true if a rebuild is required.
      */
@@ -662,79 +660,70 @@ public class WebsphereDeploymentTool extends GenericDeploymentTool {
         try {
             log("Checking if websphere Jar needs to be rebuilt for jar "
                 + websphereJarFile.getName(), Project.MSG_VERBOSE);
-            // Only go forward if the generic and the websphere file both exist
+            // Only go forward if the generic and the WebSphere file both exist
             if (genericJarFile.exists() && genericJarFile.isFile()
                  && websphereJarFile.exists() && websphereJarFile.isFile()) {
                 //open jar files
                 genericJar = new JarFile(genericJarFile);
                 wasJar = new JarFile(websphereJarFile);
 
-                Hashtable<String, JarEntry> genericEntries = new Hashtable<>();
-                Hashtable<String, JarEntry> wasEntries = new Hashtable<>();
-                Hashtable<String, JarEntry> replaceEntries = new Hashtable<>();
-
                 //get the list of generic jar entries
-                for (Enumeration<JarEntry> e = genericJar.entries(); e.hasMoreElements();) {
-                    JarEntry je = e.nextElement();
-                    genericEntries.put(je.getName().replace('\\', '/'), je);
-                }
-                //get the list of websphere jar entries
-                for (Enumeration<JarEntry> e = wasJar.entries(); e.hasMoreElements();) {
-                    JarEntry je = e.nextElement();
-                    wasEntries.put(je.getName(), je);
-                }
+                Map<String, JarEntry> genericEntries = genericJar.stream()
+                        .collect(Collectors.toMap(je -> je.getName().replace('\\', '/'),
+                                je -> je, (a, b) -> b));
 
-                //Cycle Through generic and make sure its in websphere
+                // get the list of WebSphere jar entries
+                Map<String, JarEntry> wasEntries = wasJar.stream()
+                        .collect(Collectors.toMap(ZipEntry::getName, je -> je, (a, b) -> b));
+
+                // Cycle through generic and make sure its in WebSphere
                 genericLoader = getClassLoaderFromJar(genericJarFile);
 
-                for (Enumeration<String> e = genericEntries.keys(); e.hasMoreElements();) {
-                    String filepath = e.nextElement();
-
-                    if (wasEntries.containsKey(filepath)) {
-                        // File name/path match
-                        // Check files see if same
-                        JarEntry genericEntry = genericEntries.get(filepath);
-                        JarEntry wasEntry = wasEntries.get(filepath);
-
-                        if ((genericEntry.getCrc() != wasEntry.getCrc())
-                            || (genericEntry.getSize() != wasEntry.getSize())) {
-
-                            if (genericEntry.getName().endsWith(".class")) {
-                                //File are different see if its an object or an interface
-                                String classname
-                                    = genericEntry.getName().replace(File.separatorChar, '.');
-
-                                classname = classname.substring(0, classname.lastIndexOf(".class"));
-
-                                Class<?> genclass = genericLoader.loadClass(classname);
-
-                                if (genclass.isInterface()) {
-                                    //Interface changed   rebuild jar.
-                                    log("Interface " + genclass.getName()
-                                        + " has changed", Project.MSG_VERBOSE);
-                                    rebuild = true;
-                                    break;
-                                }
-                                //Object class Changed   update it.
-                                replaceEntries.put(filepath, genericEntry);
-                            } else {
-                                // is it the manifest. If so ignore it
-                                if (!genericEntry.getName().equals("META-INF/MANIFEST.MF")) {
-                                    //File other then class changed  rebuild
-                                    log("Non class file " + genericEntry.getName()
-                                        + " has changed", Project.MSG_VERBOSE);
-                                    rebuild = true;
-                                }
-                                break;
-                            }
-                        }
-                    } else {
+                Map<String, JarEntry> replaceEntries = new HashMap<>();
+                for (String filepath : genericEntries.keySet()) {
+                    if (!wasEntries.containsKey(filepath)) {
                         // a file doesn't exist rebuild
-
                         log("File " + filepath + " not present in websphere jar",
                             Project.MSG_VERBOSE);
                         rebuild = true;
                         break;
+                    }
+                    // File name/path match
+                    // Check files see if same
+                    JarEntry genericEntry = genericEntries.get(filepath);
+                    JarEntry wasEntry = wasEntries.get(filepath);
+
+                    if (genericEntry.getCrc() != wasEntry.getCrc()
+                        || genericEntry.getSize() != wasEntry.getSize()) {
+
+                        if (genericEntry.getName().endsWith(".class")) {
+                            //File are different see if its an object or an interface
+                            String classname
+                                = genericEntry.getName().replace(File.separatorChar, '.');
+
+                            classname = classname.substring(0, classname.lastIndexOf(".class"));
+
+                            Class<?> genclass = genericLoader.loadClass(classname);
+
+                            if (genclass.isInterface()) {
+                                //Interface changed   rebuild jar.
+                                log("Interface " + genclass.getName()
+                                    + " has changed", Project.MSG_VERBOSE);
+                                rebuild = true;
+                                break;
+                            }
+                            //Object class Changed   update it.
+                            replaceEntries.put(filepath, genericEntry);
+                        } else {
+                            // is it the manifest. If so ignore it
+                            if (!genericEntry.getName().equals("META-INF/MANIFEST.MF")) {
+                                //File other then class changed  rebuild
+                                log("Non class file " + genericEntry.getName()
+                                    + " has changed", Project.MSG_VERBOSE);
+                                rebuild = true;
+                            }
+                            break;
+                        }
                     }
                 }
 
@@ -748,10 +737,8 @@ public class WebsphereDeploymentTool extends GenericDeploymentTool {
                     newJarStream = new JarOutputStream(Files.newOutputStream(newwasJarFile.toPath()));
                     newJarStream.setLevel(0);
 
-                    //Copy files from old websphere jar
-                    for (Enumeration<JarEntry> e = wasEntries.elements(); e.hasMoreElements();) {
-                        JarEntry je = e.nextElement();
-
+                    // Copy files from old WebSphere jar
+                    for (JarEntry je : wasEntries.values()) {
                         if (je.getCompressedSize() == -1
                             || je.getCompressedSize() == je.getSize()) {
                             newJarStream.setLevel(0);
@@ -768,7 +755,7 @@ public class WebsphereDeploymentTool extends GenericDeploymentTool {
                             je = replaceEntries.get(je.getName());
                             is = genericJar.getInputStream(je);
                         } else {
-                            //use fle from original websphere jar
+                            // use fle from original WebSphere jar
 
                             is = wasJar.getInputStream(je);
                         }
@@ -812,8 +799,7 @@ public class WebsphereDeploymentTool extends GenericDeploymentTool {
                     rebuild = true;
                 }
             }
-            if (genericLoader != null
-                && genericLoader instanceof AntClassLoader) {
+            if (genericLoader instanceof AntClassLoader) {
                 @SuppressWarnings("resource")
                 AntClassLoader loader = (AntClassLoader) genericLoader;
                 loader.cleanup();

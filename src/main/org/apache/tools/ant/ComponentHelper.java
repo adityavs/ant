@@ -25,7 +25,6 @@ import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -35,9 +34,11 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Stack;
+import java.util.stream.Collectors;
 
 import org.apache.tools.ant.launch.Launcher;
 import org.apache.tools.ant.taskdefs.Definer;
+import org.apache.tools.ant.taskdefs.Property;
 import org.apache.tools.ant.taskdefs.Typedef;
 import org.apache.tools.ant.util.FileUtils;
 
@@ -59,7 +60,7 @@ import org.apache.tools.ant.util.FileUtils;
  */
 public class ComponentHelper  {
     /** Map of component name to lists of restricted definitions */
-    private Map<String, List<AntTypeDefinition>> restrictedDefinitions = new HashMap<>();
+    private final Map<String, List<AntTypeDefinition>> restrictedDefinitions = new HashMap<>();
 
     /** Map from component name to anttypedefinition */
     private final Hashtable<String, AntTypeDefinition> antTypeTable = new Hashtable<>();
@@ -228,7 +229,8 @@ public class ComponentHelper  {
     public void initSubProject(ComponentHelper helper) {
         // add the types of the parent project
         @SuppressWarnings("unchecked")
-        final Hashtable<String, AntTypeDefinition> typeTable = (Hashtable<String, AntTypeDefinition>) helper.antTypeTable.clone();
+        final Hashtable<String, AntTypeDefinition> typeTable
+                = (Hashtable<String, AntTypeDefinition>) helper.antTypeTable.clone();
         synchronized (antTypeTable) {
             for (AntTypeDefinition def : typeTable.values()) {
                 antTypeTable.put(def.getName(), def);
@@ -239,7 +241,8 @@ public class ComponentHelper  {
         synchronized (this) {
             checkedNamespaces.addAll(inheritedCheckedNamespace);
         }
-        Map<String, List<AntTypeDefinition>> inheritedRestrictedDef = helper.getRestrictedDefinition();
+        Map<String, List<AntTypeDefinition>> inheritedRestrictedDef
+                = helper.getRestrictedDefinition();
         synchronized (restrictedDefinitions) {
             restrictedDefinitions.putAll(inheritedRestrictedDef);
         }
@@ -398,15 +401,11 @@ public class ComponentHelper  {
             synchronized (antTypeTable) {
                 if (rebuildTaskClassDefinitions) {
                     taskClassDefinitions.clear();
-                    for (Map.Entry<String, AntTypeDefinition> e : antTypeTable.entrySet()) {
-                        final Class<?> clazz = e.getValue().getExposedClass(project);
-                        if (clazz == null) {
-                            continue;
-                        }
-                        if (Task.class.isAssignableFrom(clazz)) {
-                            taskClassDefinitions.put(e.getKey(), e.getValue().getTypeClass(project));
-                        }
-                    }
+                    antTypeTable.entrySet().stream()
+                            .filter(e -> e.getValue().getExposedClass(project) != null
+                                    && Task.class.isAssignableFrom(e.getValue().getExposedClass(project)))
+                            .forEach(e -> taskClassDefinitions.put(e.getKey(),
+                                    e.getValue().getTypeClass(project)));
                     rebuildTaskClassDefinitions = false;
                 }
             }
@@ -426,15 +425,11 @@ public class ComponentHelper  {
             synchronized (antTypeTable) {
                 if (rebuildTypeClassDefinitions) {
                     typeClassDefinitions.clear();
-                    for (Map.Entry<String, AntTypeDefinition> e : antTypeTable.entrySet()) {
-                        final Class<?> clazz = e.getValue().getExposedClass(project);
-                        if (clazz == null) {
-                            continue;
-                        }
-                        if (!Task.class.isAssignableFrom(clazz)) {
-                            typeClassDefinitions.put(e.getKey(), e.getValue().getTypeClass(project));
-                        }
-                    }
+                    antTypeTable.entrySet().stream()
+                            .filter(e -> e.getValue().getExposedClass(project) != null
+                                    && !Task.class.isAssignableFrom(e.getValue().getExposedClass(project)))
+                            .forEach(e -> typeClassDefinitions.put(e.getKey(),
+                                    e.getValue().getTypeClass(project)));
                     rebuildTypeClassDefinitions = false;
                 }
             }
@@ -522,7 +517,7 @@ public class ComponentHelper  {
         if (task == null && taskType.equals(ANT_PROPERTY_TASK)) {
             // quick fix for Ant.java use of property before
             // initializing the project
-            addTaskDefinition(ANT_PROPERTY_TASK, org.apache.tools.ant.taskdefs.Property.class);
+            addTaskDefinition(ANT_PROPERTY_TASK, Property.class);
             task = createNewTask(taskType);
         }
         return task;
@@ -682,11 +677,7 @@ public class ComponentHelper  {
         String name = def.getName();
         List<AntTypeDefinition> list = null;
         synchronized (restrictedDefinitions) {
-            list = restrictedDefinitions.get(name);
-            if (list == null) {
-                list = new ArrayList<AntTypeDefinition>();
-                restrictedDefinitions.put(name, list);
-            }
+            list = restrictedDefinitions.computeIfAbsent(name, k -> new ArrayList<>());
         }
         // Check if the classname is already present and remove it
         // if it is
@@ -749,7 +740,7 @@ public class ComponentHelper  {
      */
     public void exitAntLib() {
         antLibStack.pop();
-        antLibCurrentUri = (antLibStack.isEmpty()) ? null : (String) antLibStack.peek();
+        antLibCurrentUri = (antLibStack.isEmpty()) ? null : antLibStack.peek();
     }
 
     /**
@@ -759,10 +750,9 @@ public class ComponentHelper  {
         ClassLoader classLoader = getClassLoader(null);
         Properties props = getDefaultDefinitions(false);
         for (String name : props.stringPropertyNames()) {
-            String className = props.getProperty(name);
             AntTypeDefinition def = new AntTypeDefinition();
             def.setName(name);
-            def.setClassName(className);
+            def.setClassName(props.getProperty(name));
             def.setClassLoader(classLoader);
             def.setAdaptToClass(Task.class);
             def.setAdapterClass(TaskAdapter.class);
@@ -819,13 +809,10 @@ public class ComponentHelper  {
     private void initTypes() {
         ClassLoader classLoader = getClassLoader(null);
         Properties props = getDefaultDefinitions(true);
-        Enumeration<?> e = props.propertyNames();
-        while (e.hasMoreElements()) {
-            String name = (String) e.nextElement();
-            String className = props.getProperty(name);
+        for (String name : props.stringPropertyNames()) {
             AntTypeDefinition def = new AntTypeDefinition();
             def.setName(name);
-            def.setClassName(className);
+            def.setClassName(props.getProperty(name));
             def.setClassLoader(classLoader);
             antTypeTable.put(name, def);
         }
@@ -839,7 +826,7 @@ public class ComponentHelper  {
      */
     private synchronized void checkNamespace(String componentName) {
         String uri = ProjectHelper.extractUriFromComponentName(componentName);
-        if ("".equals(uri)) {
+        if (uri.isEmpty()) {
             uri = ProjectHelper.ANT_CORE_URI;
         }
         if (!uri.startsWith(ProjectHelper.ANTLIB_URI)) {
@@ -850,7 +837,7 @@ public class ComponentHelper  {
         }
         checkedNamespaces.add(uri);
 
-        if (antTypeTable.size() == 0) {
+        if (antTypeTable.isEmpty()) {
             // Project instance doesn't know the tasks and types
             // defined in defaults.properties, likely created by the
             // user - without those definitions it cannot parse antlib
@@ -1021,7 +1008,7 @@ public class ComponentHelper  {
         out.println("Action: Check that any custom tasks/types have been declared.");
         out.println("Action: Check that any <presetdef>/<macrodef>"
                 + " declarations have taken place.");
-        if (uri.length() > 0) {
+        if (!uri.isEmpty()) {
             final List<AntTypeDefinition> matches = findTypeMatches(uri);
             if (matches.isEmpty()) {
                 out.println("No types or tasks have been defined in this namespace yet");
@@ -1085,14 +1072,9 @@ public class ComponentHelper  {
      * @return the (possibly empty) list of definitions
      */
     private List<AntTypeDefinition> findTypeMatches(String prefix) {
-        final List<AntTypeDefinition> result = new ArrayList<AntTypeDefinition>();
         synchronized (antTypeTable) {
-            for (AntTypeDefinition def : antTypeTable.values()) {
-                if (def.getName().startsWith(prefix)) {
-                    result.add(def);
-                }
-            }
+            return antTypeTable.values().stream().filter(def -> def.getName().startsWith(prefix))
+                    .collect(Collectors.toList());
         }
-        return result;
     }
 }

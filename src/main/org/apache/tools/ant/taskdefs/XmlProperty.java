@@ -29,6 +29,7 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
+import org.apache.tools.ant.Task;
 import org.apache.tools.ant.types.Path;
 import org.apache.tools.ant.types.Resource;
 import org.apache.tools.ant.types.ResourceCollection;
@@ -176,7 +177,7 @@ import org.xml.sax.SAXException;
  *
  * @ant.task name="xmlproperty" category="xml"
  */
-public class XmlProperty extends org.apache.tools.ant.Task {
+public class XmlProperty extends Task {
     private static final String ID = "id";
     private static final String REF_ID = "refid";
     private static final String LOCATION = "location";
@@ -211,7 +212,7 @@ public class XmlProperty extends org.apache.tools.ant.Task {
     }
 
     /**
-     * @return the xmlCatalog as the entityresolver.
+     * @return the xmlCatalog as the EntityResolver.
      */
     protected EntityResolver getEntityResolver() {
         return xmlCatalog;
@@ -289,7 +290,7 @@ public class XmlProperty extends org.apache.tools.ant.Task {
         // Set the prefix for this node to include its tag name.
         String nodePrefix = prefix;
         if (node.getNodeType() != Node.TEXT_NODE) {
-            if (prefix.trim().length() > 0) {
+            if (!prefix.trim().isEmpty()) {
                 nodePrefix += ".";
             }
             nodePrefix += node.getNodeName();
@@ -362,10 +363,8 @@ public class XmlProperty extends org.apache.tools.ant.Task {
                     String nodeName = attributeNode.getNodeName();
                     String attributeValue = getAttributeValue(attributeNode);
 
-                    Path containingPath =
-                        ((container != null) && (container instanceof Path))
-                        ? (Path) container
-                        : null;
+                    Path containingPath = container instanceof Path
+                        ? (Path) container : null;
                     /*
                      * The main conditional logic -- if the attribute
                      * is somehow "special" (i.e., it has known

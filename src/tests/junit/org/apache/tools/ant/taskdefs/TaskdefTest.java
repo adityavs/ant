@@ -20,14 +20,13 @@ package org.apache.tools.ant.taskdefs;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.BuildFileRule;
-import org.apache.tools.ant.Project;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertThat;
 
 /**
  */
@@ -41,54 +40,49 @@ public class TaskdefTest {
         buildRule.configureProject("src/etc/testcases/taskdefs/taskdef.xml");
     }
 
-    @Test
+    /**
+     * Expected failure due lacking a required argument
+     */
+    @Test(expected = BuildException.class)
     public void test1() {
-        try {
-            buildRule.executeTarget("test1");
-            fail("BuildException expected: required argument not specified");
-        } catch (BuildException ex) {
-            //TODO assert value
-        }
+        buildRule.executeTarget("test1");
+        // TODO Assert exception message
     }
 
-    @Test
+    /**
+     * Expected failure due lacking a required argument
+     */
+    @Test(expected = BuildException.class)
     public void test2() {
-        try {
-            buildRule.executeTarget("test2");
-            fail("BuildException expected: required argument not specified");
-        } catch (BuildException ex) {
-            //TODO assert value
-        }
+        buildRule.executeTarget("test2");
+        // TODO Assert exception message
     }
 
-    @Test
+    /**
+     * Expected failure due lacking a required argument
+     */
+    @Test(expected = BuildException.class)
     public void test3() {
-        try {
-            buildRule.executeTarget("test3");
-            fail("BuildException expected: required argument not specified");
-        } catch (BuildException ex) {
-            //TODO assert value
-        }
+        buildRule.executeTarget("test3");
+        // TODO Assert exception message
     }
 
-    @Test
+    /**
+     * Expected failure due to nonexistent class specified
+     */
+    @Test(expected = BuildException.class)
     public void test4() {
-        try {
-            buildRule.executeTarget("test4");
-            fail("BuildException expected: classname specified doesn't exist");
-        } catch (BuildException ex) {
-            //TODO assert value
-        }
+        buildRule.executeTarget("test4");
+        // TODO Assert exception message
     }
 
-    @Test
+    /**
+     * Expected failure due to non-public execute() method
+     */
+    @Test(expected = BuildException.class)
     public void test5() {
-        try {
-            buildRule.executeTarget("test5");
-            fail("BuildException expected: No public execute() in " + Project.class);
-        } catch (BuildException ex) {
-            //TODO assert value
-        }
+        buildRule.executeTarget("test5");
+        // TODO Assert exception message
     }
 
     @Test
@@ -118,11 +112,11 @@ public class TaskdefTest {
     public void testOverride() {
         buildRule.executeTarget("testOverride");
         String log = buildRule.getLog();
-        assertTrue("override warning sent",
-                   log.indexOf("Trying to override old definition of task copy") > -1);
-        assertTrue("task inside target worked",
-                   log.indexOf("In target") > -1);
-        assertTrue("task inside target worked",
-                   log.indexOf("In TaskContainer") > -1);
+        assertThat("override warning sent", log,
+                containsString("Trying to override old definition of task copy"));
+        assertThat("task inside target worked", log,
+                containsString("In target"));
+        assertThat("task inside target worked", log,
+                containsString("In TaskContainer"));
     }
 }

@@ -126,7 +126,7 @@ public class Name implements ResourceSelector {
             return true;
         }
         String s = r.toString();
-        return s.equals(n) ? false : matches(s);
+        return !s.equals(n) && matches(s);
     }
 
     private boolean matches(String name) {
@@ -142,7 +142,7 @@ public class Name implements ResourceSelector {
     }
 
     private String modify(String s) {
-        if (s == null || !handleDirSep || s.indexOf('\\') < 0) {
+        if (s == null || !handleDirSep || !s.contains("\\")) {
             return s;
         }
         return s.replace('\\', '/');

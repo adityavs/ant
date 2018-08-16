@@ -84,10 +84,9 @@ public class SSHSession extends SSHBase {
      * tunnel specifications
      */
     public void setLocaltunnels(final String tunnels) {
-        final String[] specs = tunnels.split(", ");
-        for (int i = 0; i < specs.length; i++) {
-            if (specs[i].length() > 0) {
-                final String[] spec = specs[i].split(":", 3);
+        for (String tunnelSpec : tunnels.split(", ")) {
+            if (!tunnelSpec.isEmpty()) {
+                final String[] spec = tunnelSpec.split(":", 3);
                 final int lport = Integer.parseInt(spec[0]);
                 final String rhost = spec[1];
                 final int rport = Integer.parseInt(spec[2]);
@@ -107,10 +106,9 @@ public class SSHSession extends SSHBase {
      * tunnel specifications
      */
     public void setRemotetunnels(final String tunnels) {
-        final String[] specs = tunnels.split(", ");
-        for (int i = 0; i < specs.length; i++) {
-            if (specs[i].length() > 0) {
-                final String[] spec = specs[i].split(":", 3);
+        for (String tunnelSpec : tunnels.split(", ")) {
+            if (!tunnelSpec.isEmpty()) {
+                final String[] spec = tunnelSpec.split(":", 3);
                 final int rport = Integer.parseInt(spec[0]);
                 final String lhost = spec[1];
                 final int lport = Integer.parseInt(spec[2]);
@@ -167,7 +165,7 @@ public class SSHSession extends SSHBase {
             // completed successfully
 
         } catch (final JSchException e) {
-            if (e.getMessage().indexOf("session is down") >= 0) {
+            if (e.getMessage().contains("session is down")) {
                 if (getFailonerror()) {
                     throw new BuildException(TIMEOUT_MESSAGE, e);
                 }
@@ -212,7 +210,7 @@ public class SSHSession extends SSHBase {
         int rport = 0;
 
         public void setLPort(final int lport) {
-            final Integer portKey = Integer.valueOf(lport);
+            final Integer portKey = lport;
             if (localPortsUsed.contains(portKey)) {
                 throw new BuildException(
                     "Multiple local tunnels defined to use same local port %d",
@@ -267,7 +265,7 @@ public class SSHSession extends SSHBase {
         }
 
         public void setRPort(final int rport) {
-            final Integer portKey = Integer.valueOf(rport);
+            final Integer portKey = rport;
             if (remotePortsUsed.contains(portKey)) {
                 throw new BuildException(
                     "Multiple remote tunnels defined to use same remote port %d",

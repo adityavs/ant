@@ -38,6 +38,7 @@ import org.apache.tools.ant.Task;
  * @deprecated since 1.2.
  *             Use Jikes' exit value to detect compilation failure.
  */
+@Deprecated
 public class JikesOutputParser implements ExecuteStreamHandler {
     // CheckStyle:VisibilityModifier OFF - bc
     protected Task task;
@@ -132,12 +133,12 @@ public class JikesOutputParser implements ExecuteStreamHandler {
 
         while ((line = reader.readLine()) != null) {
             lower = line.toLowerCase();
-            if (line.trim().equals("")) {
+            if (line.trim().isEmpty()) {
                 continue;
             }
-            if (lower.indexOf("error") != -1) {
+            if (lower.contains("error")) {
                 setError(true);
-            } else if (lower.indexOf("warning") != -1) {
+            } else if (lower.contains("warning")) {
                 setError(false);
                    } else {
                 // If we don't know the type of the line

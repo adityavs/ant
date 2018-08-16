@@ -664,9 +664,7 @@ public class NetRexxC extends MatchingTask {
         // compile lists
         DirectoryScanner ds = getDirectoryScanner(srcDir);
 
-        String[] files = ds.getIncludedFiles();
-
-        scanDir(srcDir, destDir, files);
+        scanDir(srcDir, destDir, ds.getIncludedFiles());
 
         // copy the source and support files
         copyFilesToDestination();
@@ -777,10 +775,8 @@ public class NetRexxC extends MatchingTask {
 
         log("Files to be compiled:", Project.MSG_VERBOSE);
 
-        final String eol = System.getProperty("line.separator");
-        log(
-            compileList.stream().map(s -> "    " + s).collect(Collectors.joining(eol))
-            , Project.MSG_VERBOSE);
+        log(compileList.stream().map(s -> String.format("    %s%n", s))
+                        .collect(Collectors.joining("")), Project.MSG_VERBOSE);
 
         // create a single array of arguments for the compiler
         String[] compileArgs =
@@ -819,24 +815,24 @@ public class NetRexxC extends MatchingTask {
                 }
                 // verbose level logging for suppressed messages
                 if (suppressMethodArgumentNotUsed
-                    && l.indexOf(MSG_METHOD_ARGUMENT_NOT_USED) != -1) {
+                    && l.contains(MSG_METHOD_ARGUMENT_NOT_USED)) {
                     log(l, Project.MSG_VERBOSE);
                 } else if (suppressPrivatePropertyNotUsed
-                    && l.indexOf(MSG_PRIVATE_PROPERTY_NOT_USED) != -1) {
+                    && l.contains(MSG_PRIVATE_PROPERTY_NOT_USED)) {
                     log(l, Project.MSG_VERBOSE);
                 } else if (suppressVariableNotUsed
-                    && l.indexOf(MSG_VARIABLE_NOT_USED) != -1) {
+                    && l.contains(MSG_VARIABLE_NOT_USED)) {
                     log(l, Project.MSG_VERBOSE);
                 } else if (suppressExceptionNotSignalled
-                    && l.indexOf(MSG_EXCEPTION_NOT_SIGNALLED) != -1) {
+                    && l.contains(MSG_EXCEPTION_NOT_SIGNALLED)) {
                     log(l, Project.MSG_VERBOSE);
                 } else if (suppressDeprecation
-                    && l.indexOf(MSG_DEPRECATION) != -1) {
+                    && l.contains(MSG_DEPRECATION)) {
                     log(l, Project.MSG_VERBOSE);
-                } else if (l.indexOf("Error:") != -1) {
+                } else if (l.contains("Error:")) {
                     // error level logging for compiler errors
                     log(l, Project.MSG_ERR);
-                } else if (l.indexOf("Warning:") != -1) {
+                } else if (l.contains("Warning:")) {
                     // warning for all warning messages
                     log(l, Project.MSG_WARN);
                 } else {
@@ -924,7 +920,7 @@ public class NetRexxC extends MatchingTask {
      */
     private void addExistingToClasspath(StringBuilder target, String source) {
         StringTokenizer tok = new StringTokenizer(source,
-            System.getProperty("path.separator"), false);
+            File.pathSeparator, false);
 
         while (tok.hasMoreTokens()) {
             File f = getProject().resolveFile(tok.nextToken());

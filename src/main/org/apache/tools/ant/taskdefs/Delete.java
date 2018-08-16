@@ -254,7 +254,7 @@ public class Delete extends MatchingTask {
 
     /**
      * add a name entry on the include files list
-     * @return a NameEntry object to be configured
+     * @return a PatternFileNameEntry object to be configured
      */
     @Override
     public PatternSet.NameEntry createIncludesFile() {
@@ -274,7 +274,7 @@ public class Delete extends MatchingTask {
 
     /**
      * add a name entry on the include files list
-     * @return a NameEntry object to be configured
+     * @return a PatternFileNameEntry object to be configured
      */
     @Override
     public PatternSet.NameEntry createExcludesFile() {
@@ -662,13 +662,11 @@ public class Delete extends MatchingTask {
             filesets.add(implicit);
         }
 
-        final int size = filesets.size();
-        for (int i = 0; i < size; i++) {
-            FileSet fs = filesets.get(i);
+        for (FileSet fs : filesets) {
             if (fs.getProject() == null) {
                 log("Deleting fileset with no project specified; assuming executing project",
                     Project.MSG_VERBOSE);
-                fs = fs.clone();
+                fs = (FileSet) fs.clone();
                 fs.setProject(getProject());
             }
             final File fsDir = fs.getDir();
@@ -713,8 +711,8 @@ public class Delete extends MatchingTask {
                         String[] links = new String[n.length];
                         System.arraycopy(n, 0, links, 0, n.length);
                         Arrays.sort(links, Comparator.reverseOrder());
-                        for (int l = 0; l < links.length; l++) {
-                            final Path filePath = Paths.get(links[l]);
+                        for (String link : links) {
+                            final Path filePath = Paths.get(link);
                             if (!Files.isSymbolicLink(filePath)) {
                                 // it's not a symbolic link, so move on
                                 continue;
@@ -749,7 +747,7 @@ public class Delete extends MatchingTask {
                     if (!f.exists()) {
                         continue;
                     }
-                    if (!(f.isDirectory()) || f.list().length == 0) {
+                    if (!f.isDirectory() || f.list().length == 0) {
                         log("Deleting " + f, verbosity);
                         if (!delete(f) && failonerror) {
                             handle("Unable to delete "
@@ -814,8 +812,7 @@ public class Delete extends MatchingTask {
         if (list == null) {
             list = new String[0];
         }
-        for (int i = 0; i < list.length; i++) {
-            String s = list[i];
+        for (String s : list) {
             File f = new File(d, s);
             if (f.isDirectory()) {
                 removeDir(f);
@@ -843,8 +840,8 @@ public class Delete extends MatchingTask {
         if (files.length > 0) {
             log("Deleting " + files.length + " files from "
                 + d.getAbsolutePath(), quiet ? Project.MSG_VERBOSE : verbosity);
-            for (int j = 0; j < files.length; j++) {
-                File f = new File(d, files[j]);
+            for (String filename : files) {
+                File f = new File(d, filename);
                 log("Deleting " + f.getAbsolutePath(),
                         quiet ? Project.MSG_VERBOSE : verbosity);
                 if (!delete(f)) {

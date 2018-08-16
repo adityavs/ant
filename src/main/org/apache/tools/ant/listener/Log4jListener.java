@@ -39,13 +39,14 @@ public class Log4jListener implements BuildListener {
      */
     public static final String LOG_ANT = "org.apache.tools.ant";
 
-     /**
+    /**
      * Construct the listener
-      */
-     public Log4jListener() {
+     */
+    public Log4jListener() {
         // trigger the log4j initialization (if at all it's not yet initialized)
-         final Logger log = Logger.getLogger(LOG_ANT);
-     }
+        @SuppressWarnings("unused")
+        final Logger log = Logger.getLogger(LOG_ANT);
+    }
 
     /**
      * @see BuildListener#buildStarted

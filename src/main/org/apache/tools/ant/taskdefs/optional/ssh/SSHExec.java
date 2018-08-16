@@ -218,7 +218,7 @@ public class SSHExec extends SSHBase {
      *      will be stored.
      * @since Apache Ant 1.9.4
      */
-    public void setErrorproperty (final String property) {
+    public void setErrorproperty(final String property) {
         errorProperty = property;
     }
 
@@ -395,21 +395,18 @@ public class SSHExec extends SSHBase {
             channel.connect();
             // wait for it to finish
             thread =
-                new Thread() {
-                    @Override
-                    public void run() {
+                    new Thread(() -> {
                         while (!channel.isClosed()) {
                             if (thread == null) {
                                 return;
                             }
                             try {
-                                sleep(RETRY_INTERVAL);
+                                Thread.sleep(RETRY_INTERVAL);
                             } catch (final Exception e) {
                                 // ignored
                             }
                         }
-                    }
-                };
+                    });
 
             thread.start();
             thread.join(maxwait);
@@ -452,7 +449,7 @@ public class SSHExec extends SSHBase {
         } catch (final BuildException e) {
             throw e;
         } catch (final JSchException e) {
-            if (e.getMessage().indexOf("session is down") >= 0) {
+            if (e.getMessage().contains("session is down")) {
                 if (getFailonerror()) {
                     throw new BuildException(TIMEOUT_MESSAGE, e);
                 }

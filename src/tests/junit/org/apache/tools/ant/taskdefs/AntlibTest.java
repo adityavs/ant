@@ -21,12 +21,12 @@ package org.apache.tools.ant.taskdefs;
 import org.apache.tools.ant.BuildFileRule;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assume.assumeTrue;
 
 /**
  */
@@ -58,7 +58,7 @@ public class AntlibTest {
     /**
      * Confirms that all matching resources will be used, so that you
      * can collect several antlibs in one Definer call.
-     * @see "http://issues.apache.org/bugzilla/show_bug.cgi?id=24024"
+     * @see <a href="http://issues.apache.org/bugzilla/show_bug.cgi?id=24024">bug 24024</a>
      */
     @Test
     public void testAntlibResource() {
@@ -74,19 +74,19 @@ public class AntlibTest {
 
     @Test
     public void testAntlib_uri() {
-        Assume.assumeTrue("Test requires shared JVM", isSharedJVM());
+        assumeTrue("Test requires shared JVM", isSharedJVM());
         buildRule.executeTarget("antlib_uri");
     }
 
     @Test
     public void testAntlib_uri_auto() {
-        Assume.assumeTrue("Test requires shared JVM", isSharedJVM());
+        assumeTrue("Test requires shared JVM", isSharedJVM());
         buildRule.executeTarget("antlib_uri_auto");
     }
 
     @Test
     public void testAntlib_uri_auto2() {
-        Assume.assumeTrue("Test requires shared JVM", isSharedJVM());
+        assumeTrue("Test requires shared JVM", isSharedJVM());
         buildRule.executeTarget("antlib_uri_auto2");
     }
 

@@ -26,12 +26,18 @@ import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.taskdefs.condition.Os;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
+import static org.hamcrest.Matchers.endsWith;
+import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 
 /**
@@ -40,7 +46,11 @@ import static org.junit.Assume.assumeTrue;
  */
 public class FileUtilsTest {
 
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
     private static final FileUtils FILE_UTILS = FileUtils.getFileUtils();
+    private static final String ROOT = System.getProperty("root");
     private File removeThis;
     private String root;
 
@@ -52,10 +62,8 @@ public class FileUtilsTest {
 
     @After
     public void tearDown() {
-        if (removeThis != null && removeThis.exists()) {
-            if (!removeThis.delete()) {
-                removeThis.deleteOnExit();
-            }
+        if (removeThis != null && removeThis.exists() && !removeThis.delete()) {
+            removeThis.deleteOnExit();
         }
     }
 
@@ -75,9 +83,10 @@ public class FileUtilsTest {
         FileOutputStream fos = new FileOutputStream(removeThis);
         fos.write(new byte[0]);
         fos.close();
-        assumeTrue("Could not change file modified time", removeThis.setLastModified(removeThis.lastModified() - 2000));
+        assumeTrue("Could not change file modified time",
+                removeThis.setLastModified(removeThis.lastModified() - 2000));
         long modTime = removeThis.lastModified();
-        assertTrue(modTime != 0);
+        assertNotEquals(0, modTime);
 
 
         FILE_UTILS.setFileLastModified(removeThis, -1);
@@ -97,86 +106,94 @@ public class FileUtilsTest {
          *
          * Just assert the time has changed.
          */
-        assertTrue(thirdModTime != secondModTime);
+        assertNotEquals(thirdModTime, secondModTime);
     }
 
     @Test
-    public void testResolveFile() {
-        if (!(Os.isFamily("dos") || Os.isFamily("netware"))) {
-            /*
-             * Start with simple absolute file names.
-             */
-            assertEquals(File.separator,
-                         FILE_UTILS.resolveFile(null, "/").getPath());
-            assertEquals(File.separator,
-                         FILE_UTILS.resolveFile(null, "\\").getPath());
-        } else {
-            assertEqualsIgnoreDriveCase(localize(File.separator),
+    public void testResolveFilePosix() {
+        assumeTrue("DOS or NetWare", !Os.isFamily("dos") && !Os.isFamily("netware"));
+        /*
+         * Start with simple absolute file names.
+         */
+        assertEquals(File.separator, FILE_UTILS.resolveFile(null, "/").getPath());
+        assertEquals(File.separator, FILE_UTILS.resolveFile(null, "\\").getPath());
+    }
+
+    @Test
+    public void testResolveFileDosOrNetware() {
+        assumeTrue("Not DOS or Netware", Os.isFamily("dos") || Os.isFamily("netware"));
+        assertEqualsIgnoreDriveCase(localize(File.separator),
                 FILE_UTILS.resolveFile(null, "/").getPath());
-            assertEqualsIgnoreDriveCase(localize(File.separator),
+        assertEqualsIgnoreDriveCase(localize(File.separator),
                 FILE_UTILS.resolveFile(null, "\\").getPath());
-            /*
-             * throw in drive letters
-             */
-            String driveSpec = "C:";
-            assertEquals(driveSpec + "\\",
-                         FILE_UTILS.resolveFile(null, driveSpec + "/").getPath());
-            assertEquals(driveSpec + "\\",
-                         FILE_UTILS.resolveFile(null, driveSpec + "\\").getPath());
-            String driveSpecLower = "c:";
-            assertEquals(driveSpecLower + "\\",
-                         FILE_UTILS.resolveFile(null, driveSpecLower + "/").getPath());
-            assertEquals(driveSpecLower + "\\",
-                         FILE_UTILS.resolveFile(null, driveSpecLower + "\\").getPath());
-            /*
-             * promised to eliminate consecutive slashes after drive letter.
-             */
-            assertEquals(driveSpec + "\\",
-                         FILE_UTILS.resolveFile(null, driveSpec + "/////").getPath());
-            assertEquals(driveSpec + "\\",
-                         FILE_UTILS.resolveFile(null, driveSpec + "\\\\\\\\\\\\").getPath());
-        }
+        /*
+         * throw in drive letters
+         */
+        String driveSpec = "C:";
+        assertEquals(driveSpec + "\\",
+                FILE_UTILS.resolveFile(null, driveSpec + "/").getPath());
+        assertEquals(driveSpec + "\\",
+                FILE_UTILS.resolveFile(null, driveSpec + "\\").getPath());
+        String driveSpecLower = "c:";
+        assertEquals(driveSpecLower + "\\",
+                FILE_UTILS.resolveFile(null, driveSpecLower + "/").getPath());
+        assertEquals(driveSpecLower + "\\",
+                FILE_UTILS.resolveFile(null, driveSpecLower + "\\").getPath());
+        /*
+         * promised to eliminate consecutive slashes after drive letter.
+         */
+        assertEquals(driveSpec + "\\",
+                FILE_UTILS.resolveFile(null, driveSpec + "/////").getPath());
+        assertEquals(driveSpec + "\\",
+                FILE_UTILS.resolveFile(null, driveSpec + "\\\\\\\\\\\\").getPath());
+
         if (Os.isFamily("netware")) {
             /*
              * throw in NetWare volume names
              */
-            String driveSpec = "SYS:";
+            driveSpec = "SYS:";
             assertEquals(driveSpec,
-                         FILE_UTILS.resolveFile(null, driveSpec + "/").getPath());
+                    FILE_UTILS.resolveFile(null, driveSpec + "/").getPath());
             assertEquals(driveSpec,
-                         FILE_UTILS.resolveFile(null, driveSpec + "\\").getPath());
-            String driveSpecLower = "sys:";
+                    FILE_UTILS.resolveFile(null, driveSpec + "\\").getPath());
+            driveSpecLower = "sys:";
             assertEquals(driveSpec,
-                         FILE_UTILS.resolveFile(null, driveSpecLower + "/").getPath());
+                    FILE_UTILS.resolveFile(null, driveSpecLower + "/").getPath());
             assertEquals(driveSpec,
-                         FILE_UTILS.resolveFile(null, driveSpecLower + "\\").getPath());
+                    FILE_UTILS.resolveFile(null, driveSpecLower + "\\").getPath());
             /*
              * promised to eliminate consecutive slashes after drive letter.
              */
             assertEquals(driveSpec,
-                         FILE_UTILS.resolveFile(null, driveSpec + "/////").getPath());
+                    FILE_UTILS.resolveFile(null, driveSpec + "/////").getPath());
             assertEquals(driveSpec,
-                         FILE_UTILS.resolveFile(null, driveSpec + "\\\\\\\\\\\\").getPath());
-        } else if (!(Os.isFamily("dos"))) {
-            /*
-             * drive letters must be considered just normal filenames.
-             */
-            String driveSpec = "C:";
-            String udir = System.getProperty("user.dir");
-            assertEquals(udir + File.separator + driveSpec,
-                         FILE_UTILS.resolveFile(null, driveSpec + "/").getPath());
-            assertEquals(udir + File.separator + driveSpec,
-                         FILE_UTILS.resolveFile(null, driveSpec + "\\").getPath());
-            String driveSpecLower = "c:";
-            assertEquals(udir + File.separator + driveSpecLower,
-                         FILE_UTILS.resolveFile(null, driveSpecLower + "/").getPath());
-            assertEquals(udir + File.separator + driveSpecLower,
-                         FILE_UTILS.resolveFile(null, driveSpecLower + "\\").getPath());
+                    FILE_UTILS.resolveFile(null, driveSpec + "\\\\\\\\\\\\").getPath());
         }
-
+    }
+    @Test
+    public void testResolveFileNotDos() {
+        assumeFalse("is DOS", Os.isFamily("dos"));
         /*
-         * Now test some relative file name magic.
+         * drive letters must be considered just normal filenames.
          */
+        String driveSpec = "C:";
+        String udir = System.getProperty("user.dir");
+        assertEquals(udir + File.separator + driveSpec,
+                FILE_UTILS.resolveFile(null, driveSpec + "/").getPath());
+        assertEquals(udir + File.separator + driveSpec,
+                FILE_UTILS.resolveFile(null, driveSpec + "\\").getPath());
+        String driveSpecLower = "c:";
+        assertEquals(udir + File.separator + driveSpecLower,
+                FILE_UTILS.resolveFile(null, driveSpecLower + "/").getPath());
+        assertEquals(udir + File.separator + driveSpecLower,
+                FILE_UTILS.resolveFile(null, driveSpecLower + "\\").getPath());
+    }
+
+    /*
+     * Test some relative file name magic.
+     */
+    @Test
+    public void testResolveRelativeFile() {
         assertEquals(localize("/1/2/3/4"),
                      FILE_UTILS.resolveFile(new File(localize("/1/2/3")), "4").getPath());
         assertEquals(localize("/1/2/3/4"),
@@ -201,95 +218,97 @@ public class FileUtilsTest {
     }
 
     @Test
-    public void testNormalize() {
-        if (!(Os.isFamily("dos") || Os.isFamily("netware"))) {
-            /*
-             * Start with simple absolute file names.
-             */
-            assertEquals(File.separator,
-                         FILE_UTILS.normalize("/").getPath());
-            assertEquals(File.separator,
-                         FILE_UTILS.normalize("\\").getPath());
-        } else {
-            try {
-                 FILE_UTILS.normalize("/").getPath();
-                 fail("normalized \"/\" on dos or netware");
-            } catch (Exception e) {
-            }
-            try {
-                 FILE_UTILS.normalize("\\").getPath();
-                 fail("normalized \"\\\" on dos or netware");
-            } catch (Exception e) {
-            }
-        }
+    public void testNormalizePosix() {
+        assumeTrue("DOS or NetWare", !Os.isFamily("dos") && !Os.isFamily("netware"));
+        /*
+         * Start with simple absolute file names.
+         */
+        assertEquals(File.separator, FILE_UTILS.normalize("/").getPath());
+        assertEquals(File.separator, FILE_UTILS.normalize("\\").getPath());
 
+        // Expected exception caught
+        thrown.expect(BuildException.class);
+        String driveSpec = "C:";
+        assertEquals(driveSpec, FILE_UTILS.normalize(driveSpec).getPath());
+    }
+
+    @Test
+    public void testNormalizeSlashDosOrNetware() {
+        assumeTrue("Not DOS or Netware", Os.isFamily("dos") || Os.isFamily("netware"));
+        thrown.expect(BuildException.class);
+        FILE_UTILS.normalize("/").getPath();
+    }
+
+    @Test
+    public void testNormalizeBackSlashDosOrNetware() {
+        assumeTrue("Not DOS or Netware", Os.isFamily("dos") || Os.isFamily("netware"));
+        thrown.expect(BuildException.class);
+        FILE_UTILS.normalize("\\").getPath();
+    }
+
+    @Test
+    public void testNormalizeDosOrNetware() {
+        assumeTrue("Not DOS or Netware", Os.isFamily("dos") || Os.isFamily("netware"));
         if (Os.isFamily("dos")) {
             /*
              * throw in drive letters
              */
             String driveSpec = "C:";
-            try {
-                 FILE_UTILS.normalize(driveSpec).getPath();
-                 fail(driveSpec + " is not an absolute path");
-            } catch (Exception e) {
-            }
             assertEquals(driveSpec + "\\",
-                         FILE_UTILS.normalize(driveSpec + "/").getPath());
+                    FILE_UTILS.normalize(driveSpec + "/").getPath());
             assertEquals(driveSpec + "\\",
-                         FILE_UTILS.normalize(driveSpec + "\\").getPath());
+                    FILE_UTILS.normalize(driveSpec + "\\").getPath());
             String driveSpecLower = "c:";
             assertEquals(driveSpecLower + "\\",
-                         FILE_UTILS.normalize(driveSpecLower + "/").getPath());
+                    FILE_UTILS.normalize(driveSpecLower + "/").getPath());
             assertEquals(driveSpecLower + "\\",
-                         FILE_UTILS.normalize(driveSpecLower + "\\").getPath());
+                    FILE_UTILS.normalize(driveSpecLower + "\\").getPath());
             /*
              * promised to eliminate consecutive slashes after drive letter.
              */
             assertEquals(driveSpec + "\\",
-                         FILE_UTILS.normalize(driveSpec + "/////").getPath());
+                    FILE_UTILS.normalize(driveSpec + "/////").getPath());
             assertEquals(driveSpec + "\\",
-                         FILE_UTILS.normalize(driveSpec + "\\\\\\\\\\\\").getPath());
+                    FILE_UTILS.normalize(driveSpec + "\\\\\\\\\\\\").getPath());
+
+            // Expected exception caught
+            thrown.expect(BuildException.class);
+            FILE_UTILS.normalize(driveSpec).getPath();
         } else if (Os.isFamily("netware")) {
             /*
              * throw in NetWare volume names
              */
             String driveSpec = "SYS:";
             assertEquals(driveSpec,
-                         FILE_UTILS.normalize(driveSpec).getPath());
+                    FILE_UTILS.normalize(driveSpec).getPath());
             assertEquals(driveSpec,
-                         FILE_UTILS.normalize(driveSpec + "/").getPath());
+                    FILE_UTILS.normalize(driveSpec + "/").getPath());
             assertEquals(driveSpec,
-                         FILE_UTILS.normalize(driveSpec + "\\").getPath());
+                    FILE_UTILS.normalize(driveSpec + "\\").getPath());
             String driveSpecLower = "sys:";
             assertEquals(driveSpec,
-                         FILE_UTILS.normalize(driveSpecLower).getPath());
+                    FILE_UTILS.normalize(driveSpecLower).getPath());
             assertEquals(driveSpec,
-                         FILE_UTILS.normalize(driveSpecLower + "/").getPath());
+                    FILE_UTILS.normalize(driveSpecLower + "/").getPath());
             assertEquals(driveSpec,
-                         FILE_UTILS.normalize(driveSpecLower + "\\").getPath());
+                    FILE_UTILS.normalize(driveSpecLower + "\\").getPath());
             assertEquals(driveSpec + "\\junk",
-                         FILE_UTILS.normalize(driveSpecLower + "\\junk").getPath());
+                    FILE_UTILS.normalize(driveSpecLower + "\\junk").getPath());
             /*
              * promised to eliminate consecutive slashes after drive letter.
              */
             assertEquals(driveSpec,
-                         FILE_UTILS.normalize(driveSpec + "/////").getPath());
+                    FILE_UTILS.normalize(driveSpec + "/////").getPath());
             assertEquals(driveSpec,
-                         FILE_UTILS.normalize(driveSpec + "\\\\\\\\\\\\").getPath());
-        } else {
-            try {
-                String driveSpec = "C:";
-                assertEquals(driveSpec,
-                             FILE_UTILS.normalize(driveSpec).getPath());
-                fail("Expected failure, C: isn't an absolute path on other os's");
-            } catch (BuildException e) {
-                // Passed test
-            }
+                    FILE_UTILS.normalize(driveSpec + "\\\\\\\\\\\\").getPath());
         }
+    }
 
-        /*
-         * Now test some relative file name magic.
-         */
+    /**
+     * Test some relative file name magic.
+     */
+    @Test
+    public void testNormalizeRelativeFile() {
         assertEquals(localize("/1/2/3/4"),
                      FILE_UTILS.normalize(localize("/1/2/3/4")).getPath());
         assertEquals(localize("/1/2/3/4"),
@@ -307,16 +326,13 @@ public class FileUtilsTest {
         assertEquals(localize("/1/2/3/4"),
                      FILE_UTILS.normalize(localize("/1/2/3/..\\../5/..\\./2/./3/6\\../4")).getPath());
 
-        try {
-            FILE_UTILS.normalize("foo");
-            fail("foo is not an absolute path");
-        } catch (BuildException e) {
-            // Expected exception caught
-        }
-
         assertEquals("will not go outside FS root (but will not throw an exception either)",
                 new File(localize("/1/../../b")),
                 FILE_UTILS.normalize(localize("/1/../../b")));
+
+        // Expected exception caught
+        thrown.expect(BuildException.class);
+        FILE_UTILS.normalize("foo");
     }
 
     /**
@@ -324,15 +340,12 @@ public class FileUtilsTest {
      */
     @Test
     public void testNullArgs() {
-        try {
-            FILE_UTILS.normalize(null);
-            fail("successfully normalized a null-file");
-        } catch (NullPointerException npe) {
-            // Expected exception caught
-        }
-
         File f = FILE_UTILS.resolveFile(null, "a");
         assertEquals(f, new File("a").getAbsoluteFile());
+
+        // Expected exception caught
+        thrown.expect(NullPointerException.class);
+        FILE_UTILS.normalize(null);
     }
 
 
@@ -345,11 +358,11 @@ public class FileUtilsTest {
         File tmp1 = FILE_UTILS.createTempFile("pre", ".suf", null, false, true);
         String tmploc = System.getProperty("java.io.tmpdir");
         String name = tmp1.getName();
-        assertTrue("starts with pre", name.startsWith("pre"));
-        assertTrue("ends with .suf", name.endsWith(".suf"));
+        assertThat("starts with pre", name, startsWith("pre"));
+        assertThat("ends with .suf", name, endsWith(".suf"));
         assertTrue("File was created", tmp1.exists());
-        assertEquals((new File(tmploc, tmp1.getName())).getAbsolutePath(), tmp1
-                .getAbsolutePath());
+        assertEquals((new File(tmploc, tmp1.getName())).getAbsolutePath(),
+                tmp1.getAbsolutePath());
         tmp1.delete();
 
         File dir2 = new File(tmploc + "/ant-test");
@@ -358,33 +371,32 @@ public class FileUtilsTest {
 
         File tmp2 = FILE_UTILS.createTempFile("pre", ".suf", dir2, true, true);
         String name2 = tmp2.getName();
-        assertTrue("starts with pre", name2.startsWith("pre"));
-        assertTrue("ends with .suf", name2.endsWith(".suf"));
+        assertThat("starts with pre", name2, startsWith("pre"));
+        assertThat("ends with .suf", name2, endsWith(".suf"));
         assertTrue("File was created", tmp2.exists());
-        assertEquals((new File(dir2, tmp2.getName())).getAbsolutePath(), tmp2
-                .getAbsolutePath());
+        assertEquals((new File(dir2, tmp2.getName())).getAbsolutePath(),
+                tmp2.getAbsolutePath());
         tmp2.delete();
         dir2.delete();
 
         File parent = new File((new File("/tmp")).getAbsolutePath());
         tmp1 = FILE_UTILS.createTempFile("pre", ".suf", parent, false);
-        assertTrue("new file", !tmp1.exists());
+        assertFalse("new file", tmp1.exists());
 
         name = tmp1.getName();
-        assertTrue("starts with pre", name.startsWith("pre"));
-        assertTrue("ends with .suf", name.endsWith(".suf"));
+        assertThat("starts with pre", name, startsWith("pre"));
+        assertThat("ends with .suf", name, endsWith(".suf"));
         assertEquals("is inside parent dir", parent.getAbsolutePath(), tmp1
                 .getParent());
 
         tmp2 = FILE_UTILS.createTempFile("pre", ".suf", parent, false);
-        assertTrue("files are different", !tmp1.getAbsolutePath().equals(
-                tmp2.getAbsolutePath()));
+        assertNotEquals("files are different", tmp1.getAbsolutePath(), tmp2.getAbsolutePath());
 
         // null parent dir
         File tmp3 = FILE_UTILS.createTempFile("pre", ".suf", null, false);
         tmploc = System.getProperty("java.io.tmpdir");
-        assertEquals((new File(tmploc, tmp3.getName())).getAbsolutePath(), tmp3
-                .getAbsolutePath());
+        assertEquals((new File(tmploc, tmp3.getName())).getAbsolutePath(),
+                tmp3.getAbsolutePath());
     }
 
     /**
@@ -392,18 +404,21 @@ public class FileUtilsTest {
      */
     @Test
     public void testContentEquals() throws IOException {
-        assertTrue("Non existing files", FILE_UTILS.contentEquals(new File(System.getProperty("root"), "foo"),
-                                                          new File(System.getProperty("root"), "bar")));
-        assertTrue("One exists, the other one doesn\'t",
-                   !FILE_UTILS.contentEquals(new File(System.getProperty("root"), "foo"), new File(System.getProperty("root"), "build.xml")));
-        assertTrue("Don\'t compare directories",
-                   !FILE_UTILS.contentEquals(new File(System.getProperty("root"), "src"), new File(System.getProperty("root"), "src")));
+        assertTrue("Non existing files",
+                FILE_UTILS.contentEquals(new File(ROOT, "foo"),
+                        new File(ROOT, "bar")));
+        assertFalse("One exists, the other one doesn\'t",
+                FILE_UTILS.contentEquals(new File(ROOT, "foo"),
+                        new File(ROOT, "build.xml")));
+        assertFalse("Don\'t compare directories",
+                FILE_UTILS.contentEquals(new File(ROOT, "src"),
+                        new File(ROOT, "src")));
         assertTrue("File equals itself",
-                   FILE_UTILS.contentEquals(new File(System.getProperty("root"), "build.xml"),
-                                    new File(System.getProperty("root"), "build.xml")));
-        assertTrue("Files are different",
-                   !FILE_UTILS.contentEquals(new File(System.getProperty("root"), "build.xml"),
-                                     new File(System.getProperty("root"), "docs.xml")));
+                FILE_UTILS.contentEquals(new File(ROOT, "build.xml"),
+                        new File(ROOT, "build.xml")));
+        assertFalse("Files are different",
+                FILE_UTILS.contentEquals(new File(ROOT, "build.xml"),
+                        new File(ROOT, "docs.xml")));
     }
 
     /**
@@ -412,7 +427,7 @@ public class FileUtilsTest {
     @Test
     public void testCreateNewFile() throws IOException {
         removeThis = new File("dummy");
-        assertTrue(!removeThis.exists());
+        assertFalse(removeThis.exists());
         FILE_UTILS.createNewFile(removeThis);
         assertTrue(removeThis.exists());
     }
@@ -438,7 +453,7 @@ public class FileUtilsTest {
                                                  new File("c:\\foo\\bar")));
         assertEquals("bar", FILE_UTILS.removeLeadingPath(new File("c:\\foo\\"),
                                                  new File("c:\\foo\\bar")));
-        if (!(Os.isFamily("dos") || Os.isFamily("netware"))) {
+        if (!Os.isFamily("dos") && !Os.isFamily("netware")) {
             assertEquals(FILE_UTILS.normalize("/bar").getAbsolutePath(),
                          FILE_UTILS.removeLeadingPath(new File("/foo"), new File("/bar")));
             assertEquals(FILE_UTILS.normalize("/foobar").getAbsolutePath(),
@@ -484,14 +499,14 @@ public class FileUtilsTest {
         }
         if (File.pathSeparatorChar == '/') {
             assertEquals("file:/foo", removeExtraneousAuthority(FILE_UTILS.toURI("/foo")));
-            assertTrue("file: URIs must name absolute paths", FILE_UTILS.toURI("./foo").startsWith("file:/"));
-            assertTrue(FILE_UTILS.toURI("./foo").endsWith("/foo"));
+            assertThat("file: URIs must name absolute paths", FILE_UTILS.toURI("./foo"), startsWith("file:/"));
+            assertThat(FILE_UTILS.toURI("./foo"), endsWith("/foo"));
             assertEquals("file:/" + dosRoot + "foo%20bar", removeExtraneousAuthority(FILE_UTILS.toURI("/foo bar")));
             assertEquals("file:/" + dosRoot + "foo%23bar", removeExtraneousAuthority(FILE_UTILS.toURI("/foo#bar")));
         } else if (File.pathSeparatorChar == '\\') {
             assertEquals("file:/" + dosRoot + "foo", removeExtraneousAuthority(FILE_UTILS.toURI("\\foo")));
-            assertTrue("file: URIs must name absolute paths", FILE_UTILS.toURI(".\\foo").startsWith("file:/"));
-            assertTrue(FILE_UTILS.toURI(".\\foo").endsWith("/foo"));
+            assertThat("file: URIs must name absolute paths", FILE_UTILS.toURI(".\\foo"), startsWith("file:/"));
+            assertThat(FILE_UTILS.toURI(".\\foo"), endsWith("/foo"));
             assertEquals("file:/" + dosRoot + "foo%20bar", removeExtraneousAuthority(FILE_UTILS.toURI("\\foo bar")));
             assertEquals("file:/" + dosRoot + "foo%23bar", removeExtraneousAuthority(FILE_UTILS.toURI("\\foo#bar")));
         }
@@ -564,8 +579,8 @@ public class FileUtilsTest {
         assertFalse("newer source files are no up to date",
                 FILE_UTILS.isUpToDate(secondTime, firstTime));
 
-        assertTrue("-1 dest timestamp implies nonexistence",
-                !FILE_UTILS.isUpToDate(firstTime,-1L));
+        assertFalse("-1 dest timestamp implies nonexistence",
+                FILE_UTILS.isUpToDate(firstTime, -1L));
     }
 
     @Test
@@ -586,9 +601,83 @@ public class FileUtilsTest {
         }
 
     }
+
+    @Test
     public void testGetDefaultEncoding() {
         // This just tests that the function does not blow up
         FILE_UTILS.getDefaultEncoding();
+    }
+
+    /**
+     * @see "https://bz.apache.org/bugzilla/show_bug.cgi?id=62502"
+     */
+    @Test
+    public void isLeadingPathCannotBeFooledByTooManyDoubleDots() {
+        assertFalse(FILE_UTILS.isLeadingPath(new File("/foo"), new File("/foo/../../bar")));
+        assertFalse(FILE_UTILS.isLeadingPath(new File("c:\\foo"), new File("c:\\foo\\..\\..\\bar")));
+        assertFalse(FILE_UTILS.isLeadingPath(new File("/foo"), new File("/foo/../..")));
+    }
+
+    /**
+     * @see "https://bz.apache.org/bugzilla/show_bug.cgi?id=62502"
+     */
+    @Test
+    public void isLeadingPathCanonicalVersionCannotBeFooledByTooManyDoubleDots() throws IOException {
+        assertFalse(FILE_UTILS.isLeadingPath(new File("/foo"), new File("/foo/../../bar"), true));
+        assertFalse(FILE_UTILS.isLeadingPath(new File("c:\\foo"), new File("c:\\foo\\..\\..\\bar"), true));
+        assertFalse(FILE_UTILS.isLeadingPath(new File("/foo"), new File("/foo/../.."), true));
+    }
+
+    @Test
+    public void isLeadingPathCanonicalVersionWorksAsExpectedOnUnix() throws IOException {
+        assumeFalse("Test doesn't run on DOS", Os.isFamily("dos"));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("/foo"), new File("/foo/bar"), true));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("/foo"), new File("/foo/baz/../bar"), true));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("/foo"), new File("/foo/../foo/bar"), true));
+        assertFalse(FILE_UTILS.isLeadingPath(new File("/foo"), new File("/foobar"), true));
+        assertFalse(FILE_UTILS.isLeadingPath(new File("/foo"), new File("/bar"), true));
+    }
+
+    @Test
+    public void isLeadingPathAndTrailingSlashesOnUnix() throws IOException {
+        assumeFalse("Test doesn't run on DOS", Os.isFamily("dos"));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("/foo/"), new File("/foo/bar"), true));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("/foo/"), new File("/foo/bar/"), true));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("/foo/"), new File("/foo/"), true));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("/foo/"), new File("/foo"), true));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("/foo"), new File("/foo/"), true));
+
+        assertTrue(FILE_UTILS.isLeadingPath(new File("/foo/"), new File("/foo/bar"), false));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("/foo/"), new File("/foo/bar/"), false));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("/foo/"), new File("/foo/"), false));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("/foo/"), new File("/foo"), false));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("/foo"), new File("/foo/"), false));
+    }
+
+    @Test
+    public void isLeadingPathCanonicalVersionWorksAsExpectedOnDos() throws IOException {
+        assumeTrue("Test only runs on DOS", Os.isFamily("dos"));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("C:\\foo"), new File("C:\\foo\\bar"), true));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("C:\\foo"), new File("C:\\foo\\baz\\..\\bar"), true));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("C:\\foo"), new File("C:\\foo\\..\\foo\\bar"), true));
+        assertFalse(FILE_UTILS.isLeadingPath(new File("C:\\foo"), new File("C:\\foobar"), true));
+        assertFalse(FILE_UTILS.isLeadingPath(new File("C:\\foo"), new File("C:\\bar"), true));
+    }
+
+    @Test
+    public void isLeadingPathAndTrailingSlashesOnDos() throws IOException {
+        assumeTrue("Test only runs on DOS", Os.isFamily("dos"));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("c:\\foo\\"), new File("c:\\foo\\bar"), true));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("c:\\foo\\"), new File("c:\\foo\\bar\\"), true));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("c:\\foo\\"), new File("c:\\foo\\"), true));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("c:\\foo\\"), new File("c:\\foo"), true));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("c:\\foo"), new File("c:\\foo\\"), true));
+
+        assertTrue(FILE_UTILS.isLeadingPath(new File("c:\\foo\\"), new File("c:\\foo\\bar"), false));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("c:\\foo\\"), new File("c:\\foo\\bar\\"), false));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("c:\\foo\\"), new File("c:\\foo\\"), false));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("c:\\foo\\"), new File("c:\\foo"), false));
+        assertTrue(FILE_UTILS.isLeadingPath(new File("c:\\foo"), new File("c:\\foo\\"), false));
     }
 
     /**
@@ -606,8 +695,8 @@ public class FileUtilsTest {
      * calling this method allows tests where normalize is called to pass under cygwin
      */
     private void assertEqualsIgnoreDriveCase(String s1, String s2) {
-        if ((Os.isFamily("dos") || Os.isFamily("netware"))
-            && s1.length() > 0 && s2.length() > 0) {
+        assumeTrue("Not DOS or Netware", Os.isFamily("dos") || Os.isFamily("netware"));
+        if (!s1.isEmpty() && !s2.isEmpty()) {
             StringBuilder sb1 = new StringBuilder(s1);
             StringBuilder sb2 = new StringBuilder(s2);
             sb1.setCharAt(0, Character.toUpperCase(s1.charAt(0)));

@@ -471,7 +471,7 @@ public class JonasDeploymentTool extends GenericDeploymentTool {
         if (getConfig().namingScheme.getValue().equals(EjbJar.NamingScheme.DESCRIPTOR)) {
 
             // try to find JOnAS specific convention name
-            if (descriptorFileName.indexOf(getConfig().baseNameTerminator) == -1) {
+            if (!descriptorFileName.contains(getConfig().baseNameTerminator)) {
 
                 // baseNameTerminator not found: the descriptor use the
                 // JOnAS naming convention, ie [Foo.xml,jonas-Foo.xml] and
@@ -615,13 +615,13 @@ public class JonasDeploymentTool extends GenericDeploymentTool {
         }
 
         // javacopts
-        if (javacopts != null && !javacopts.equals("")) {
+        if (javacopts != null && !javacopts.isEmpty()) {
             genicTask.createArg().setValue("-javacopts");
             genicTask.createArg().setLine(javacopts);
         }
 
         // rmicopts
-        if (rmicopts != null && !rmicopts.equals("")) {
+        if (rmicopts != null && !rmicopts.isEmpty()) {
             genicTask.createArg().setValue("-rmicopts");
             genicTask.createArg().setLine(rmicopts);
         }

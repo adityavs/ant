@@ -17,7 +17,6 @@
  */
 package org.apache.tools.ant.taskdefs;
 
-import org.apache.tools.ant.AntAssert;
 import org.apache.tools.ant.BuildFileRule;
 import org.junit.After;
 import org.junit.Before;
@@ -26,6 +25,9 @@ import org.junit.Test;
 
 import java.io.File;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -54,18 +56,18 @@ public class AbstractCvsTaskTest {
     @Test
     public void testPackageAttribute() {
         File f = new File(buildRule.getProject().getProperty("output") + "/src/Makefile");
-        assertTrue("starting empty", !f.exists());
+        assertFalse("starting empty", f.exists());
         buildRule.executeTarget("package-attribute");
-        AntAssert.assertContains("U src/Makefile", buildRule.getLog());
+        assertThat(buildRule.getLog(), containsString("U src/Makefile"));
         assertTrue("now it is there", f.exists());
     }
 
     @Test
     public void testTagAttribute() {
         File f = new File(buildRule.getProject().getProperty("output") + "/src/Makefile");
-        assertTrue("starting empty", !f.exists());
+        assertFalse("starting empty", f.exists());
         buildRule.executeTarget("tag-attribute");
-        AntAssert.assertContains("OPENBSD_5_3", buildRule.getLog());
+        assertThat(buildRule.getLog(), containsString("OPENBSD_5_3"));
         assertTrue("now it is there", f.exists());
     }
 }

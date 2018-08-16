@@ -25,17 +25,24 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
+
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.Javac;
 import org.apache.tools.ant.types.Commandline;
 import org.junit.Test;
 
-import static org.apache.tools.ant.AntAssert.assertContains;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.types.Path;
 import org.apache.tools.ant.util.FileUtils;
-import org.junit.Assert;
+
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 public class DefaultCompilerAdapterTest {
 
@@ -263,22 +270,22 @@ public class DefaultCompilerAdapterTest {
             javac.setIncludeantruntime(false);
             javac.add(impl);
             javac.execute();
-            Assert.assertNotNull(cmd[0]);
+            assertNotNull(cmd[0]);
             final List<String> cmdLine = Arrays.asList(cmd[0].getCommandline());
             //No modulesourcepath
-            assertEquals(-1, cmdLine.indexOf("--module-source-path"));
+            assertThat(cmdLine, not(hasItem("--module-source-path")));
             //The -sourcepath has to be followed by src
             int index = cmdLine.indexOf("-sourcepath");
-            Assert.assertTrue(index != -1 && index < cmdLine.size() - 1);
+            assertTrue(index != -1 && index < cmdLine.size() - 1);
             assertEquals(src.getAbsolutePath(), cmdLine.get(index + 1));
             //The --module-path has to be followed by modules
             index = cmdLine.indexOf("--module-path");
-            Assert.assertTrue(index != -1 && index < cmdLine.size() - 1);
+            assertTrue(index != -1 && index < cmdLine.size() - 1);
             assertEquals(modules.getAbsolutePath(), cmdLine.get(index + 1));
             //J1.java & J2.java has to be in files list
-            final Set<String> expected = new TreeSet<String>();
+            final Set<String> expected = new TreeSet<>();
             Collections.addAll(expected, java1.getAbsolutePath(), java2.getAbsolutePath());
-            final Set<String> actual = new TreeSet<String>(cmdLine.subList(cmdLine.size() - 2, cmdLine.size()));
+            final Set<String> actual = new TreeSet<>(cmdLine.subList(cmdLine.size() - 2, cmdLine.size()));
             assertEquals(expected, actual);
         } finally {
             delete(workDir);
@@ -321,13 +328,13 @@ public class DefaultCompilerAdapterTest {
             javac.setIncludeantruntime(false);
             javac.add(impl);
             javac.execute();
-            Assert.assertNotNull(cmd[0]);
+            assertNotNull(cmd[0]);
             final List<String> cmdLine = Arrays.asList(cmd[0].getCommandline());
             //No sourcepath
-            assertEquals(-1, cmdLine.indexOf("-sourcepath"));
+            assertThat(cmdLine, not(hasItem("-sourcepath")));
             //The --module-source-path has to be followed by the pattern
             int index = cmdLine.indexOf("--module-source-path");
-            Assert.assertTrue(index != -1 && index < cmdLine.size() - 1);
+            assertTrue(index != -1 && index < cmdLine.size() - 1);
             String expectedModSrcPath = String.format("%s/%s",
                     workDir.getAbsolutePath(),
                     moduleSrcPathStr)
@@ -336,15 +343,15 @@ public class DefaultCompilerAdapterTest {
             assertEquals(expectedModSrcPath, cmdLine.get(index + 1));
             //The --module-path has to be followed by modules
             index = cmdLine.indexOf("--module-path");
-            Assert.assertTrue(index != -1 && index < cmdLine.size() - 1);
+            assertTrue(index != -1 && index < cmdLine.size() - 1);
             assertEquals(modules.getAbsolutePath(), cmdLine.get(index + 1));
             //J1.java, J2.java & J3.java has to be in files list
-            final Set<String> expectedFiles = new TreeSet<String>();
+            final Set<String> expectedFiles = new TreeSet<>();
             Collections.addAll(expectedFiles,
                     java1.getAbsolutePath(),
                     java2.getAbsolutePath(),
                     java3.getAbsolutePath());
-            final Set<String> actualFiles = new TreeSet<String>(cmdLine.subList(cmdLine.size() - 3, cmdLine.size()));
+            final Set<String> actualFiles = new TreeSet<>(cmdLine.subList(cmdLine.size() - 3, cmdLine.size()));
             assertEquals(expectedFiles, actualFiles);
         } finally {
             delete(workDir);
@@ -386,17 +393,14 @@ public class DefaultCompilerAdapterTest {
             javac.add(impl);
             javac.execute();
             final File[] compileList = impl.compileList;
-            Assert.assertNotNull(compileList);
+            assertNotNull(compileList);
             //J1.java, J2.java has to be in files list but not J3.java
-            final Set<String> expectedFiles = new TreeSet<String>();
+            final Set<String> expectedFiles = new TreeSet<>();
             Collections.addAll(expectedFiles,
                     java1.getAbsolutePath(),
                     java2.getAbsolutePath());
-            final Set<String> actualFiles = new TreeSet<String>();
-            for (File compileFile : compileList) {
-                actualFiles.add(compileFile.getAbsolutePath());
-            }
-            assertEquals(expectedFiles, actualFiles);
+            assertEquals(expectedFiles, Arrays.stream(compileList)
+                    .map(File::getAbsolutePath).collect(Collectors.toCollection(TreeSet::new)));
         } finally {
             delete(workDir);
         }
@@ -416,8 +420,8 @@ public class DefaultCompilerAdapterTest {
         sth.setJavac(javac);
         Commandline cmd = new Commandline();
         sth.setupModernJavacCommandlineSwitches(cmd);
-        assertContains("Support for javac --release has been added in "
-                       + "Java9 ignoring it", javac.getLog());
+        assertThat(javac.getLog(),
+                containsString("Support for javac --release has been added in Java9 ignoring it"));
         String[] args = cmd.getCommandline();
         assertEquals(7, args.length);
         assertEquals("-classpath", args[0]);
@@ -442,8 +446,8 @@ public class DefaultCompilerAdapterTest {
         sth.setJavac(javac);
         Commandline cmd = new Commandline();
         sth.setupModernJavacCommandlineSwitches(cmd);
-        assertContains("Ignoring source, target and bootclasspath as "
-                       + "release has been set", javac.getLog());
+        assertThat(javac.getLog(),
+                containsString("Ignoring source, target and bootclasspath as release has been set"));
         String[] args = cmd.getCommandline();
         assertEquals(5, args.length);
         assertEquals("-classpath", args[0]);
@@ -485,11 +489,10 @@ public class DefaultCompilerAdapterTest {
         sth.setJavac(javac);
         Commandline cmd = new Commandline();
         sth.setupModernJavacCommandlineSwitches(cmd);
-        if ("".equals(expectedLog)) {
+        if (expectedLog.isEmpty()) {
             assertEquals("", javac.getLog());
         } else {
-            String l = javac.getLog();
-            assertContains(expectedLog, l);
+            assertThat(javac.getLog(), containsString(expectedLog));
         }
         String[] args = cmd.getCommandline();
         assertEquals(expectedSource == null ? 0 : 2, args.length);
@@ -521,9 +524,7 @@ public class DefaultCompilerAdapterTest {
         if (f.isDirectory()) {
             final File[] clds = f.listFiles();
             if (clds != null) {
-                for (File cld : clds) {
-                    delete(cld);
-                }
+                Arrays.stream(clds).forEach(this::delete);
             }
         }
         f.delete();

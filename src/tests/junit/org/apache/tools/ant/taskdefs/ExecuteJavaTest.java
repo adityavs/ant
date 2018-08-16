@@ -26,6 +26,7 @@ import org.apache.tools.ant.types.Commandline;
 import org.junit.Before;
 import org.junit.Test;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -54,7 +55,7 @@ public class ExecuteJavaTest {
         ej.setClasspath(cp);
     }
 
-    private Commandline getCommandline(int timetorun) throws Exception {
+    private Commandline getCommandline(int timetorun) {
         Commandline cmd = new Commandline();
         cmd.setExecutable(TimeProcess.class.getName());
         cmd.createArgument().setValue(String.valueOf(timetorun));
@@ -62,16 +63,16 @@ public class ExecuteJavaTest {
     }
 
     @Test
-    public void testNoTimeOut() throws Exception {
+    public void testNoTimeOut() {
         Commandline cmd = getCommandline(TIME_OUT / 2);
         ej.setJavaCommand(cmd);
         ej.execute(project);
-        assertTrue("process should not have been killed", !ej.killedProcess());
+        assertFalse("process should not have been killed", ej.killedProcess());
     }
 
     // test that the watchdog ends the process
     @Test
-    public void testTimeOut() throws Exception {
+    public void testTimeOut() {
         Commandline cmd = getCommandline(TIME_OUT * 2);
         ej.setJavaCommand(cmd);
         long now = System.currentTimeMillis();
@@ -88,16 +89,16 @@ public class ExecuteJavaTest {
     }
 
     @Test
-    public void testNoTimeOutForked() throws Exception {
+    public void testNoTimeOutForked() {
         Commandline cmd = getCommandline(TIME_OUT / 2);
         ej.setJavaCommand(cmd);
         ej.fork(cp);
-        assertTrue("process should not have been killed", !ej.killedProcess());
+        assertFalse("process should not have been killed", ej.killedProcess());
     }
 
     // test that the watchdog ends the process
     @Test
-    public void testTimeOutForked() throws Exception {
+    public void testTimeOutForked() {
         Commandline cmd = getCommandline(TIME_OUT * 2);
         ej.setJavaCommand(cmd);
         long now = System.currentTimeMillis();
@@ -114,8 +115,8 @@ public class ExecuteJavaTest {
     }
 
     /**
-     * Dangerous method to obtain the classpath for the test. This is
-     * severely tighted to the build.xml properties.
+     * Dangerous method to obtain the classpath for the test.
+     * This is severely dependent on the build.xml properties.
      */
     private static String getTestClassPath() {
         String classpath = System.getProperty("build.tests");

@@ -20,7 +20,6 @@ package org.apache.tools.ant.taskdefs.optional.pvcs;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -33,6 +32,7 @@ import java.util.Vector;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
+import org.apache.tools.ant.Task;
 import org.apache.tools.ant.taskdefs.Execute;
 import org.apache.tools.ant.taskdefs.ExecuteStreamHandler;
 import org.apache.tools.ant.taskdefs.LogOutputStream;
@@ -71,7 +71,7 @@ import org.apache.tools.ant.util.FileUtils;
  * discussion.
  *
  */
-public class Pvcs extends org.apache.tools.ant.Task {
+public class Pvcs extends Task {
     // CheckStyle - magic numbers
     // checking for "X:\ 0=dquote,1=letter,2=:,3=\
     private static final int POS_1 = 1;
@@ -157,7 +157,7 @@ public class Pvcs extends org.apache.tools.ant.Task {
     }
 
     /**
-     * @exception org.apache.tools.ant.BuildException Something is stopping the build...
+     * @throws BuildException Something is stopping the build...
      */
     @Override
     public void execute() throws BuildException {
@@ -243,7 +243,7 @@ public class Pvcs extends org.apache.tools.ant.Task {
             commandLine.clearArgs();
             commandLine.setExecutable(getExecutable(GET_EXE));
 
-            if (getConfig() != null && getConfig().length() > 0) {
+            if (getConfig() != null && !getConfig().isEmpty()) {
                 commandLine.createArgument().setValue("-c" + getConfig());
             }
 
@@ -281,15 +281,7 @@ public class Pvcs extends org.apache.tools.ant.Task {
                 throw new BuildException(msg, getLocation());
             }
 
-        } catch (FileNotFoundException e) {
-            String msg = "Failed executing: " + commandLine.toString()
-                + ". Exception: " + e.getMessage();
-            throw new BuildException(msg, getLocation());
-        } catch (IOException e) {
-            String msg = "Failed executing: " + commandLine.toString()
-                + ". Exception: " + e.getMessage();
-            throw new BuildException(msg, getLocation());
-        } catch (ParseException e) {
+        } catch (ParseException | IOException e) {
             String msg = "Failed executing: " + commandLine.toString()
                 + ". Exception: " + e.getMessage();
             throw new BuildException(msg, getLocation());

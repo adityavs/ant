@@ -41,7 +41,7 @@ import org.xml.sax.XMLReader;
  * This task validates XML schema documents. It requires an XML parser
  * that handles the relevant SAX, Xerces or JAXP options.
  *
- * To resolve remote referencies, Ant may need its proxy set up, using the
+ * To resolve remote references, Ant may need its proxy set up, using the
  * setproxy task.
  *
  * Hands off most of the work to its parent, {@link XMLValidateTask}
@@ -268,8 +268,7 @@ public class SchemaValidate extends XMLValidateTask {
         if (!schemaLocations.isEmpty()) {
             String joinedValue = schemaLocations.values().stream()
                 .map(SchemaLocation::getURIandLocation)
-                .peek(
-                    tuple -> log("Adding schema " + tuple, Project.MSG_VERBOSE))
+                .peek(tuple -> log("Adding schema " + tuple, Project.MSG_VERBOSE))
                 .collect(Collectors.joining(" "));
 
             setProperty(XmlConstants.PROPERTY_SCHEMA_LOCATION, joinedValue);
@@ -428,8 +427,7 @@ public class SchemaValidate extends XMLValidateTask {
          */
         public String getURIandLocation() throws BuildException {
             validateNamespace();
-            return new StringBuilder(namespace).append(' ')
-                .append(getSchemaLocationURL()).toString();
+            return namespace + ' ' + getSchemaLocationURL();
         }
 
         /**
@@ -468,18 +466,9 @@ public class SchemaValidate extends XMLValidateTask {
 
             final SchemaLocation schemaLocation = (SchemaLocation) o;
 
-            if (file != null ? !file.equals(schemaLocation.file) : schemaLocation.file != null) {
-                return false;
-            }
-            if (namespace != null ? !namespace.equals(schemaLocation.namespace)
-                    : schemaLocation.namespace != null) {
-                return false;
-            }
-            if (url != null ? !url.equals(schemaLocation.url) : schemaLocation.url != null) {
-                return false;
-            }
-
-            return true;
+            return (file == null ? schemaLocation.file == null : file.equals(schemaLocation.file))
+                    && (namespace == null ? schemaLocation.namespace == null : namespace.equals(schemaLocation.namespace))
+                    && (url == null ? schemaLocation.url == null : url.equals(schemaLocation.url));
         }
 
         /**
@@ -490,9 +479,9 @@ public class SchemaValidate extends XMLValidateTask {
         public int hashCode() {
             int result;
             // CheckStyle:MagicNumber OFF
-            result = (namespace != null ? namespace.hashCode() : 0);
-            result = 29 * result + (file != null ? file.hashCode() : 0);
-            result = 29 * result + (url != null ? url.hashCode() : 0);
+            result = (namespace == null ? 0 : namespace.hashCode());
+            result = 29 * result + (file == null ? 0 : file.hashCode());
+            result = 29 * result + (url == null ? 0 : url.hashCode());
             // CheckStyle:MagicNumber OFF
             return result;
         }
@@ -504,12 +493,9 @@ public class SchemaValidate extends XMLValidateTask {
          */
         @Override
         public String toString() {
-            StringBuilder buffer = new StringBuilder();
-            buffer.append(namespace != null ? namespace : "(anonymous)");
-            buffer.append(' ');
-            buffer.append(url != null ? (url + " ") : "");
-            buffer.append(file != null ? file.getAbsolutePath() : "");
-            return buffer.toString();
+            return (namespace == null ? "(anonymous)" : namespace)
+                    + (url == null ? "" : " " + url)
+                    + (file == null ? "" : " " + file.getAbsolutePath());
         }
-    } //SchemaLocation
+    }
 }

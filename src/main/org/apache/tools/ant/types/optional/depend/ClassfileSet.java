@@ -130,10 +130,9 @@ public class ClassfileSet extends FileSet {
         for (FileSet additionalRootSet : rootFileSets) {
             DirectoryScanner additionalScanner
                 = additionalRootSet.getDirectoryScanner(p);
-            String[] files = additionalScanner.getIncludedFiles();
-            for (int i = 0; i < files.length; ++i) {
-                if (files[i].endsWith(".class")) {
-                    String classFilePath = StringUtils.removeSuffix(files[i], ".class");
+            for (String file : additionalScanner.getIncludedFiles()) {
+                if (file.endsWith(".class")) {
+                    String classFilePath = StringUtils.removeSuffix(file, ".class");
                     String className
                         = classFilePath.replace('/', '.').replace('\\', '.');
                     allRootClasses.addElement(className);
@@ -162,7 +161,7 @@ public class ClassfileSet extends FileSet {
      * @return a clone of the class file set.
      */
     @Override
-    public ClassfileSet clone() {
+    public Object clone() {
         return new ClassfileSet(isReference()
             ? (ClassfileSet) (getRef(getProject())) : this);
     }

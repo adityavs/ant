@@ -365,7 +365,7 @@ public class ReplaceRegExp extends Task {
                     log("Replacing pattern '" + regex.getPattern(getProject())
                         + "' with '" + subs.getExpression(getProject())
                         + "' in '" + f.getPath() + "'" + (byline ? " by line" : "")
-                        + (flags.length() > 0 ? " with flags: '" + flags + "'" : "")
+                        + (flags.isEmpty() ? "" : " with flags: '" + flags + "'")
                         + ".", Project.MSG_VERBOSE);
 
                     if (byline) {
@@ -404,7 +404,7 @@ public class ReplaceRegExp extends Task {
 
                                 linebuf = new StringBuilder();
                             } else { // any other char
-                                if ((hasCR) || (c < 0)) {
+                                if (hasCR || c < 0) {
                                     // Mac-style linebreak or EOF (or both)
                                     changes |= replaceAndWrite(linebuf.toString(),
                                                                w, options);

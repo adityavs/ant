@@ -53,7 +53,7 @@ public class AntXMLContext {
      * defined. Project maintains a Hashtable, which is not ordered.
      * This will allow description to know the original order.
      */
-    private Vector<Target> targetVector = new Vector<Target>();
+    private Vector<Target> targetVector = new Vector<>();
 
     /**
      * Parent directory of the build file. Used for resolving entities
@@ -100,7 +100,7 @@ public class AntXMLContext {
     private boolean ignoreProjectTag = false;
 
     /** Keeps track of prefix -> uri mapping during parsing */
-    private Map<String, List<String>> prefixMapping = new HashMap<String, List<String>>();
+    private Map<String, List<String>> prefixMapping = new HashMap<>();
 
 
     /** Keeps track of targets in files */
@@ -217,7 +217,7 @@ public class AntXMLContext {
         if (wStack.size() < 1) {
             return null;
         }
-        return (RuntimeConfigurable) wStack.elementAt(wStack.size() - 1);
+        return wStack.elementAt(wStack.size() - 1);
     }
 
     /**
@@ -229,7 +229,7 @@ public class AntXMLContext {
         if (wStack.size() < 2) {
             return null;
         }
-        return (RuntimeConfigurable) wStack.elementAt(wStack.size() - 2);
+        return wStack.elementAt(wStack.size() - 2);
     }
 
     /**
@@ -362,11 +362,7 @@ public class AntXMLContext {
      * @param uri    a namespace uri
      */
     public void startPrefixMapping(String prefix, String uri) {
-        List<String> list = prefixMapping.get(prefix);
-        if (list == null) {
-            list = new ArrayList<String>();
-            prefixMapping.put(prefix, list);
-        }
+        List<String> list = prefixMapping.computeIfAbsent(prefix, k -> new ArrayList<>());
         list.add(uri);
     }
 
@@ -377,7 +373,7 @@ public class AntXMLContext {
      */
     public void endPrefixMapping(String prefix) {
         List<String> list = prefixMapping.get(prefix);
-        if (list == null || list.size() == 0) {
+        if (list == null || list.isEmpty()) {
             return; // Should not happen
         }
         list.remove(list.size() - 1);
@@ -391,10 +387,10 @@ public class AntXMLContext {
      */
     public String getPrefixMapping(String prefix) {
         List<String> list = prefixMapping.get(prefix);
-        if (list == null || list.size() == 0) {
+        if (list == null || list.isEmpty()) {
             return null;
         }
-        return (String) list.get(list.size() - 1);
+        return list.get(list.size() - 1);
     }
 
     /**

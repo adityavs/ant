@@ -826,7 +826,7 @@ public class Javac extends MatchingTask {
      * @param include if true, includes Ant's own classpath in the classpath
      */
     public void setIncludeantruntime(final boolean include) {
-        includeAntRuntime = Boolean.valueOf(include);
+        includeAntRuntime = include;
     }
 
     /**
@@ -834,7 +834,7 @@ public class Javac extends MatchingTask {
      * @return whether or not the ant classpath is to be included in the classpath
      */
     public boolean getIncludeantruntime() {
-        return includeAntRuntime != null ? includeAntRuntime.booleanValue() : true;
+        return includeAntRuntime == null || includeAntRuntime;
     }
 
     /**
@@ -1156,9 +1156,8 @@ public class Javac extends MatchingTask {
      */
     protected void scanDir(final File srcDir, final File destDir, final String[] files) {
         final GlobPatternMapper m = new GlobPatternMapper();
-        final String[] extensions = findSupportedFileExtensions();
 
-        for (String extension : extensions) {
+        for (String extension : findSupportedFileExtensions()) {
             m.setFrom(extension);
             m.setTo("*.class");
             final SourceFileScanner sfs = new SourceFileScanner(this);
@@ -1178,9 +1177,8 @@ public class Javac extends MatchingTask {
     }
 
     private void collectFileListFromSourcePath() {
-        final String[] list = src.list();
-        for (int i = 0; i < list.length; i++) {
-            final File srcDir = getProject().resolveFile(list[i]);
+        for (String filename : src.list()) {
+            final File srcDir = getProject().resolveFile(filename);
             if (!srcDir.exists()) {
                 throw new BuildException("srcdir \""
                                          + srcDir.getPath()
@@ -1188,9 +1186,8 @@ public class Javac extends MatchingTask {
             }
 
             final DirectoryScanner ds = this.getDirectoryScanner(srcDir);
-            final String[] files = ds.getIncludedFiles();
 
-            scanDir(srcDir, destDir != null ? destDir : srcDir, files);
+            scanDir(srcDir, destDir != null ? destDir : srcDir, ds.getIncludedFiles());
         }
     }
 
@@ -1453,15 +1450,15 @@ public class Javac extends MatchingTask {
             if (!"package-info.java".equals(f.getName())) {
                 continue;
             }
-            final String path = FILE_UTILS.removeLeadingPath(srcDir, f).
-                    replace(File.separatorChar, '/');
+            final String path = FILE_UTILS.removeLeadingPath(srcDir, f)
+                    .replace(File.separatorChar, '/');
             final String suffix = "/package-info.java";
             if (!path.endsWith(suffix)) {
                 log("anomalous package-info.java path: " + path, Project.MSG_WARN);
                 continue;
             }
             final String pkg = path.substring(0, path.length() - suffix.length());
-            packageInfos.put(pkg, Long.valueOf(f.lastModified()));
+            packageInfos.put(pkg, f.lastModified());
         }
     }
 
@@ -1477,7 +1474,7 @@ public class Javac extends MatchingTask {
             final File pkgBinDir = new File(dest, pkg.replace('/', File.separatorChar));
             pkgBinDir.mkdirs();
             final File pkgInfoClass = new File(pkgBinDir, "package-info.class");
-            if (pkgInfoClass.isFile() && pkgInfoClass.lastModified() >= sourceLastMod.longValue()) {
+            if (pkgInfoClass.isFile() && pkgInfoClass.lastModified() >= sourceLastMod) {
                 continue;
             }
             log("Creating empty " + pkgInfoClass);
@@ -1511,10 +1508,10 @@ public class Javac extends MatchingTask {
      * @return a mapping from module name to module source roots
      * @since 1.9.7
      */
-    private static Map<String,Collection<File>> resolveModuleSourcePathElement(
+    private static Map<String, Collection<File>> resolveModuleSourcePathElement(
             final File projectDir,
             final String element) {
-        final Map<String,Collection<File>> result = new TreeMap<String, Collection<File>>();
+        final Map<String, Collection<File>> result = new TreeMap<>();
         for (CharSequence resolvedElement : expandGroups(element)) {
             findModules(projectDir, resolvedElement.toString(), result);
         }
@@ -1548,7 +1545,7 @@ public class Javac extends MatchingTask {
                                 element,
                                 i));
                     }
-                    final Collection<? extends CharSequence> parts = resolveGroup(element.subSequence(i+1, end));
+                    final Collection<? extends CharSequence> parts = resolveGroup(element.subSequence(i + 1, end));
                     switch (parts.size()) {
                         case 0:
                             break;
@@ -1646,7 +1643,7 @@ public class Javac extends MatchingTask {
     private static void findModules(
             final File root,
             String pattern,
-            final Map<String,Collection<File>> collector) {
+            final Map<String, Collection<File>> collector) {
         pattern = pattern
                 .replace('/', File.separatorChar)
                 .replace('\\', File.separatorChar);
@@ -1687,21 +1684,15 @@ public class Javac extends MatchingTask {
         final String pathToModule,
         final String pathInModule,
         final Map<String,Collection<File>> collector) {
-        final FileUtils fu = FileUtils.getFileUtils();
-        final File f = fu.resolveFile(root, pathToModule);
+        final File f = FileUtils.getFileUtils().resolveFile(root, pathToModule);
         if (!f.isDirectory()) {
             return;
         }
         for (File module : f.listFiles(File::isDirectory)) {
             final String moduleName = module.getName();
-            final File moduleSourceRoot = pathInModule == null ?
-                    module :
-                    new File(module, pathInModule);
-            Collection<File> moduleRoots = collector.get(moduleName);
-            if (moduleRoots == null) {
-                moduleRoots = new ArrayList<>();
-                collector.put(moduleName, moduleRoots);
-            }
+            final File moduleSourceRoot = pathInModule == null
+                    ? module : new File(module, pathInModule);
+            Collection<File> moduleRoots = collector.computeIfAbsent(moduleName, k -> new ArrayList<>());
             moduleRoots.add(moduleSourceRoot);
         }
     }

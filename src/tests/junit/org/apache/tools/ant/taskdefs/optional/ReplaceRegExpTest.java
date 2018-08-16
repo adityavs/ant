@@ -39,28 +39,21 @@ import static org.junit.Assume.assumeTrue;
  *
  */
 public class ReplaceRegExpTest {
-    private static final String PROJECT_PATH = "src/etc/testcases/taskdefs/optional";
 
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
 
     @Before
     public void setUp() {
-        buildRule.configureProject(PROJECT_PATH + "/replaceregexp.xml");
+        buildRule.configureProject("src/etc/testcases/taskdefs/optional/replaceregexp.xml");
     }
 
     @Test
     public void testReplace() throws IOException {
         Properties original = new Properties();
-        FileInputStream propsFile = null;
-        try {
-            propsFile = new FileInputStream(new File(buildRule.getProject().getBaseDir() + "/replaceregexp.properties"));
+        try (FileInputStream propsFile = new FileInputStream(new File(
+                buildRule.getProject().getBaseDir() + "/replaceregexp.properties"))) {
             original.load(propsFile);
-        } finally {
-            if (propsFile != null) {
-                propsFile.close();
-                propsFile = null;
-            }
         }
 
         assertEquals("Def", original.get("OldAbc"));
@@ -68,13 +61,9 @@ public class ReplaceRegExpTest {
         buildRule.executeTarget("testReplace");
 
         Properties after = new Properties();
-        try {
-            propsFile = new FileInputStream(new File(buildRule.getOutputDir(), "test.properties"));
+        try (FileInputStream propsFile = new FileInputStream(new File(buildRule.getOutputDir(),
+                "test.properties"))) {
             after.load(propsFile);
-        } finally {
-            if (propsFile != null) {
-                propsFile.close();
-            }
         }
 
         assertNull(after.get("OldAbc"));
@@ -108,22 +97,22 @@ public class ReplaceRegExpTest {
     }
 
     @Test
-    public void testNoPreserveLastModified() throws Exception {
+    public void testNoPreserveLastModified() {
         buildRule.executeTarget("lastModifiedSetup");
         File testFile = new File(buildRule.getOutputDir(), "test.txt");
         assumeTrue(testFile.setLastModified(testFile.lastModified()
-                - (FileUtils.getFileUtils().getFileTimestampGranularity() * 3)));
+                - FileUtils.getFileUtils().getFileTimestampGranularity() * 3));
         long ts1 = testFile.lastModified();
         buildRule.executeTarget("testNoPreserve");
         assertTrue(ts1 < testFile.lastModified());
     }
 
     @Test
-    public void testPreserveLastModified() throws Exception {
+    public void testPreserveLastModified() {
         buildRule.executeTarget("lastModifiedSetup");
         File testFile = new File(buildRule.getOutputDir(), "test.txt");
         assumeTrue(testFile.setLastModified(testFile.lastModified()
-                - (FileUtils.getFileUtils().getFileTimestampGranularity() * 3)));
+                - FileUtils.getFileUtils().getFileTimestampGranularity() * 3));
         long ts1 = testFile.lastModified();
         buildRule.executeTarget("testPreserve");
         assertEquals(ts1, testFile.lastModified());

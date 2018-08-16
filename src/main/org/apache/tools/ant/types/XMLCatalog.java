@@ -50,7 +50,7 @@ import org.xml.sax.XMLReader;
 /**
  * <p>This data type provides a catalog of resource locations (such as
  * DTDs and XML entities), based on the <a
- * href="http://oasis-open.org/committees/entity/spec-2001-08-06.html">
+ * href="https://oasis-open.org/committees/entity/spec-2001-08-06.html">
  * OASIS "Open Catalog" standard</a>.  The catalog entries are used
  * both for Entity resolution and URI resolution, in accordance with
  * the {@link org.xml.sax.EntityResolver EntityResolver} and {@link
@@ -62,9 +62,9 @@ import org.xml.sax.XMLReader;
  * external catalog file(s), or both.  In order to use an external
  * catalog file, the xml-commons resolver library ("resolver.jar")
  * must be in your classpath.  External catalog files may be either <a
- * href="http://oasis-open.org/committees/entity/background/9401.html">
+ * href="https://oasis-open.org/committees/entity/background/9401.html">
  * plain text format</a> or <a
- * href="http://www.oasis-open.org/committees/entity/spec-2001-08-06.html">
+ * href="https://www.oasis-open.org/committees/entity/spec-2001-08-06.html">
  * XML format</a>.  If the xml-commons resolver library is not found
  * in the classpath, external catalog files, specified in
  * <code>&lt;catalogpath&gt;</code> paths, will be ignored and a warning will
@@ -124,7 +124,7 @@ public class XMLCatalog extends DataType
     //-- Fields ----------------------------------------------------------------
 
     /** Holds dtd/entity objects until needed. */
-    private Vector<ResourceLocation> elements = new Vector<ResourceLocation>();
+    private Vector<ResourceLocation> elements = new Vector<>();
 
     /**
      * Classpath in which to attempt to resolve resources.
@@ -435,7 +435,7 @@ public class XMLCatalog extends DataType
                 } else {
                     baseURL = new URL(base);
                 }
-                URL url = (uri.length() == 0 ? baseURL : new URL(baseURL, uri));
+                URL url = uri.isEmpty() ? baseURL : new URL(baseURL, uri);
                 source.setInputSource(new InputSource(url.toString()));
             } catch (MalformedURLException ex) {
                 // At this point we are probably in failure mode, but
@@ -572,9 +572,7 @@ public class XMLCatalog extends DataType
             spFactory.setNamespaceAware(true);
             try {
                 reader = spFactory.newSAXParser().getXMLReader();
-            } catch (ParserConfigurationException ex) {
-                throw new TransformerException(ex);
-            } catch (SAXException ex) {
+            } catch (ParserConfigurationException | SAXException ex) {
                 throw new TransformerException(ex);
             }
         }
@@ -789,6 +787,8 @@ public class XMLCatalog extends DataType
      * the ExternalResolver strategy.
      */
     private interface CatalogResolver extends URIResolver, EntityResolver {
+        @Override
+        InputSource resolveEntity(String publicId, String systemId);
     }
 
     /**
@@ -920,21 +920,17 @@ public class XMLCatalog extends DataType
             // in the classpath.
             //
             try {
-                setXMLCatalog =
-                    resolverImplClass.getMethod("setXMLCatalog",
-                                                new Class[] {XMLCatalog.class});
+                setXMLCatalog = resolverImplClass.getMethod("setXMLCatalog",
+                        XMLCatalog.class);
 
-                parseCatalog =
-                    resolverImplClass.getMethod("parseCatalog",
-                                                new Class[] {String.class});
+                parseCatalog = resolverImplClass.getMethod("parseCatalog",
+                        String.class);
 
-                resolveEntity =
-                    resolverImplClass.getMethod("resolveEntity",
-                                                new Class[] {String.class, String.class});
+                resolveEntity = resolverImplClass.getMethod("resolveEntity",
+                        String.class, String.class);
 
-                resolve =
-                    resolverImplClass.getMethod("resolve",
-                                                new Class[] {String.class, String.class});
+                resolve = resolverImplClass.getMethod("resolve",
+                        String.class, String.class);
             } catch (NoSuchMethodException ex) {
                 throw new BuildException(ex);
             }
@@ -984,9 +980,8 @@ public class XMLCatalog extends DataType
                 // this possibility.
                 //
                 try {
-                    result =
-                        (InputSource) resolveEntity.invoke(resolverImpl,
-                                                          new Object[] {publicId, systemId});
+                    result = (InputSource) resolveEntity.invoke(resolverImpl,
+                            new Object[] {publicId, systemId});
                 } catch (Exception ex) {
                     throw new BuildException(ex);
                 }
@@ -1048,9 +1043,8 @@ public class XMLCatalog extends DataType
                     result = new SAXSource(source);
                 } else {
                     try {
-                        result =
-                            (SAXSource) resolve.invoke(resolverImpl,
-                                                      new Object[] {href, base});
+                        result = (SAXSource) resolve.invoke(resolverImpl,
+                                new Object[] {href, base});
                     } catch (Exception ex) {
                         throw new BuildException(ex);
                     }
@@ -1072,9 +1066,8 @@ public class XMLCatalog extends DataType
                     }
                 }
                 try {
-                    result =
-                        (SAXSource) resolve.invoke(resolverImpl,
-                                                  new Object[] {href, base});
+                    result = (SAXSource) resolve.invoke(resolverImpl,
+                            new Object[] {href, base});
                 } catch (Exception ex) {
                     throw new BuildException(ex);
                 }
@@ -1094,8 +1087,7 @@ public class XMLCatalog extends DataType
             if (!externalCatalogsProcessed) {
 
                 try {
-                    setXMLCatalog.invoke(resolverImpl,
-                                         new Object[] {XMLCatalog.this});
+                    setXMLCatalog.invoke(resolverImpl, XMLCatalog.this);
                 } catch (Exception ex) {
                     throw new BuildException(ex);
                 }
@@ -1105,14 +1097,12 @@ public class XMLCatalog extends DataType
                 if (catPath != null) {
                     log("Using catalogpath '" + getCatalogPath() + "'",
                         Project.MSG_DEBUG);
-                    String[] catPathList = getCatalogPath().list();
 
-                    for (int i = 0; i < catPathList.length; i++) {
-                        File catFile = new File(catPathList[i]);
+                    for (String catFileName : getCatalogPath().list()) {
+                        File catFile = new File(catFileName);
                         log("Parsing " + catFile, Project.MSG_DEBUG);
                         try {
-                            parseCatalog.invoke(resolverImpl,
-                                    new Object[] {catFile.getPath()});
+                            parseCatalog.invoke(resolverImpl, catFile.getPath());
                         } catch (Exception ex) {
                             throw new BuildException(ex);
                         }

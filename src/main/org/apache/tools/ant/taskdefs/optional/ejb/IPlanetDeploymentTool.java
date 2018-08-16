@@ -105,6 +105,7 @@ public class IPlanetDeploymentTool extends GenericDeploymentTool {
      * we may determine the name of the EJB JAR file using this display-name,
      * but this has not be implemented yet.
      */
+    @SuppressWarnings("unused")
     private String displayName;
 
     /*
@@ -210,12 +211,12 @@ public class IPlanetDeploymentTool extends GenericDeploymentTool {
 
         File iasDescriptor = new File(getConfig().descriptorDir,
                                         getIasDescriptorName());
-        if ((!iasDescriptor.exists()) || (!iasDescriptor.isFile())) {
+        if (!iasDescriptor.exists() || !iasDescriptor.isFile()) {
             throw new BuildException("The iAS-specific EJB descriptor ("
                 + iasDescriptor + ") was not found.", getLocation());
         }
 
-        if ((iashome != null) && (!iashome.isDirectory())) {
+        if (iashome != null && !iashome.isDirectory()) {
             throw new BuildException(
                 "If \"iashome\" is specified, it must be a valid directory (it was set to "
                     + iashome + ").",
@@ -284,16 +285,16 @@ public class IPlanetDeploymentTool extends GenericDeploymentTool {
             int endOfPath = descriptorFileName.lastIndexOf(File.separator);
             String relativePath = descriptorFileName.substring(0, endOfPath + 1);
 
-            for (int i = 0; i < cmpDescriptors.length; i++) {
-                int endOfCmp = cmpDescriptors[i].lastIndexOf('/');
-                String cmpDescriptor = cmpDescriptors[i].substring(endOfCmp + 1);
+            for (String descriptor : cmpDescriptors) {
+                int endOfCmp = descriptor.lastIndexOf('/');
+                String cmpDescriptor = descriptor.substring(endOfCmp + 1);
 
                 File cmpFile = new File(baseDir, relativePath + cmpDescriptor);
                 if (!cmpFile.exists()) {
                     throw new BuildException("The CMP descriptor file ("
                             + cmpFile + ") could not be found.", getLocation());
                 }
-                files.put(cmpDescriptors[i], cmpFile);
+                files.put(descriptor, cmpFile);
             }
         }
         return files;

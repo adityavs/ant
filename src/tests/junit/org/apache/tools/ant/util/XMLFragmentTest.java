@@ -27,6 +27,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -42,10 +43,10 @@ public class XMLFragmentTest {
 
     @Test
     public void testNestedText() {
-        XMLFragment x = (XMLFragment) buildRule.getProject().getReference("nested-text");
+        XMLFragment x = buildRule.getProject().getReference("nested-text");
         assertNotNull(x);
         Node n = x.getFragment();
-        assertTrue("No attributes", !n.hasAttributes());
+        assertFalse("No attributes", n.hasAttributes());
         NodeList nl = n.getChildNodes();
         assertEquals(1, nl.getLength());
         assertEquals(Node.TEXT_NODE, nl.item(0).getNodeType());
@@ -55,17 +56,17 @@ public class XMLFragmentTest {
     @Test
     public void testNestedChildren() {
         XMLFragment x =
-            (XMLFragment) buildRule.getProject().getReference("with-children");
+                buildRule.getProject().getReference("with-children");
         assertNotNull(x);
         Node n = x.getFragment();
-        assertTrue("No attributes", !n.hasAttributes());
+        assertFalse("No attributes", n.hasAttributes());
         NodeList nl = n.getChildNodes();
         assertEquals(3, nl.getLength());
 
         assertEquals(Node.ELEMENT_NODE, nl.item(0).getNodeType());
         Element child1 = (Element) nl.item(0);
         assertEquals("child1", child1.getTagName());
-        assertTrue(!child1.hasAttributes());
+        assertFalse(child1.hasAttributes());
         NodeList nl2 = child1.getChildNodes();
         assertEquals(1, nl2.getLength());
         assertEquals(Node.TEXT_NODE, nl2.item(0).getNodeType());
@@ -82,7 +83,7 @@ public class XMLFragmentTest {
         assertEquals(Node.ELEMENT_NODE, nl.item(2).getNodeType());
         Element child3 = (Element) nl.item(2);
         assertEquals("child3", child3.getTagName());
-        assertTrue(!child3.hasAttributes());
+        assertFalse(child3.hasAttributes());
         nl2 = child3.getChildNodes();
         assertEquals(1, nl2.getLength());
         assertEquals(Node.ELEMENT_NODE, nl2.item(0).getNodeType());

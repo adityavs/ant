@@ -66,8 +66,7 @@ public class SelectSelector extends BaseSelectorContainer {
      * referenced Selector.
      */
     private SelectSelector getRef() {
-        Object o = getCheckedRef(this.getClass(), "SelectSelector");
-        return (SelectSelector) o;
+        return getCheckedRef(this.getClass(), "SelectSelector");
     }
 
     /**
@@ -216,16 +215,12 @@ public class SelectSelector extends BaseSelectorContainer {
         validate();
 
         // Deal with if and unless properties first
-        if (!(passesConditions())) {
+        if (!passesConditions()) {
             return false;
         }
 
         Enumeration<FileSelector> e = selectorElements();
-        if (!e.hasMoreElements()) {
-            return true;
-        }
-        FileSelector f = e.nextElement();
-        return f.isSelected(basedir, filename, file);
+        return !e.hasMoreElements() || e.nextElement().isSelected(basedir, filename, file);
     }
 }
 

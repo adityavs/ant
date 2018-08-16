@@ -87,17 +87,11 @@ public final class SuffixLines
 
         int ch = -1;
 
-        if (queuedData != null && queuedData.length() == 0) {
+        if (queuedData != null && queuedData.isEmpty()) {
             queuedData = null;
         }
 
-        if (queuedData != null) {
-            ch = queuedData.charAt(0);
-            queuedData = queuedData.substring(1);
-            if (queuedData.length() == 0) {
-                queuedData = null;
-            }
-        } else {
+        if (queuedData == null) {
             queuedData = readLine();
             if (queuedData == null) {
                 ch = -1;
@@ -115,6 +109,12 @@ public final class SuffixLines
                         + suffix + lf;
                 }
                 return read();
+            }
+        } else {
+            ch = queuedData.charAt(0);
+            queuedData = queuedData.substring(1);
+            if (queuedData.isEmpty()) {
+                queuedData = null;
             }
         }
         return ch;
@@ -163,9 +163,9 @@ public final class SuffixLines
     private void initialize() {
         Parameter[] params = getParameters();
         if (params != null) {
-            for (int i = 0; i < params.length; i++) {
-                if (SUFFIX_KEY.equals(params[i].getName())) {
-                    suffix = params[i].getValue();
+            for (Parameter param : params) {
+                if (SUFFIX_KEY.equals(param.getName())) {
+                    suffix = param.getValue();
                     break;
                 }
             }

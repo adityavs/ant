@@ -35,6 +35,9 @@ import org.junit.rules.ExternalResource;
  *     \@Rule
  *     public BuildFileRule rule = new BuildFileRule();
  *
+ *     \@Rule
+ *     public ExpectedException thrown = ExpectedException.none();
+ *
  *     \@Before
  *     public void setUp() {
  *         rule.configureProject("my/and/file.xml");
@@ -48,12 +51,9 @@ import org.junit.rules.ExternalResource;
  *
  *     \@Test
  *     public void testException() {
- *         try {
- *             rule.executeTarget("failingTarget");
- *             fail("Target should have thrown a BuildException");
- *         } catch (BuildException ex) {
- *             assertContains("Exception did not contain correct text", "Could not find compiler on classpath", ex.getMessage());
- *         }
+ *         thrown.expect(BuildException.class);
+ *         thrown.expectMessage("Could not find compiler on classpath");
+ *         rule.executeTarget("failingTarget");
  *     }
  *
  * }
@@ -67,8 +67,6 @@ public class BuildFileRule extends ExternalResource {
     private StringBuffer fullLogBuffer;
     private StringBuffer outputBuffer;
     private StringBuffer errorBuffer;
-
-
 
     /**
      * Tidies up following a test execution. If the currently configured
@@ -170,7 +168,7 @@ public class BuildFileRule extends ExternalResource {
      *
      * @param targetName the target in the currently configured build file to run.
      */
-    public  void executeTarget(String targetName) {
+    public void executeTarget(String targetName) {
         outputBuffer = new StringBuffer();
         PrintStream out = new PrintStream(new AntOutputStream(outputBuffer));
         errorBuffer = new StringBuffer();

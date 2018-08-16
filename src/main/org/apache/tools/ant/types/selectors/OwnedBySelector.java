@@ -21,6 +21,7 @@ package org.apache.tools.ant.types.selectors;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.attribute.UserPrincipal;
 
 import org.apache.tools.ant.BuildException;
@@ -40,12 +41,22 @@ public class OwnedBySelector implements FileSelector {
 
     private String owner;
 
+    private boolean followSymlinks = true;
+
     /**
-     * Sets the User-Name to look for.
+     * Sets the user name to look for.
      * @param owner the user name
      */
     public void setOwner(String owner) {
         this.owner = owner;
+    }
+
+    /**
+     * Sets the "follow symbolic links" option.
+     * @param followSymlinks whether or not symbolic links should be followed.
+     */
+    public void setFollowSymlinks(boolean followSymlinks) {
+        this.followSymlinks = followSymlinks;
     }
 
     @Override
@@ -55,7 +66,8 @@ public class OwnedBySelector implements FileSelector {
         }
         if (file != null) {
             try {
-                UserPrincipal user = Files.getOwner(file.toPath());
+                UserPrincipal user = followSymlinks ? Files.getOwner(file.toPath())
+                        : Files.getOwner(file.toPath(), LinkOption.NOFOLLOW_LINKS);
                 return user != null && owner.equals(user.getName());
             } catch (UnsupportedOperationException | IOException ex) {
                 // => not the expected owner

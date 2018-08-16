@@ -20,14 +20,16 @@ package org.apache.tools.ant.taskdefs;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.util.stream.Collectors;
 
 import org.apache.tools.ant.util.JavaEnvUtils;
+import org.junit.AssumptionViolatedException;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.internal.AssumptionViolatedException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -72,21 +74,16 @@ public class ExecuteWatchdogTest {
         return Runtime.getRuntime().exec(cmdArray);
     }
 
-    private String getErrorOutput(Process p) throws Exception {
+    private String getErrorOutput(Process p) {
         BufferedReader err = new BufferedReader(new InputStreamReader(p.getErrorStream()));
-        StringBuilder buf = new StringBuilder();
-        String line;
-        while ((line = err.readLine()) != null) {
-            buf.append(line);
-        }
-        return buf.toString();
+        return err.lines().collect(Collectors.joining());
     }
 
     private int waitForEnd(Process p) throws Exception {
         int retcode = p.waitFor();
         if (retcode != 0) {
             String err = getErrorOutput(p);
-            if (err.length() > 0) {
+            if (!err.isEmpty()) {
                 System.err.println("ERROR:");
                 System.err.println(err);
             }
@@ -126,8 +123,8 @@ public class ExecuteWatchdogTest {
         Process process = getProcess(-1); // process should abort
         watchdog.start(process);
         int retCode = process.waitFor();
-        assertTrue("process should not have been killed", !watchdog.killedProcess());
-        assertTrue("return code is invalid: " + retCode, retCode!=0);
+        assertFalse("process should not have been killed", watchdog.killedProcess());
+        assertNotEquals("return code is invalid: " + retCode, 0, retCode);
     }
 
     @Test
@@ -136,16 +133,14 @@ public class ExecuteWatchdogTest {
         watchdog.start(process);
 
         // I assume that starting this takes less than TIME_OUT/2 ms...
-        Thread thread = new Thread(){
-                public void run(){
-                    try {
-                        process.waitFor();
-                    } catch(InterruptedException e){
-                        // not very nice but will do the job
-                        throw new AssumptionViolatedException("process interrupted in thread", e);
-                    }
-                }
-        };
+        Thread thread = new Thread(() -> {
+            try {
+                process.waitFor();
+            } catch (InterruptedException e) {
+                // not very nice but will do the job
+                throw new AssumptionViolatedException("process interrupted in thread", e);
+            }
+        });
         thread.start();
 
         // wait for TIME_OUT / 2, there should be about TIME_OUT / 2 ms remaining before timeout
@@ -159,6 +154,6 @@ public class ExecuteWatchdogTest {
 
         // process should be dead and well finished
         assertEquals(0, process.exitValue());
-        assertTrue("process should not have been killed", !watchdog.killedProcess());
+        assertFalse("process should not have been killed", watchdog.killedProcess());
     }
 }

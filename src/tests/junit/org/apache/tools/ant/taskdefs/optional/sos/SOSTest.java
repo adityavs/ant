@@ -28,9 +28,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 /**
  *  Testcase to ensure that command line generation and required attributes are
@@ -55,7 +55,11 @@ public class SOSTest {
     private static final String VERSION = "007";
 
     @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
+    @Rule
     public BuildFileRule buildRule = new BuildFileRule();
+
     private Project project;
 
     @Before
@@ -136,10 +140,10 @@ public class SOSTest {
     @Test
     public void testGetExceptions() {
         buildRule.configureProject("src/etc/testcases/taskdefs/optional/sos/sos.xml");
-        expectSpecificBuildException("sosget.1", "some cause", "sosserverpath attribute must be set!");
-        expectSpecificBuildException("sosget.2", "some cause", "username attribute must be set!");
-        expectSpecificBuildException("sosget.3", "some cause", "vssserverpath attribute must be set!");
-        expectSpecificBuildException("sosget.4", "some cause", "projectpath attribute must be set!");
+        expectSpecificBuildException("sosget.1", "sosserverpath attribute must be set!");
+        expectSpecificBuildException("sosget.2", "username attribute must be set!");
+        expectSpecificBuildException("sosget.3", "vssserverpath attribute must be set!");
+        expectSpecificBuildException("sosget.4", "projectpath attribute must be set!");
     }
 
     /**  Test CheckInFile option flags  */
@@ -205,10 +209,10 @@ public class SOSTest {
     @Test
     public void testCheckinExceptions() {
         buildRule.configureProject("src/etc/testcases/taskdefs/optional/sos/sos.xml");
-        expectSpecificBuildException("soscheckin.1", "some cause", "sosserverpath attribute must be set!");
-        expectSpecificBuildException("soscheckin.2", "some cause", "username attribute must be set!");
-        expectSpecificBuildException("soscheckin.3", "some cause", "vssserverpath attribute must be set!");
-        expectSpecificBuildException("soscheckin.4", "some cause", "projectpath attribute must be set!");
+        expectSpecificBuildException("soscheckin.1", "sosserverpath attribute must be set!");
+        expectSpecificBuildException("soscheckin.2", "username attribute must be set!");
+        expectSpecificBuildException("soscheckin.3", "vssserverpath attribute must be set!");
+        expectSpecificBuildException("soscheckin.4", "projectpath attribute must be set!");
     }
 
     /**  Test CheckOutFile option flags  */
@@ -272,10 +276,10 @@ public class SOSTest {
     @Test
     public void testCheckoutExceptions() {
         buildRule.configureProject("src/etc/testcases/taskdefs/optional/sos/sos.xml");
-        expectSpecificBuildException("soscheckout.1", "some cause", "sosserverpath attribute must be set!");
-        expectSpecificBuildException("soscheckout.2", "some cause", "username attribute must be set!");
-        expectSpecificBuildException("soscheckout.3", "some cause", "vssserverpath attribute must be set!");
-        expectSpecificBuildException("soscheckout.4", "some cause", "projectpath attribute must be set!");
+        expectSpecificBuildException("soscheckout.1", "sosserverpath attribute must be set!");
+        expectSpecificBuildException("soscheckout.2", "username attribute must be set!");
+        expectSpecificBuildException("soscheckout.3", "vssserverpath attribute must be set!");
+        expectSpecificBuildException("soscheckout.4", "projectpath attribute must be set!");
     }
 
     /**  Test Label option flags  */
@@ -308,21 +312,18 @@ public class SOSTest {
     @Test
     public void testLabelExceptions() {
         buildRule.configureProject("src/etc/testcases/taskdefs/optional/sos/sos.xml");
-        expectSpecificBuildException("soslabel.1", "some cause", "sosserverpath attribute must be set!");
-        expectSpecificBuildException("soslabel.2", "some cause", "username attribute must be set!");
-        expectSpecificBuildException("soslabel.3", "some cause", "vssserverpath attribute must be set!");
-        expectSpecificBuildException("soslabel.4", "some cause", "projectpath attribute must be set!");
-        expectSpecificBuildException("soslabel.5", "some cause", "label attribute must be set!");
+        expectSpecificBuildException("soslabel.1", "sosserverpath attribute must be set!");
+        expectSpecificBuildException("soslabel.2", "username attribute must be set!");
+        expectSpecificBuildException("soslabel.3", "vssserverpath attribute must be set!");
+        expectSpecificBuildException("soslabel.4", "projectpath attribute must be set!");
+        expectSpecificBuildException("soslabel.5", "label attribute must be set!");
     }
 
-    private void expectSpecificBuildException(String target, String errorMessage,
+    private void expectSpecificBuildException(String target,
                                               String exceptionMessage) {
-        try {
-            buildRule.executeTarget(target);
-            fail(errorMessage);
-        } catch (BuildException ex) {
-            assertEquals(exceptionMessage, ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage(exceptionMessage);
+        buildRule.executeTarget(target);
     }
 
     /**
@@ -334,18 +335,10 @@ public class SOSTest {
      */
     private void checkCommandLines(String[] sTestCmdLine, String[] sGeneratedCmdLine) {
         int length = sTestCmdLine.length;
+        assertEquals("number of arguments doesn't match", length, sGeneratedCmdLine.length);
         for (int i = 0; i < length; i++) {
-            try {
-                assertEquals("arg # " + String.valueOf(i),
-                        sTestCmdLine[i],
-                        sGeneratedCmdLine[i]);
-            } catch (ArrayIndexOutOfBoundsException aioob) {
-                fail("missing arg " + sTestCmdLine[i]);
-            }
-        }
-        if (sGeneratedCmdLine.length > sTestCmdLine.length) {
-            // We have extra elements
-            fail("extra args");
+            assertEquals("arg # " + String.valueOf(i),
+                    sTestCmdLine[i], sGeneratedCmdLine[i]);
         }
     }
 }

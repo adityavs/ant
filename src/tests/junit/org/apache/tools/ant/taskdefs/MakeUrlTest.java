@@ -19,158 +19,112 @@ package org.apache.tools.ant.taskdefs;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.BuildFileRule;
+import org.hamcrest.Matcher;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.experimental.runners.Enclosed;
+import org.junit.rules.ExpectedException;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import java.io.InputStream;
 import java.io.IOException;
 import java.net.URL;
+import java.util.Arrays;
+import java.util.Collection;
 
-import static org.apache.tools.ant.AntAssert.assertContains;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.hamcrest.Matchers.both;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.endsWith;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
 
-
+@RunWith(Enclosed.class)
 public class MakeUrlTest {
 
-    @Rule
-    public final BuildFileRule buildRule = new BuildFileRule();
+    @RunWith(Parameterized.class)
+    public static class InvalidArgumentTest {
 
-    @Before
-    public void setUp() {
-        buildRule.configureProject("src/etc/testcases/taskdefs/makeurl.xml");
-    }
+        @Rule
+        public final BuildFileRule buildRule = new BuildFileRule();
 
-    @Test
-    public void testEmpty() {
-        try {
-            buildRule.executeTarget("testEmpty");
-            fail("BuildException expected: missing property");
-        } catch (BuildException ex) {
-            assertContains("property", ex.getMessage());
+        @Rule
+        public ExpectedException thrown = ExpectedException.none();
+
+        @Before
+        public void setUp() {
+            buildRule.configureProject("src/etc/testcases/taskdefs/makeurl.xml");
+        }
+
+        @Parameterized.Parameters(name = "{0}")
+        public static Collection<Object[]> targets() {
+            return Arrays.asList(new Object[][]{
+                    {"testEmpty", "No property defined"},
+                    {"testNoProperty", "No property defined"},
+                    {"testNoFile", "No files defined"},
+                    {"testValidation", "A source file is missing"}
+            });
+        }
+
+        @Parameterized.Parameter
+        public String targetName;
+
+        @Parameterized.Parameter(1)
+        public String message;
+
+        @Test
+        public void test() {
+            thrown.expect(BuildException.class);
+            thrown.expectMessage(message);
+            buildRule.executeTarget(targetName);
         }
     }
 
-    @Test
-    public void testNoProperty() {
-        try {
-            buildRule.executeTarget("testNoProperty");
-            fail("BuildException expected: missing property");
-        } catch (BuildException ex) {
-            assertContains("property", ex.getMessage());
+    @RunWith(Parameterized.class)
+    public static class ValidArgumentTest {
+
+        @Rule
+        public final BuildFileRule buildRule = new BuildFileRule();
+
+        @Before
+        public void setUp() {
+            buildRule.configureProject("src/etc/testcases/taskdefs/makeurl.xml");
+        }
+
+        @Parameterized.Parameters(name = "{0}")
+        public static Collection<Object[]> targets() {
+            return Arrays.asList(new Object[][]{
+                    {"testWorks", both(containsString("file:")).and(containsString("/foo"))},
+                    {"testIllegalChars", both(containsString("file:")).and(containsString("fo%20o%25"))},
+                    {"testRoundTrip", containsString("file:")},
+                    {"testIllegalCombinations", both(containsString("/foo")).and(containsString(".xml"))},
+                    {"testFileset", both(containsString(".xml ")).and(endsWith(".xml"))},
+                    {"testFilesetSeparator", both(containsString(".xml\",\"")).and(endsWith(".xml"))},
+                    {"testPath", containsString("makeurl.xml")}
+            });
+        }
+
+        @Parameterized.Parameter
+        public String targetName;
+
+        @Parameterized.Parameter(1)
+        public Matcher<String> matcher;
+
+        @Test
+        public void test() throws IOException {
+            buildRule.executeTarget(targetName);
+            String property = buildRule.getProject().getProperty(targetName);
+            assertNotNull("property not set", property);
+            assertThat(property, matcher);
+
+            if (targetName.equals("testRoundTrip")) {
+                // test that we can round trip by opening a url that exists
+                URL url = new URL(property);
+                InputStream instream = url.openStream();
+                instream.close();
+            }
         }
     }
 
-    @Test
-    public void testNoFile() {
-        try {
-            buildRule.executeTarget("testNoFile");
-            fail("BuildException expected: missing file");
-        } catch (BuildException ex) {
-            assertContains("file", ex.getMessage());
-        }
-    }
-
-    @Test
-    public void testValidation() {
-        try {
-            buildRule.executeTarget("testValidation");
-            fail("BuildException expected: " + MakeUrl.ERROR_MISSING_FILE);
-        } catch (BuildException ex) {
-            assertContains("file", ex.getMessage());
-        }
-    }
-
-    @Test
-    public void testWorks() {
-        buildRule.executeTarget("testWorks");
-        assertPropertyContains("testWorks", "file:");
-        assertPropertyContains("testWorks", "/foo");
-    }
-
-    @Test
-    public void testIllegalChars() {
-        buildRule.executeTarget("testIllegalChars");
-        assertPropertyContains("testIllegalChars", "file:");
-        assertPropertyContains("testIllegalChars", "fo%20o%25");
-    }
-
-    /**
-     * test that we can round trip by opening a url that exists
-     *
-     * @throws IOException if something goes wrong
-     */
-    @Test
-    public void testRoundTrip() throws IOException {
-        buildRule.executeTarget("testRoundTrip");
-        assertPropertyContains("testRoundTrip", "file:");
-        String property = getProperty("testRoundTrip");
-        URL url = new URL(property);
-        InputStream instream = url.openStream();
-        instream.close();
-    }
-
-    @Test
-    public void testIllegalCombinations() {
-        buildRule.executeTarget("testIllegalCombinations");
-        assertPropertyContains("testIllegalCombinations", "/foo");
-        assertPropertyContains("testIllegalCombinations", ".xml");
-    }
-
-    @Test
-    public void testFileset() {
-        buildRule.executeTarget("testFileset");
-        assertPropertyContains("testFileset", ".xml ");
-        assertPropertyEndsWith("testFileset", ".xml");
-    }
-
-    @Test
-    public void testFilesetSeparator() {
-        buildRule.executeTarget("testFilesetSeparator");
-        assertPropertyContains("testFilesetSeparator", ".xml\",\"");
-        assertPropertyEndsWith("testFilesetSeparator", ".xml");
-    }
-
-    @Test
-    public void testPath() {
-        buildRule.executeTarget("testPath");
-        assertPropertyContains("testPath", "makeurl.xml");
-    }
-
-    /**
-     * assert that a property ends with
-     *
-     * @param property String
-     * @param ending String
-     */
-    private void assertPropertyEndsWith(String property, String ending) {
-        String result = getProperty(property);
-        String substring = result.substring(result.length() - ending.length());
-        assertEquals(ending, substring);
-    }
-
-    /**
-     * assert that a property contains a string
-     *
-     * @param property name of property to look for
-     * @param contains what to search for in the string
-     */
-    protected void assertPropertyContains(String property, String contains) {
-        String result = getProperty(property);
-
-        assertTrue("expected " + contains + " in " + result,
-                result != null && result.indexOf(contains) >= 0);
-    }
-
-    /**
-     * get a property from the project
-     *
-     * @param property String
-     * @return String
-     */
-    protected String getProperty(String property) {
-        return buildRule.getProject().getProperty(property);
-    }
 }

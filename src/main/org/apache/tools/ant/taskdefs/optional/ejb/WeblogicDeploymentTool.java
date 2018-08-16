@@ -21,13 +21,16 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.util.Enumeration;
 import java.util.Hashtable;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Vector;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
+import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
 
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
@@ -36,7 +39,6 @@ import org.apache.tools.ant.AntClassLoader;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.Java;
-import org.apache.tools.ant.taskdefs.optional.ejb.EjbJar.DTDLocation;
 import org.apache.tools.ant.types.Environment;
 import org.apache.tools.ant.types.Environment.Variable;
 import org.apache.tools.ant.types.Path;
@@ -45,11 +47,11 @@ import org.xml.sax.InputSource;
 
 /**
     The weblogic element is used to control the weblogic.ejbc compiler for
-    generating weblogic EJB jars. Prior to Ant 1.3, the method of locating CMP
+    generating WebLogic EJB jars. Prior to Ant 1.3, the method of locating CMP
     descriptors was to use the ejbjar naming convention. So if your ejb-jar was
-    called, Customer-ejb-jar.xml, your weblogic descriptor was called Customer-
+    called, Customer-ejb-jar.xml, your WebLogic descriptor was called Customer-
     weblogic-ejb-jar.xml and your CMP descriptor had to be Customer-weblogic-cmp-
-    rdbms-jar.xml. In addition, the &lt;type-storage&gt; element in the weblogic
+    rdbms-jar.xml. In addition, the &lt;type-storage&gt; element in the WebLogic
     descriptor had to be set to the standard name META-INF/weblogic-cmp-rdbms-
     jar.xml, as that is where the CMP descriptor was mapped to in the generated
     jar.
@@ -61,23 +63,23 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
     /** EJB20 id */
     public static final String PUBLICID_EJB20
          = "-//Sun Microsystems, Inc.//DTD Enterprise JavaBeans 2.0//EN";
-    /** Weblogic 5.1.0 id */
+    /** WebLogic 5.1.0 id */
     public static final String PUBLICID_WEBLOGIC_EJB510
          = "-//BEA Systems, Inc.//DTD WebLogic 5.1.0 EJB//EN";
-    /** Weblogic 6.0.0 id */
+    /** WebLogic 6.0.0 id */
     public static final String PUBLICID_WEBLOGIC_EJB600
          = "-//BEA Systems, Inc.//DTD WebLogic 6.0.0 EJB//EN";
-    /** Weblogic 7.0.0 id */
+    /** WebLogic 7.0.0 id */
     public static final String PUBLICID_WEBLOGIC_EJB700
          = "-//BEA Systems, Inc.//DTD WebLogic 7.0.0 EJB//EN";
 
-    /** Weblogic 5.1 dtd location */
+    /** WebLogic 5.1 dtd location */
     protected static final String DEFAULT_WL51_EJB11_DTD_LOCATION
          = "/weblogic/ejb/deployment/xml/ejb-jar.dtd";
-    /** Weblogic 6.0 ejb 1.1 dtd location */
+    /** WebLogic 6.0 ejb 1.1 dtd location */
     protected static final String DEFAULT_WL60_EJB11_DTD_LOCATION
          = "/weblogic/ejb20/dd/xml/ejb11-jar.dtd";
-    /** Weblogic 6.0 ejb 2.0 dtd location */
+    /** WebLogic 6.0 ejb 2.0 dtd location */
     protected static final String DEFAULT_WL60_EJB20_DTD_LOCATION
          = "/weblogic/ejb20/dd/xml/ejb20-jar.dtd";
 
@@ -101,13 +103,13 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
     /** File utilities instance for copying jars */
     private static final FileUtils FILE_UTILS = FileUtils.getFileUtils();
 
-    /** Instance variable that stores the suffix for the weblogic jarfile. */
+    /** Instance variable that stores the suffix for the WebLogic jarfile. */
     private String jarSuffix = ".jar";
 
-    /** Instance variable that stores the location of the weblogic DTD file. */
+    /** Instance variable that stores the location of the WebLogic DTD file. */
     private String weblogicDTD;
 
-    /** Instance variable that stores the location of the ejb 1.1 DTD file. */
+    /** Instance variable that stores the location of the EJB 1.1 DTD file. */
     private String ejb11DTD;
 
     /** Instance variable that determines whether generic ejb jars are kept. */
@@ -115,7 +117,7 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
 
     /**
      * Instance variable that stores the fully qualified classname of the
-     * weblogic EJBC compiler
+     * WebLogic EJBC compiler
      */
     private String ejbcClass = null;
 
@@ -138,7 +140,7 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
     /** Indicates if the old CMP location convention is to be used.  */
     private boolean newCMP = false;
 
-    /** The classpath to the weblogic classes. */
+    /** The classpath to the WebLogic classes. */
     private Path wlClasspath = null;
 
     /** System properties for the JVM. */
@@ -162,7 +164,7 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
     }
 
     /**
-     * Get the classpath to the weblogic classpaths.
+     * Get the classpath to the WebLogic classpaths.
      * @return the classpath to configure.
      */
     public Path createWLClasspath() {
@@ -184,9 +186,9 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
 
     /**
      * Optional classpath to WL6.0.
-     * Weblogic 6.0 will give a warning if the home and remote interfaces
+     * WebLogic 6.0 will give a warning if the home and remote interfaces
      * of a bean are on the system classpath used to run weblogic.ejbc.
-     * In that case, the standard weblogic classes should be set with
+     * In that case, the standard WebLogic classes should be set with
      * this attribute (or equivalent nested element) and the
      * home and remote interfaces located with the standard classpath
      * attribute.
@@ -246,7 +248,7 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
     }
 
     /**
-     * Setter used to store the suffix for the generated weblogic jar file.
+     * Setter used to store the suffix for the generated WebLogic jar file.
      *
      * @param inString the string to use as the suffix.
      */
@@ -265,7 +267,7 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
     }
 
     /**
-     * Controls whether weblogic will keep the generated Java
+     * Controls whether WebLogic will keep the generated Java
      * files used to build the class files added to the
      * jar. This can be useful when debugging; default is false.
      *
@@ -285,7 +287,7 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
     }
 
     /**
-     * Set any additional arguments to pass to the weblogic JVM; optional.
+     * Set any additional arguments to pass to the WebLogic JVM; optional.
      * @param args the arguments to be passed to the JVM
      */
     public void setJvmargs(String args) {
@@ -296,7 +298,7 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
      * Set the classname of the ejbc compiler;  optional
      * Normally ejbjar determines
      * the appropriate class based on the DTD used for the EJB. The EJB 2.0 compiler
-     * featured in weblogic 6 has, however, been deprecated in version 7. When
+     * featured in WebLogic 6 has, however, been deprecated in version 7. When
      * using with version 7 this attribute should be set to
      * &quot;weblogic.ejbc&quot; to avoid the deprecation warning.
      * @param ejbcClass the name of the class to use.
@@ -315,7 +317,7 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
 
     /**
      * <b>Deprecated</b>. Defines the location of the ejb-jar DTD in
-     *  the weblogic class hierarchy. Should not be needed, and the
+     *  the WebLogic class hierarchy. Should not be needed, and the
      * nested &lt;dtd&gt; element is recommended when it is.
      *
      * @param inString the string to use as the DTD location.
@@ -325,8 +327,8 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
     }
 
     /**
-     * <b>Deprecated</b>. Defines the location of weblogic DTD in
-     *  the weblogic class hierarchy. Should not be needed, and the
+     * <b>Deprecated</b>. Defines the location of WebLogic DTD in
+     *  the WebLogic class hierarchy. Should not be needed, and the
      * nested &lt;dtd&gt; element is recommended when it is.
      *
      * @param inString the string to use as the DTD location.
@@ -337,7 +339,7 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
 
     /**
      * <b>Deprecated</b>. Defines the location of Sun's EJB DTD in
-     *  the weblogic class hierarchy. Should not be needed, and the
+     *  the WebLogic class hierarchy. Should not be needed, and the
      * nested &lt;dtd&gt; element is recommended when it is.
      *
      * @param inString the string to use as the DTD location.
@@ -360,10 +362,10 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
      * CMP descriptors will be used; optional, default false.
      * <P>
      * The old CMP scheme locates the
-     * weblogic CMP descriptor based on the naming convention where the
-     * weblogic CMP file is expected to be named with the bean name as the
+     * WebLogic CMP descriptor based on the naming convention where the
+     * WebLogic CMP file is expected to be named with the bean name as the
      * prefix. Under this scheme the name of the CMP descriptor does not match
-     * the name actually used in the main weblogic EJB descriptor. Also,
+     * the name actually used in the main WebLogic EJB descriptor. Also,
      * descriptors which contain multiple CMP references could not be used.
      * @param newCMP a <code>boolean</code> value.
      */
@@ -394,28 +396,22 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
     }
 
     /**
-     * Get the weblogic descriptor handler.
+     * Get the WebLogic descriptor handler.
      * @param srcDir the source directory.
      * @return the descriptor.
      */
     protected DescriptorHandler getWeblogicDescriptorHandler(final File srcDir) {
-        DescriptorHandler handler =
-            new DescriptorHandler(getTask(), srcDir) {
-                @Override
-                protected void processElement() {
-                    if ("type-storage".equals(currentElement)) {
-                        // Get the filename of vendor specific descriptor
-                        String fileNameWithMETA = currentText;
-                        //trim the META_INF\ off of the file name
-                        String fileName
-                             = fileNameWithMETA.substring(META_DIR.length(),
-                            fileNameWithMETA.length());
-                        File descriptorFile = new File(srcDir, fileName);
-
-                        ejbFiles.put(fileNameWithMETA, descriptorFile);
-                    }
+        DescriptorHandler handler = new DescriptorHandler(getTask(), srcDir) {
+            @Override
+            protected void processElement() {
+                if ("type-storage".equals(currentElement)) {
+                    // Get the filename of vendor specific descriptor
+                    // trim the META_INF\ off of the file name
+                    ejbFiles.put(currentText, new File(srcDir,
+                            currentText.substring(META_DIR.length())));
                 }
-            };
+            }
+        };
 
         handler.registerDTD(PUBLICID_WEBLOGIC_EJB510, DEFAULT_WL51_DTD_LOCATION);
         handler.registerDTD(PUBLICID_WEBLOGIC_EJB510, DEFAULT_WL60_51_DTD_LOCATION);
@@ -424,9 +420,7 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
         handler.registerDTD(PUBLICID_WEBLOGIC_EJB510, weblogicDTD);
         handler.registerDTD(PUBLICID_WEBLOGIC_EJB600, weblogicDTD);
 
-        for (DTDLocation dtdLocation : getConfig().dtdLocations) {
-            handler.registerDTD(dtdLocation.getPublicId(), dtdLocation.getLocation());
-        }
+        getConfig().dtdLocations.forEach(l -> handler.registerDTD(l.getPublicId(), l.getLocation()));
         return handler;
     }
 
@@ -452,14 +446,14 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
             log("The old method for locating CMP files has been DEPRECATED.", Project.MSG_VERBOSE);
             log("Please adjust your weblogic descriptor and set newCMP=\"true\" to use the new CMP descriptor inclusion mechanism. ",
                 Project.MSG_VERBOSE);
-            // The the weblogic cmp deployment descriptor
+            // The the WebLogic CMP deployment descriptor
             File weblogicCMPDD = new File(getConfig().descriptorDir, ddPrefix + WL_CMP_DD);
 
             if (weblogicCMPDD.exists()) {
                 ejbFiles.put(META_DIR + WL_CMP_DD, weblogicCMPDD);
             }
         } else {
-            // now that we have the weblogic descriptor, we parse the file
+            // now that we have the WebLogic descriptor, we parse the file
             // to find other descriptors needed to deploy the bean.
             // this could be the weblogic-cmp-rdbms.xml or any other O/R
             // mapping tool descriptors.
@@ -566,8 +560,8 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
             }
 
             Path combinedClasspath = getCombinedClasspath();
-            if (!(wlClasspath == null || combinedClasspath == null
-                || combinedClasspath.toString().trim().isEmpty())) {
+            if (wlClasspath != null && combinedClasspath != null
+                    && !combinedClasspath.toString().trim().isEmpty()) {
                 javaTask.createArg().setValue("-classpath");
                 javaTask.createArg().setPath(combinedClasspath);
             }
@@ -641,27 +635,27 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
     }
 
     /**
-     * Helper method to check to see if a weblogic EBJ1.1 jar needs to be
+     * Helper method to check to see if a WebLogic EJB 1.1 jar needs to be
      * rebuilt using ejbc. Called from writeJar it sees if the "Bean" classes
      * are the only thing that needs to be updated and either updates the Jar
-     * with the Bean classfile or returns true, saying that the whole weblogic
-     * jar needs to be regened with ejbc. This allows faster build times for
+     * with the Bean classfile or returns true, saying that the whole WebLogic
+     * jar needs to be regenerated with ejbc. This allows faster build times for
      * working developers. <p>
      *
-     * The way weblogic ejbc works is it creates wrappers for the publicly
+     * The way WebLogic ejbc works is it creates wrappers for the publicly
      * defined methods as they are exposed in the remote interface. If the
      * actual bean changes without changing the the method signatures then
      * only the bean classfile needs to be updated and the rest of the
-     * weblogic jar file can remain the same. If the Interfaces, ie. the
+     * WebLogic jar file can remain the same. If the Interfaces, ie. the
      * method signatures change or if the xml deployment descriptors changed,
      * the whole jar needs to be rebuilt with ejbc. This is not strictly true
      * for the xml files. If the JNDI name changes then the jar doesn't have to
      * be rebuild, but if the resources references change then it does. At
-     * this point the weblogic jar gets rebuilt if the xml files change at
+     * this point the WebLogic jar gets rebuilt if the xml files change at
      * all.
      *
      * @param genericJarFile java.io.File The generic jar file.
-     * @param weblogicJarFile java.io.File The weblogic jar file to check to
+     * @param weblogicJarFile java.io.File The WebLogic jar file to check to
      *      see if it needs to be rebuilt.
      * @return true if the jar needs to be rebuilt.
      */
@@ -678,81 +672,69 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
         try {
             log("Checking if weblogic Jar needs to be rebuilt for jar " + weblogicJarFile.getName(),
                 Project.MSG_VERBOSE);
-            // Only go forward if the generic and the weblogic file both exist
+            // Only go forward if the generic and the WebLogic file both exist
             if (genericJarFile.exists() && genericJarFile.isFile()
                  && weblogicJarFile.exists() && weblogicJarFile.isFile()) {
                 //open jar files
                 genericJar = new JarFile(genericJarFile);
                 wlJar = new JarFile(weblogicJarFile);
 
-                Hashtable<String, JarEntry> genericEntries = new Hashtable<>();
-                Hashtable<String, JarEntry> wlEntries = new Hashtable<>();
-                Hashtable<String, JarEntry> replaceEntries = new Hashtable<>();
+                Map<String, JarEntry> replaceEntries = new HashMap<>();
 
                 //get the list of generic jar entries
-                for (Enumeration<JarEntry> e = genericJar.entries(); e.hasMoreElements();) {
-                    JarEntry je = e.nextElement();
-                    genericEntries.put(je.getName().replace('\\', '/'), je);
-                }
-                //get the list of weblogic jar entries
-                for (Enumeration<JarEntry> e = wlJar.entries(); e.hasMoreElements();) {
-                    JarEntry je = e.nextElement();
-                    wlEntries.put(je.getName(), je);
-                }
+                Map<String, JarEntry> genericEntries = genericJar.stream()
+                        .collect(Collectors.toMap(je -> je.getName().replace('\\', '/'),
+                                je -> je, (a, b) -> b));
+                // get the list of WebLogic jar entries
+                Map<String, JarEntry> wlEntries = wlJar.stream().collect(Collectors.toMap(ZipEntry::getName,
+                        je -> je, (a, b) -> b));
 
-                //Cycle Through generic and make sure its in weblogic
+                // Cycle through generic and make sure its in WebLogic
                 genericLoader = getClassLoaderFromJar(genericJarFile);
 
-                for (Enumeration<String> e = genericEntries.keys(); e.hasMoreElements();) {
-                    String filepath = e.nextElement();
-
-                    if (wlEntries.containsKey(filepath)) {
-                        // File name/path match
-
-                        // Check files see if same
-                        JarEntry genericEntry = genericEntries.get(filepath);
-                        JarEntry wlEntry = wlEntries.get(filepath);
-
-                        if ((genericEntry.getCrc() != wlEntry.getCrc())
-                            || (genericEntry.getSize() != wlEntry.getSize())) {
-
-                            if (genericEntry.getName().endsWith(".class")) {
-                                //File are different see if its an object or an interface
-                                String classname
-                                    = genericEntry.getName()
-                                    .replace(File.separatorChar, '.')
-                                    .replace('/', '.');
-
-                                classname = classname.substring(0, classname.lastIndexOf(".class"));
-
-                                Class<?> genclass = genericLoader.loadClass(classname);
-
-                                if (genclass.isInterface()) {
-                                    //Interface changed   rebuild jar.
-                                    log("Interface " + genclass.getName()
-                                        + " has changed", Project.MSG_VERBOSE);
-                                    rebuild = true;
-                                    break;
-                                }
-                                //Object class Changed   update it.
-                                replaceEntries.put(filepath, genericEntry);
-                            } else if (!genericEntry.getName()
-                                .equals("META-INF/MANIFEST.MF")) {
-                                // it is the manifest, so ignore it
-                                //File other then class changed   rebuild
-                                log("Non class file " + genericEntry.getName()
-                                    + " has changed", Project.MSG_VERBOSE);
-                                rebuild = true;
-                                break;
-                            }
-                        }
-                    } else {
+                for (String filepath : genericEntries.keySet()) {
+                    if (!wlEntries.containsKey(filepath)) {
                         // a file doesn't exist rebuild
-
                         log("File " + filepath + " not present in weblogic jar",
                             Project.MSG_VERBOSE);
                         rebuild = true;
                         break;
+                    }
+                    // File name/path match
+                    // Check files see if same
+                    JarEntry genericEntry = genericEntries.get(filepath);
+                    JarEntry wlEntry = wlEntries.get(filepath);
+
+                    if (genericEntry.getCrc() != wlEntry.getCrc()
+                        || genericEntry.getSize() != wlEntry.getSize()) {
+
+                        if (genericEntry.getName().endsWith(".class")) {
+                            //File are different see if its an object or an interface
+                            String classname = genericEntry.getName()
+                                    .replace(File.separatorChar, '.')
+                                    .replace('/', '.');
+
+                            classname = classname.substring(0, classname.lastIndexOf(".class"));
+
+                            Class<?> genclass = genericLoader.loadClass(classname);
+
+                            if (genclass.isInterface()) {
+                                //Interface changed   rebuild jar.
+                                log("Interface " + genclass.getName()
+                                    + " has changed", Project.MSG_VERBOSE);
+                                rebuild = true;
+                                break;
+                            }
+                            //Object class Changed   update it.
+                            replaceEntries.put(filepath, genericEntry);
+                        } else if (!genericEntry.getName().equals("META-INF/MANIFEST.MF")) {
+                            // it is not the manifest, otherwise we'd ignore it
+                            // File other then class changed   rebuild
+                            log("Non class file " + genericEntry.getName()
+                                + " has changed", Project.MSG_VERBOSE);
+                            rebuild = true;
+                            break;
+                        }
                     }
                 }
 
@@ -766,10 +748,8 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
                     newJarStream = new JarOutputStream(Files.newOutputStream(newWLJarFile.toPath()));
                     newJarStream.setLevel(0);
 
-                    //Copy files from old weblogic jar
-                    for (Enumeration<JarEntry> e = wlEntries.elements(); e.hasMoreElements();) {
-                        JarEntry je = e.nextElement();
-
+                    // Copy files from old WebLogic jar
+                    for (JarEntry je : wlEntries.values()) {
                         if (je.getCompressedSize() == -1
                             || je.getCompressedSize() == je.getSize()) {
                             newJarStream.setLevel(0);
@@ -786,7 +766,7 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
                             je = replaceEntries.get(je.getName());
                             is = genericJar.getInputStream(je);
                         } else {
-                            //use fle from original weblogic jar
+                            //use file from original WebLogic jar
 
                             is = wlJar.getInputStream(je);
                         }
@@ -831,8 +811,7 @@ public class WeblogicDeploymentTool extends GenericDeploymentTool {
                     rebuild = true;
                 }
             }
-            if (genericLoader != null
-                && genericLoader instanceof AntClassLoader) {
+            if (genericLoader instanceof AntClassLoader) {
                 @SuppressWarnings("resource")
                 AntClassLoader loader = (AntClassLoader) genericLoader;
                 loader.cleanup();

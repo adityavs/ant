@@ -53,9 +53,12 @@ import com.sun.media.jai.codec.FileSeekableStream;
  * href="http://java.sun.com/products/java-media/jai/forDevelopers/jai1_0_1guide-unc/">
  * JAI Programming Guide</a>.
  *
+ * @deprecated JAI is not developed any more. Internal APIs that JAI depends on were
+ * scheduled for removal in Java 7 and finally removed in Java 9.
  * @see org.apache.tools.ant.types.optional.image.ImageOperation
  * @see org.apache.tools.ant.types.DataType
  */
+@Deprecated
 public class Image extends MatchingTask {
     // CheckStyle:VisibilityModifier OFF - bc
     protected Vector<ImageOperation> instructions = new Vector<>();
@@ -222,8 +225,7 @@ public class Image extends MatchingTask {
                           final File dstDir, final FileNameMapper mapper) {
         int writeCount = 0;
 
-        for (int i = 0; i < srcNames.length; ++i) {
-            final String srcName = srcNames[i];
+        for (final String srcName : srcNames) {
             final File srcFile = new File(srcDir, srcName).getAbsoluteFile();
 
             final String[] dstNames = mapper.mapFileName(srcName);
@@ -238,7 +240,7 @@ public class Image extends MatchingTask {
 
                 if (dstFile.exists()) {
                     // avoid overwriting unless necessary
-                    if(!overwrite
+                    if (!overwrite
                        && srcFile.lastModified() <= dstFile.lastModified()) {
 
                         log(srcFile + " omitted as " + dstFile
@@ -356,8 +358,8 @@ public class Image extends MatchingTask {
             }
             // deal with the filesets
             for (FileSet fs : filesets) {
-                writeCount += processDir(fs.getDir(getProject()),
-                    fs.getDirectoryScanner(getProject()).getIncludedFiles(),
+                writeCount += processDir(fs.getDir(),
+                    fs.getDirectoryScanner().getIncludedFiles(),
                     dest, mapper);
             }
 

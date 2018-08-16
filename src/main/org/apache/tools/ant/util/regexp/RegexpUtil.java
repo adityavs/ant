@@ -62,10 +62,10 @@ public class RegexpUtil {
     public static int asOptions(String flags) {
         int options = RegexpMatcher.MATCH_DEFAULT;
         if (flags != null) {
-            options = asOptions(flags.indexOf('i') == -1,
-                                flags.indexOf('m') != -1,
-                                flags.indexOf('s') != -1);
-            if (flags.indexOf('g') != -1) {
+            options = asOptions(!flags.contains("i"),
+                    flags.contains("m"),
+                    flags.contains("s"));
+            if (flags.contains("g")) {
                 options |= Regexp.REPLACE_ALL;
             }
         }
@@ -96,13 +96,13 @@ public class RegexpUtil {
                                 boolean singleLine) {
         int options = RegexpMatcher.MATCH_DEFAULT;
         if (!caseSensitive) {
-            options = options | RegexpMatcher.MATCH_CASE_INSENSITIVE;
+            options |= RegexpMatcher.MATCH_CASE_INSENSITIVE;
         }
         if (multiLine) {
-            options = options | RegexpMatcher.MATCH_MULTILINE;
+            options |= RegexpMatcher.MATCH_MULTILINE;
         }
         if (singleLine) {
-            options = options | RegexpMatcher.MATCH_SINGLELINE;
+            options |= RegexpMatcher.MATCH_SINGLELINE;
         }
         return options;
     }

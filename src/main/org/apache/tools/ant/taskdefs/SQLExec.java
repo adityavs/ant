@@ -761,7 +761,7 @@ public class SQLExec extends JDBCTask {
             // SQL defines "--" as a comment to EOL
             // and in Oracle it may contain a hint
             // so we cannot just remove it, instead we must end it
-            if (!keepformat && line.indexOf("--") >= 0) {
+            if (!keepformat && line.contains("--")) {
                 sql.append("\n");
             }
             int lastDelimPos = lastDelimiterPosition(sql, line);
@@ -906,14 +906,13 @@ public class SQLExec extends JDBCTask {
     }
 
     private String maybeQuote(String s) {
-        if (csvQuoteChar == null || s == null || (!forceCsvQuoteChar && s.indexOf(csvColumnSep) == -1 && s.indexOf(csvQuoteChar) == -1)) {
+        if (csvQuoteChar == null || s == null
+                || (!forceCsvQuoteChar && !s.contains(csvColumnSep) && !s.contains(csvQuoteChar))) {
             return s;
         }
         StringBuilder sb = new StringBuilder(csvQuoteChar);
-        int len = s.length();
         char q = csvQuoteChar.charAt(0);
-        for (int i = 0; i < len; i++) {
-            char c = s.charAt(i);
+        for (final char c : s.toCharArray()) {
             if (c == q) {
                 sb.append(q);
             }

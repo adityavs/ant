@@ -23,12 +23,12 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Enumeration;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,8 +45,8 @@ import org.apache.tools.ant.taskdefs.rmic.DefaultRmicAdapter;
 import org.apache.tools.ant.taskdefs.rmic.WLRmic;
 import org.apache.tools.ant.types.Path;
 import org.apache.tools.ant.types.Reference;
+import org.apache.tools.ant.types.Resource;
 import org.apache.tools.ant.types.ResourceCollection;
-import org.apache.tools.ant.types.resources.Difference;
 import org.apache.tools.ant.types.resources.FileProvider;
 import org.apache.tools.ant.util.FileUtils;
 import org.apache.tools.ant.util.depend.DependencyAnalyzer;
@@ -222,12 +222,15 @@ public class Depend extends MatchingTask {
         if (cache != null) {
             cache.mkdirs();
             File depFile = new File(cache, CACHE_FILE_NAME);
-            try (PrintWriter pw =
-                new PrintWriter(new BufferedWriter(new FileWriter(depFile)))) {
+            try (BufferedWriter pw =
+                new BufferedWriter(new FileWriter(depFile))) {
                 for (Map.Entry<String, List<String>> e : dependencyMap
                     .entrySet()) {
-                    pw.printf("%s%s%n", CLASSNAME_PREPEND, e.getKey());
-                    e.getValue().forEach(pw::println);
+                    pw.write(String.format("%s%s%n", CLASSNAME_PREPEND, e.getKey()));
+                    for (String s : e.getValue()) {
+                        pw.write(s);
+                        pw.newLine();
+                    }
                 }
             }
         }
@@ -242,16 +245,17 @@ public class Depend extends MatchingTask {
         if (dependClasspath == null) {
             return null;
         }
-        Difference diff = new Difference();
-        diff.add(destPath);
-        diff.add(dependClasspath);
+
+        Set<Resource> dependNotInDest = new LinkedHashSet<>();
+        dependClasspath.forEach(dependNotInDest::add);
+        destPath.forEach(dependNotInDest::remove);
 
         Path p;
-        if (diff.isEmpty()) {
+        if (dependNotInDest.isEmpty()) {
             p = null;
         } else {
             p = new Path(getProject());
-            p.add(diff);
+            dependNotInDest.forEach(p::add);
         }
 
         log("Classpath without dest dir is " + p, Project.MSG_DEBUG);
@@ -318,14 +322,9 @@ public class Depend extends MatchingTask {
                 analyzer.addRootClass(info.className);
                 analyzer.addClassPath(destPath);
                 analyzer.setClosure(false);
-                dependencyList = new ArrayList<>();
-                Enumeration<String> depEnum = analyzer.getClassDependencies();
-                while (depEnum.hasMoreElements()) {
-                    String o = depEnum.nextElement();
-                    dependencyList.add(o);
-                    log("Class " + info.className + " depends on " + o,
-                        Project.MSG_DEBUG);
-                }
+                dependencyList = Collections.list(analyzer.getClassDependencies());
+                dependencyList.forEach(o -> log("Class " + info.className + " depends on " + o,
+                        Project.MSG_DEBUG));
                 cacheDirty = true;
                 dependencyMap.put(info.className, dependencyList);
             }
@@ -479,12 +478,11 @@ public class Depend extends MatchingTask {
                 // without closure we may delete an inner class but not the
                 // top level class which would not trigger a recompile.
 
-                if (affectedClass.indexOf('$') == -1) {
+                if (!affectedClass.contains("$")) {
                     continue;
                 }
                 // need to delete the main class
-                String topLevelClassName
-                    = affectedClass.substring(0, affectedClass.indexOf('$'));
+                String topLevelClassName = affectedClass.substring(0, affectedClass.indexOf("$"));
                 log("Top level class = " + topLevelClassName,
                     Project.MSG_VERBOSE);
                 ClassFileInfo topLevelClassInfo

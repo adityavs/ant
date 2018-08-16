@@ -18,33 +18,32 @@
 package org.apache.tools.ant.taskdefs.optional;
 
 import org.apache.tools.ant.BuildException;
+import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.Execute;
 import org.apache.tools.ant.taskdefs.ExecuteStreamHandler;
 import org.apache.tools.ant.types.Commandline;
 
+import org.junit.Rule;
 import org.junit.Test;
-
-import static org.junit.Assert.fail;
-import static org.apache.tools.ant.AntAssert.assertContains;
+import org.junit.rules.ExpectedException;
 
 public class RpmTest {
 
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
     @Test
-    public void testShouldThrowExceptionWhenRpmFails() throws Exception {
+    public void testShouldThrowExceptionWhenRpmFails() {
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("' failed with exit code 2");
         Rpm rpm = new MyRpm();
-        rpm.setProject(new org.apache.tools.ant.Project());
+        rpm.setProject(new Project());
         rpm.setFailOnError(true);
-        // execute
-        try {
-            rpm.execute();
-            fail("should have thrown a build exception");
-        } catch (BuildException ex) {
-            assertContains("' failed with exit code 2", ex.getMessage());
-        }
+        rpm.execute();
     }
 
     @Test
-    public void testShouldNotThrowExceptionWhenRpmFails() throws Exception {
+    public void testShouldNotThrowExceptionWhenRpmFails() {
         Rpm rpm = new MyRpm();
         rpm.execute();
     }

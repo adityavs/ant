@@ -26,7 +26,6 @@ import java.nio.file.Files;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Hashtable;
@@ -659,7 +658,7 @@ public class Zip extends MatchingTask {
         // collect filesets to pass them to getResourcesToAdd
         final List<ResourceCollection> vfss = new ArrayList<>();
         if (baseDir != null) {
-            final FileSet fs = getImplicitFileSet().clone();
+            final FileSet fs = (FileSet) getImplicitFileSet().clone();
             fs.setDir(baseDir);
             vfss.add(fs);
         }
@@ -937,12 +936,12 @@ public class Zip extends MatchingTask {
             fileMode = zfs.getFileMode(getProject());
         }
 
-        if (prefix.length() > 0 && fullpath.length() > 0) {
+        if (!prefix.isEmpty() && !fullpath.isEmpty()) {
             throw new BuildException(
                 "Both prefix and fullpath attributes must not be set on the same fileset.");
         }
 
-        if (resources.length != 1 && fullpath.length() > 0) {
+        if (resources.length != 1 && !fullpath.isEmpty()) {
             throw new BuildException(
                 "fullpath attribute may only be specified for filesets that specify a single file.");
         }
@@ -1027,7 +1026,7 @@ public class Zip extends MatchingTask {
         throws IOException {
 
         if (!name.endsWith("/")) {
-            name = name + "/";
+            name += "/";
         }
 
         final int nextToLastSlash = name.lastIndexOf('/', name.length() - 2);
@@ -1248,11 +1247,11 @@ public class Zip extends MatchingTask {
                                              final File zipFile,
                                              final boolean needsUpdate)
         throws BuildException {
-        final List<ResourceCollection> filesets = new ArrayList<>();
+        final List<FileSet> filesets = new ArrayList<>();
         final List<ResourceCollection> rest = new ArrayList<>();
         for (ResourceCollection rc : rcs) {
             if (rc instanceof FileSet) {
-                filesets.add(rc);
+                filesets.add((FileSet) rc);
             } else {
                 rest.add(rc);
             }
@@ -1262,8 +1261,7 @@ public class Zip extends MatchingTask {
         ArchiveState as = getNonFileSetResourcesToAdd(rc, zipFile,
                                                       needsUpdate);
 
-        final FileSet[] fs = filesets.toArray(new FileSet[filesets
-                                                                .size()]);
+        final FileSet[] fs = filesets.toArray(new FileSet[filesets.size()]);
         final ArchiveState as2 = getResourcesToAdd(fs, zipFile, as.isOutOfDate());
         if (!as.isOutOfDate() && as2.isOutOfDate()) {
             /*
@@ -1297,12 +1295,7 @@ public class Zip extends MatchingTask {
      * to move the withEmpty behavior checks (since either would break
      * subclasses in several ways).
      */
-    private static final ThreadLocal<Boolean> HAVE_NON_FILE_SET_RESOURCES_TO_ADD = new ThreadLocal<Boolean>() {
-            @Override
-            protected Boolean initialValue() {
-                return Boolean.FALSE;
-            }
-        };
+    private static final ThreadLocal<Boolean> HAVE_NON_FILE_SET_RESOURCES_TO_ADD = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     /**
      * Collect the resources that are newer than the corresponding
@@ -1425,7 +1418,7 @@ public class Zip extends MatchingTask {
             if (filesets[i] instanceof ZipFileSet) {
                 final ZipFileSet zfs = (ZipFileSet) filesets[i];
                 if (zfs.getFullpath(getProject()) != null
-                    && !zfs.getFullpath(getProject()).equals("")) {
+                    && !zfs.getFullpath(getProject()).isEmpty()) {
                     // in this case all files from origin map to
                     // the fullPath attribute of the zipfileset at
                     // destination
@@ -1434,7 +1427,7 @@ public class Zip extends MatchingTask {
                     myMapper = fm;
 
                 } else if (zfs.getPrefix(getProject()) != null
-                           && !zfs.getPrefix(getProject()).equals("")) {
+                           && !zfs.getPrefix(getProject()).isEmpty()) {
                     final GlobPatternMapper gm = new GlobPatternMapper();
                     gm.setFrom("*");
                     String prefix = zfs.getPrefix(getProject());
@@ -1498,7 +1491,7 @@ public class Zip extends MatchingTask {
 
         final Resource[][] initialResources = grabNonFileSetResources(rcs);
         final boolean empty = isEmpty(initialResources);
-        HAVE_NON_FILE_SET_RESOURCES_TO_ADD.set(Boolean.valueOf(!empty));
+        HAVE_NON_FILE_SET_RESOURCES_TO_ADD.set(!empty);
         if (empty) {
             // no emptyBehavior handling since the FileSet version
             // will take care of it.
@@ -1601,13 +1594,13 @@ public class Zip extends MatchingTask {
             final List<Resource> resources = new Vector<>();
             if (!doFilesonly) {
                 for (String d : rs.getIncludedDirectories()) {
-                    if (!(d.isEmpty() && skipEmptyNames)) {
+                    if (!d.isEmpty() || !skipEmptyNames) {
                         resources.add(rs.getResource(d));
                     }
                 }
             }
             for (String f : rs.getIncludedFiles()) {
-                if (!(f.isEmpty() && skipEmptyNames)) {
+                if (!f.isEmpty() || !skipEmptyNames) {
                     resources.add(rs.getResource(f));
                 }
             }
@@ -1638,7 +1631,7 @@ public class Zip extends MatchingTask {
             }
             // make sure directories are in alpha-order - this also
             // ensures parents come before their children
-            Collections.sort(dirs, Comparator.comparing(Resource::getName));
+            dirs.sort(Comparator.comparing(Resource::getName));
             final List<Resource> rs = new ArrayList<>(dirs);
             rs.addAll(files);
             result[i] = rs.toArray(new Resource[rs.size()]);
@@ -2203,7 +2196,7 @@ public class Zip extends MatchingTask {
      * central directory - which is what <em>as-needed</em> may result
      * in.  Java5 and Microsoft Visual Studio's Extension loader are
      * known to fconsider the archive broken in such cases.  If you
-     * are targeting such an archiver uset the value <em>never</em>
+     * are targeting such an archiver use the value <em>never</em>
      * unless you know you need Zip64 extensions.</p>
      *
      * @since Ant 1.9.1

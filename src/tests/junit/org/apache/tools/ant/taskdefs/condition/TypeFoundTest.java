@@ -17,15 +17,14 @@
  */
 package org.apache.tools.ant.taskdefs.condition;
 
-import org.apache.tools.ant.AntAssert;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.BuildFileRule;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 import static org.junit.Assert.assertNull;
 
 /**
@@ -35,6 +34,9 @@ public class TypeFoundTest {
 
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
+
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     @Before
     public void setUp() {
@@ -47,14 +49,14 @@ public class TypeFoundTest {
         assertEquals("true", buildRule.getProject().getProperty("testTask"));
     }
 
+    /**
+     * Expected failure due to missing name attribute
+     */
     @Test
     public void testUndefined() {
-        try {
-            buildRule.executeTarget("testUndefined");
-            fail("Build exception expected: left out the name attribute");
-        } catch(BuildException ex) {
-            AntAssert.assertContains("No type specified", ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("No type specified");
+        buildRule.executeTarget("testUndefined");
     }
 
     @Test

@@ -26,7 +26,7 @@ import org.junit.Test;
 import java.io.File;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertTrue;
 
 
 public class CopydirTest {
@@ -39,34 +39,31 @@ public class CopydirTest {
         buildRule.executeTarget("setUp");
     }
 
-    @Test
+    /**
+     * Expected failure due to required argument not specified
+     */
+    @Test(expected = BuildException.class)
     public void test1() {
-        try {
-            buildRule.executeTarget("test1");
-            fail("Required argument not specified");
-        } catch (BuildException ex) {
-            // TODO assert value
-        }
+        buildRule.executeTarget("test1");
+        // TODO Assert exception message
     }
 
-    @Test
+    /**
+     * Expected failure due to required argument not specified
+     */
+    @Test(expected = BuildException.class)
     public void test2() {
-        try {
-            buildRule.executeTarget("test2");
-            fail("Required argument not specified");
-        } catch (BuildException ex) {
-            // TODO assert value
-        }
+        buildRule.executeTarget("test2");
+        // TODO Assert exception message
     }
 
-    @Test
+    /**
+     * Expected failure due to required argument not specified
+     */
+    @Test(expected = BuildException.class)
     public void test3() {
-        try {
-            buildRule.executeTarget("test3");
-            fail("Required argument not specified");
-        } catch (BuildException ex) {
-            // TODO assert value
-        }
+        buildRule.executeTarget("test3");
+        // TODO Assert exception message
     }
 
     @Test
@@ -81,20 +78,17 @@ public class CopydirTest {
         buildRule.executeTarget("test5");
         File f = new File(new File(buildRule.getProject().getProperty("output")), "taskdefs.tmp");
 
-        if (!f.exists() || !f.isDirectory()) {
-            fail("Copy failed");
-        }
+        assertTrue("Copy failed", f.exists() && f.isDirectory());
         // We keep this, so we have something to delete in later tests :-)
     }
 
-    @Test
+    /**
+     * expected failure because target is file
+     */
+    @Test(expected = BuildException.class)
     public void test6() {
-        try {
-            buildRule.executeTarget("test6");
-            fail("target is file");
-        } catch (BuildException ex) {
-            //TODO assert value
-        }
+        buildRule.executeTarget("test6");
+        // TODO Assert exception message
     }
 
 }

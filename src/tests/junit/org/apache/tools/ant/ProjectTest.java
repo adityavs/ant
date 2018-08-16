@@ -31,15 +31,21 @@ import org.apache.tools.ant.types.PatternSet;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
-import static org.apache.tools.ant.AntAssert.assertContains;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasKey;
+import static org.hamcrest.Matchers.hasValue;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
+import static org.junit.Assume.assumeFalse;
+import static org.junit.Assume.assumeTrue;
 
 /**
  * Very limited test class for Project. Waiting to be extended.
@@ -49,6 +55,9 @@ public class ProjectTest {
 
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
+
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     private Project p;
     private String root;
@@ -68,70 +77,82 @@ public class ProjectTest {
                    p.createDataType("dummy"));
         Object o = p.createDataType("fileset");
         assertNotNull("fileset is a known type", o);
-        assertTrue("fileset creates FileSet", o instanceof FileSet);
-        assertTrue("PatternSet",
-               p.createDataType("patternset") instanceof PatternSet);
-        assertTrue("Path", p.createDataType("path") instanceof Path);
+        assertThat("fileset creates FileSet", o, instanceOf(FileSet.class));
+        assertThat("PatternSet", p.createDataType("patternset"),
+                instanceOf(PatternSet.class));
+        assertThat("Path", p.createDataType("path"), instanceOf(Path.class));
     }
 
     /**
-     * This test has been a starting point for moving the code to FileUtils.
+     * This test has been a starting point for moving the code to FileUtils;
+     * first, the DOS/Netware-specific part.
+     */
+    @Test
+    public void testResolveFileWithDriveLetter() {
+        assumeTrue("Not DOS or Netware", Os.isFamily("netware") || Os.isFamily("dos"));
+        assertEqualsIgnoreDriveCase(localize(File.separator),
+                p.resolveFile("/", null).getPath());
+        assertEqualsIgnoreDriveCase(localize(File.separator),
+                p.resolveFile("\\", null).getPath());
+        /*
+         * throw in drive letters
+         */
+        String driveSpec = "C:";
+        String driveSpecLower = "c:";
+
+        assertEqualsIgnoreDriveCase(driveSpecLower + "\\",
+                p.resolveFile(driveSpec + "/", null).getPath());
+        assertEqualsIgnoreDriveCase(driveSpecLower + "\\",
+                p.resolveFile(driveSpec + "\\", null).getPath());
+        assertEqualsIgnoreDriveCase(driveSpecLower + "\\",
+                p.resolveFile(driveSpecLower + "/", null).getPath());
+        assertEqualsIgnoreDriveCase(driveSpecLower + "\\",
+                p.resolveFile(driveSpecLower + "\\", null).getPath());
+        /*
+         * promised to eliminate consecutive slashes after drive letter.
+         */
+        assertEqualsIgnoreDriveCase(driveSpec + "\\",
+                p.resolveFile(driveSpec + "/////", null).getPath());
+        assertEqualsIgnoreDriveCase(driveSpec + "\\",
+                p.resolveFile(driveSpec + "\\\\\\\\\\\\", null).getPath());
+    }
+
+    /**
+     * This test has been a starting point for moving the code to FileUtils;
+     * now, the POSIX-specific part.
      */
     @Test
     public void testResolveFile() {
-        if (Os.isFamily("netware") || Os.isFamily("dos")) {
-            assertEqualsIgnoreDriveCase(localize(File.separator),
-                p.resolveFile("/", null).getPath());
-            assertEqualsIgnoreDriveCase(localize(File.separator),
-                p.resolveFile("\\", null).getPath());
-            /*
-             * throw in drive letters
-             */
-            String driveSpec = "C:";
-            String driveSpecLower = "c:";
-
-            assertEqualsIgnoreDriveCase(driveSpecLower + "\\",
-                         p.resolveFile(driveSpec + "/", null).getPath());
-            assertEqualsIgnoreDriveCase(driveSpecLower + "\\",
-                         p.resolveFile(driveSpec + "\\", null).getPath());
-            assertEqualsIgnoreDriveCase(driveSpecLower + "\\",
-                         p.resolveFile(driveSpecLower + "/", null).getPath());
-            assertEqualsIgnoreDriveCase(driveSpecLower + "\\",
-                         p.resolveFile(driveSpecLower + "\\", null).getPath());
-            /*
-             * promised to eliminate consecutive slashes after drive letter.
-             */
-            assertEqualsIgnoreDriveCase(driveSpec + "\\",
-                         p.resolveFile(driveSpec + "/////", null).getPath());
-            assertEqualsIgnoreDriveCase(driveSpec + "\\",
-                         p.resolveFile(driveSpec + "\\\\\\\\\\\\", null).getPath());
-        } else {
-            /*
-             * Start with simple absolute file names.
-             */
-            assertEquals(File.separator,
-                         p.resolveFile("/", null).getPath());
-            assertEquals(File.separator,
-                         p.resolveFile("\\", null).getPath());
-            /*
-             * drive letters are not used, just to be considered as normal
-             * part of a name
-             */
-            String driveSpec = "C:";
-            String udir = System.getProperty("user.dir") + File.separatorChar;
-            assertEquals(udir + driveSpec,
-                         p.resolveFile(driveSpec + "/", null).getPath());
-            assertEquals(udir + driveSpec,
-                         p.resolveFile(driveSpec + "\\", null).getPath());
-            String driveSpecLower = "c:";
-            assertEquals(udir + driveSpecLower,
-                         p.resolveFile(driveSpecLower + "/", null).getPath());
-            assertEquals(udir + driveSpecLower,
-                         p.resolveFile(driveSpecLower + "\\", null).getPath());
-        }
+        assumeFalse("DOS or Netware", Os.isFamily("netware") || Os.isFamily("dos"));
         /*
-         * Now test some relative file name magic.
+         * Start with simple absolute file names.
          */
+        assertEquals(File.separator,
+                p.resolveFile("/", null).getPath());
+        assertEquals(File.separator,
+                p.resolveFile("\\", null).getPath());
+        /*
+         * drive letters are not used, just to be considered as normal
+         * part of a name
+         */
+        String driveSpec = "C:";
+        String udir = System.getProperty("user.dir") + File.separatorChar;
+        assertEquals(udir + driveSpec,
+                p.resolveFile(driveSpec + "/", null).getPath());
+        assertEquals(udir + driveSpec,
+                p.resolveFile(driveSpec + "\\", null).getPath());
+        String driveSpecLower = "c:";
+        assertEquals(udir + driveSpecLower,
+                p.resolveFile(driveSpecLower + "/", null).getPath());
+        assertEquals(udir + driveSpecLower,
+                p.resolveFile(driveSpecLower + "\\", null).getPath());
+    }
+
+    /**
+     * Test some relative file name magic: platform-neutral.
+     */
+    @Test
+    public void testResolveRelativeFile() {
         assertEquals(localize("/1/2/3/4"),
                      p.resolveFile("4", new File(localize("/1/2/3"))).getPath());
         assertEquals(localize("/1/2/3/4"),
@@ -166,8 +187,8 @@ public class ProjectTest {
      * is called via resolveFile to pass under cygwin
      */
     private void assertEqualsIgnoreDriveCase(String s1, String s2) {
-        if ((Os.isFamily("dos") || Os.isFamily("netware"))
-            && s1.length() >= 1 && s2.length() >= 1) {
+        assumeTrue("Not DOS or Netware", Os.isFamily("netware") || Os.isFamily("dos"));
+        if (s1.length() >= 1 && s2.length() >= 1) {
             StringBuilder sb1 = new StringBuilder(s1);
             StringBuilder sb2 = new StringBuilder(s2);
             sb1.setCharAt(0, Character.toUpperCase(s1.charAt(0)));
@@ -178,18 +199,16 @@ public class ProjectTest {
         }
     }
 
-    private void assertTaskDefFails(final Class taskClass,
-                                       final String message) {
+    private void assertTaskDefFails(final Class<?> taskClass, final String message) {
         final String dummyName = "testTaskDefinitionDummy";
+        thrown.expect(BuildException.class);
+        thrown.expectMessage(message);
         try {
             mbl.addBuildEvent(message, Project.MSG_ERR);
             p.addTaskDefinition(dummyName, taskClass);
-            fail(String.format("expected BuildException(\"%s\", Project.MSG_ERR) when adding task %s",
-                    message, taskClass));
-        } catch (BuildException e) {
-            assertEquals(message, e.getMessage());
+        } finally {
             mbl.assertEmpty();
-            assertTrue(!p.getTaskDefinitions().containsKey(dummyName));
+            assertThat(p.getTaskDefinitions(), not(hasKey(dummyName)));
         }
     }
 
@@ -233,7 +252,7 @@ public class ProjectTest {
     public void testInputHandler() {
         InputHandler ih = p.getInputHandler();
         assertNotNull(ih);
-        assertTrue(ih instanceof DefaultInputHandler);
+        assertThat(ih, instanceOf(DefaultInputHandler.class));
         InputHandler pfih = new PropertyFileInputHandler();
         p.setInputHandler(pfih);
         assertSame(pfih, p.getInputHandler());
@@ -241,25 +260,22 @@ public class ProjectTest {
 
     @Test
     public void testTaskDefinitionContainsKey() {
-        assertTrue(p.getTaskDefinitions().containsKey("echo"));
+        assertThat(p.getTaskDefinitions(), hasKey("echo"));
     }
 
     @Test
-    public void testTaskDefinitionContains() {
-        assertTrue(p.getTaskDefinitions().contains(org.apache.tools.ant.taskdefs.Echo.class));
+    public void testTaskDefinitionContainsValue() {
+        assertThat(p.getTaskDefinitions(), hasValue(org.apache.tools.ant.taskdefs.Echo.class));
     }
 
+    /**
+     *  Fail because buildfile contains two targets with the same name
+     */
     @Test
     public void testDuplicateTargets() {
-        // fail, because buildfile contains two targets with the same name
-        try {
-            buildRule.configureProject("src/etc/testcases/core/duplicate-target.xml");
-            fail("Should throw BuildException about duplicate target");
-        } catch (BuildException ex) {
-            assertEquals("specific message",
-                         "Duplicate target 'twice'",
-                         ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("Duplicate target 'twice'");
+        buildRule.configureProject("src/etc/testcases/core/duplicate-target.xml");
     }
 
     @Test
@@ -267,7 +283,7 @@ public class ProjectTest {
         // overriding target from imported buildfile is allowed
         buildRule.configureProject("src/etc/testcases/core/duplicate-target2.xml");
         buildRule.executeTarget("once");
-        assertContains("once from buildfile", buildRule.getLog());
+        assertThat(buildRule.getLog(), containsString("once from buildfile"));
     }
 
     @Test
@@ -277,16 +293,22 @@ public class ProjectTest {
         p.addBuildListener(new BuildListener() {
                 public void buildStarted(BuildEvent event) {
                 }
+
                 public void buildFinished(BuildEvent event) {
                 }
+
                 public void targetStarted(BuildEvent event) {
                 }
+
                 public void targetFinished(BuildEvent event) {
                 }
+
                 public void taskStarted(BuildEvent event) {
                 }
+
                 public void taskFinished(BuildEvent event) {
                 }
+
                 public void messageLogged(final BuildEvent actual) {
                     assertEquals(FOO, actual.getMessage());
                     // each of the following lines would cause an
@@ -297,20 +319,17 @@ public class ProjectTest {
                 }
             });
         final boolean[] done = new boolean[] {false};
-        Thread t = new Thread() {
-                public void run() {
-                    p.log(FOO, Project.MSG_INFO);
-                    done[0] = true;
-                }
-            };
+        Thread t = new Thread(() -> {
+            p.log(FOO, Project.MSG_INFO);
+            done[0] = true;
+        });
         t.start();
         t.join(2000);
         assertTrue("Expected logging thread to finish successfully", done[0]);
     }
 
     /**
-     * @see <a href="https://issues.apache.org/bugzilla/show_bug.cgi?id=47623">
-     *     https://issues.apache.org/bugzilla/show_bug.cgi?id=47623</a>
+     * @see <a href="https://issues.apache.org/bugzilla/show_bug.cgi?id=47623">bug 47623</a>
      */
     @Test
     public void testNullThrowableMessageLog() {
@@ -322,6 +341,7 @@ public class ProjectTest {
         @SuppressWarnings("unused")
         public DummyTaskPrivate() {
         }
+
         public void execute() {
         }
     }
@@ -329,6 +349,7 @@ public class ProjectTest {
     protected class DummyTaskProtected extends Task {
         public DummyTaskProtected() {
         }
+
         public void execute() {
         }
     }
@@ -336,6 +357,7 @@ public class ProjectTest {
     class DummyTaskPackage extends Task {
         public DummyTaskPackage() {
         }
+
         public void execute() {
         }
     }

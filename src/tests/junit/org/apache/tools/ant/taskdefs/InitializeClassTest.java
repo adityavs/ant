@@ -42,13 +42,14 @@ public class InitializeClassTest {
     @Rule
     public final BuildFileRule buildRule = new BuildFileRule();
 
-    private File f1 = new File(System.getProperty("root"), "src/etc/testcases/taskdefs/forkedout");
-    private File f2 = new File(System.getProperty("root"), "src/etc/testcases/taskdefs/unforkedout");
-
+    private File f1;
+    private File f2;
 
     @Before
     public void setUp() {
         buildRule.configureProject("src/etc/testcases/taskdefs/initializeclass.xml");
+        f1 = buildRule.getProject().resolveFile("forkedout");
+        f2 = buildRule.getProject().resolveFile("unforkedout");
     }
 
     @Test
@@ -56,15 +57,12 @@ public class InitializeClassTest {
         buildRule.executeTarget("forked");
         synchronized (System.out) {
             PrintStream ps = System.out;
-            PrintStream newps = new PrintStream(new FileOutputStream(f2));
-             try {
-                 System.setOut(newps);
-                 buildRule.getProject().executeTarget("unforked");
-             } finally {
-                 System.setOut(ps);
-
-                 newps.close();
-             }
+            try (PrintStream newps = new PrintStream(new FileOutputStream(f2))) {
+                System.setOut(newps);
+                buildRule.getProject().executeTarget("unforked");
+            } finally {
+                System.setOut(ps);
+            }
         }
         assertEquals(FileUtilities.getFileContents(f1), FileUtilities.getFileContents(f2));
     }

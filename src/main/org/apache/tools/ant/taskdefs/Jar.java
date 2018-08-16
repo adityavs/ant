@@ -33,7 +33,6 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -56,6 +55,7 @@ import org.apache.tools.ant.types.ResourceCollection;
 import org.apache.tools.ant.types.ZipFileSet;
 import org.apache.tools.ant.types.spi.Service;
 import org.apache.tools.ant.util.FileUtils;
+import org.apache.tools.ant.util.StreamUtils;
 import org.apache.tools.zip.JarMarker;
 import org.apache.tools.zip.ZipExtraField;
 import org.apache.tools.zip.ZipOutputStream;
@@ -322,20 +322,17 @@ public class Jar extends Zip {
      */
     private Manifest getManifestFromJar(File jarFile) throws IOException {
         try (ZipFile zf = new ZipFile(jarFile)) {
-
             // must not use getEntry as "well behaving" applications
             // must accept the manifest in any capitalization
-            Enumeration<? extends ZipEntry> e = zf.entries();
-            while (e.hasMoreElements()) {
-                ZipEntry ze = e.nextElement();
-                if (MANIFEST_NAME.equalsIgnoreCase(ze.getName())) {
-                    try (InputStreamReader isr =
-                        new InputStreamReader(zf.getInputStream(ze), "UTF-8")) {
-                        return getManifest(isr);
-                    }
-                }
+            ZipEntry ze = StreamUtils.enumerationAsStream(zf.entries())
+                    .filter(entry -> MANIFEST_NAME.equalsIgnoreCase(entry.getName()))
+                    .findFirst().orElse(null);
+            if (ze == null) {
+                return null;
             }
-            return null;
+            try (InputStreamReader isr = new InputStreamReader(zf.getInputStream(ze), "UTF-8")) {
+                return getManifest(isr);
+            }
         }
     }
 
@@ -354,14 +351,8 @@ public class Jar extends Zip {
 
     private boolean jarHasIndex(File jarFile) throws IOException {
         try (ZipFile zf = new ZipFile(jarFile)) {
-            Enumeration<? extends ZipEntry> e = zf.entries();
-            while (e.hasMoreElements()) {
-                ZipEntry ze = e.nextElement();
-                if (INDEX_NAME.equalsIgnoreCase(ze.getName())) {
-                    return true;
-                }
-            }
-            return false;
+            return StreamUtils.enumerationAsStream(zf.entries())
+                    .anyMatch(ze -> INDEX_NAME.equalsIgnoreCase(ze.getName()));
         }
     }
 
@@ -533,11 +524,8 @@ public class Jar extends Zip {
 
     private void writeManifest(ZipOutputStream zOut, Manifest manifest)
         throws IOException {
-        for (Enumeration<String> e = manifest.getWarnings();
-             e.hasMoreElements();) {
-            log("Manifest warning: " + e.nextElement(),
-                Project.MSG_WARN);
-        }
+        StreamUtils.enumerationAsStream(manifest.getWarnings())
+                .forEach(warning -> log("Manifest warning: " + warning, Project.MSG_WARN));
 
         zipDir((Resource) null, zOut, "META-INF/", ZipFileSet.DEFAULT_DIR_MODE,
                JAR_MARKER);
@@ -603,7 +591,7 @@ public class Jar extends Zip {
         // header newline
         writer.println(zipFile.getName());
 
-        writeIndexLikeList(new ArrayList<String>(addedDirs.keySet()),
+        writeIndexLikeList(new ArrayList<>(addedDirs.keySet()),
                            rootEntries, writer);
         writer.println();
 
@@ -621,13 +609,12 @@ public class Jar extends Zip {
                     cpEntries[c++] = tok.nextToken();
                 }
             }
-            String[] indexJarEntries = indexJars.list();
-            for (int i = 0; i < indexJarEntries.length; i++) {
-                String name = findJarName(indexJarEntries[i], cpEntries);
+            for (String indexJarEntry : indexJars.list()) {
+                String name = findJarName(indexJarEntry, cpEntries);
                 if (name != null) {
-                    ArrayList<String> dirs = new ArrayList<String>();
-                    ArrayList<String> files = new ArrayList<String>();
-                    grabFilesAndDirs(indexJarEntries[i], dirs, files);
+                    ArrayList<String> dirs = new ArrayList<>();
+                    ArrayList<String> files = new ArrayList<>();
+                    grabFilesAndDirs(indexJarEntry, dirs, files);
                     if (dirs.size() + files.size() > 0) {
                         writer.println(name);
                         writeIndexLikeList(dirs, files, writer);
@@ -674,7 +661,7 @@ public class Jar extends Zip {
                            + " be replaced by a newly generated one.",
                            Project.MSG_WARN);
         } else {
-            if (index && vPath.indexOf('/') == -1) {
+            if (index && !vPath.contains("/")) {
                 rootEntries.add(vPath);
             }
             super.zipFile(is, zOut, vPath, lastModified, fromArchive, mode);
@@ -777,8 +764,8 @@ public class Jar extends Zip {
             // checks here deferring them for the second run
             Resource[][] manifests = grabManifests(rcs);
             int count = 0;
-            for (int i = 0; i < manifests.length; i++) {
-                count += manifests[i].length;
+            for (Resource[] mf : manifests) {
+                count += mf.length;
             }
             log("found a total of " + count + " manifests in "
                 + manifests.length + " resource collections",
@@ -859,23 +846,24 @@ public class Jar extends Zip {
         if (!skipWriting) {
             log("Building MANIFEST-only jar: "
                     + getDestFile().getAbsolutePath());
-        }
-        try (ZipOutputStream zOut = new ZipOutputStream(getDestFile())) {
-            zOut.setEncoding(getEncoding());
-            zOut.setUseZip64(getZip64Mode().getMode());
-            if (isCompress()) {
-                zOut.setMethod(ZipOutputStream.DEFLATED);
-            } else {
-                zOut.setMethod(ZipOutputStream.STORED);
+
+            try (ZipOutputStream zOut = new ZipOutputStream(getDestFile())) {
+                zOut.setEncoding(getEncoding());
+                zOut.setUseZip64(getZip64Mode().getMode());
+                if (isCompress()) {
+                    zOut.setMethod(ZipOutputStream.DEFLATED);
+                } else {
+                    zOut.setMethod(ZipOutputStream.STORED);
+                }
+                initZipOutputStream(zOut);
+                finalizeZipOutputStream(zOut);
+            } catch (IOException ioe) {
+                throw new BuildException("Could not create almost empty JAR archive"
+                                         + " (" + ioe.getMessage() + ")", ioe,
+                                         getLocation());
+            } finally {
+                createEmpty = false;
             }
-            initZipOutputStream(zOut);
-            finalizeZipOutputStream(zOut);
-        } catch (IOException ioe) {
-            throw new BuildException("Could not create almost empty JAR archive"
-                                     + " (" + ioe.getMessage() + ")", ioe,
-                                     getLocation());
-        } finally {
-            createEmpty = false;
         }
         return true;
     }
@@ -908,7 +896,6 @@ public class Jar extends Zip {
      */
     // CheckStyle:LineLength ON
     private void checkJarSpec() {
-        String br = System.getProperty("line.separator");
         StringBuilder message = new StringBuilder();
         Section mainSection = (configuredManifest == null)
                             ? null
@@ -931,9 +918,7 @@ public class Jar extends Zip {
         }
 
         if (message.length() > 0) {
-            message.append(br);
-            message.append("Location: ").append(getLocation());
-            message.append(br);
+            message.append(String.format("%nLocation: %s%n", getLocation()));
             if ("fail".equalsIgnoreCase(strict.getValue())) {
                 throw new BuildException(message.toString(), getLocation());
             }
@@ -1077,15 +1062,12 @@ public class Jar extends Zip {
                                                  List<String> files)
         throws IOException {
         try (org.apache.tools.zip.ZipFile zf = new org.apache.tools.zip.ZipFile(file, "utf-8")) {
-            Enumeration<org.apache.tools.zip.ZipEntry> entries = zf.getEntries();
             Set<String> dirSet = new HashSet<>();
-            while (entries.hasMoreElements()) {
-                org.apache.tools.zip.ZipEntry ze =
-                    entries.nextElement();
+            StreamUtils.enumerationAsStream(zf.getEntries()).forEach(ze -> {
                 String name = ze.getName();
                 if (ze.isDirectory()) {
                     dirSet.add(name);
-                } else if (name.indexOf('/') == -1) {
+                } else if (!name.contains("/")) {
                     files.add(name);
                 } else {
                     // a file, not in the root
@@ -1094,7 +1076,7 @@ public class Jar extends Zip {
                     // well.
                     dirSet.add(name.substring(0, name.lastIndexOf('/') + 1));
                 }
-            }
+            });
             dirs.addAll(dirSet);
         }
     }
@@ -1113,9 +1095,9 @@ public class Jar extends Zip {
                 String name = resources[0][j].getName().replace('\\', '/');
                 if (rcs[i] instanceof ArchiveFileSet) {
                     ArchiveFileSet afs = (ArchiveFileSet) rcs[i];
-                    if (!"".equals(afs.getFullpath(getProject()))) {
+                    if (!afs.getFullpath(getProject()).isEmpty()) {
                         name = afs.getFullpath(getProject());
-                    } else if (!"".equals(afs.getPrefix(getProject()))) {
+                    } else if (!afs.getPrefix(getProject()).isEmpty()) {
                         String prefix = afs.getPrefix(getProject());
                         if (!prefix.endsWith("/") && !prefix.endsWith("\\")) {
                             prefix += "/";

@@ -35,16 +35,16 @@ import org.apache.tools.ant.taskdefs.condition.Os;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.util.SymbolicLinkUtils;
 import org.junit.After;
-import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -65,11 +65,9 @@ public class SymlinkTest {
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
 
-    private boolean supportsSymlinks = Os.isFamily("unix");
-
     @Before
     public void setUp() {
-        Assume.assumeTrue("Symlinks not supported on current operating system", supportsSymlinks);
+        assumeTrue("Symlinks not supported on current operating system", Os.isFamily("unix"));
         buildRule.configureProject("src/etc/testcases/taskdefs/optional/unix/symlink.xml");
         buildRule.executeTarget("setUp");
     }
@@ -88,12 +86,10 @@ public class SymlinkTest {
     public void testDelete() {
         buildRule.executeTarget("test-delete");
         Project p = buildRule.getProject();
-        String linkDeleted = p.getProperty("test.delete.link.still.there");
         assertNotNull("Actual file deleted by symlink",
                       p.getProperty("test.delete.file.still.there"));
-        if (linkDeleted != null) {
-            fail(linkDeleted);
-        }
+        String linkDeleted = p.getProperty("test.delete.link.still.there");
+        assertNull(linkDeleted, linkDeleted);
     }
 
     @Test
@@ -144,11 +140,7 @@ public class SymlinkTest {
                       p.getProperty("test.record.dir2.recorded"));
 
         String dir3rec = p.getProperty("test.record.dir3.recorded");
-
-        if (dir3rec != null) {
-            fail(dir3rec);
-        }
-
+        assertNull(dir3rec, dir3rec);
     }
 
     @Test
@@ -159,18 +151,11 @@ public class SymlinkTest {
         String link2Rem = p.getProperty("test.recreate.link2.not.removed");
         String link3Rem = p.getProperty("test.recreate.link3.not.removed");
         String dirlinkRem = p.getProperty("test.recreate.dirlink.not.removed");
-        if (link1Rem != null) {
-            fail(link1Rem);
-        }
-        if (link2Rem != null) {
-            fail(link2Rem);
-        }
-        if (link3Rem != null) {
-            fail(link3Rem);
-        }
-        if (dirlinkRem != null) {
-            fail(dirlinkRem);
-        }
+
+        assertNull(link1Rem, link1Rem);
+        assertNull(link2Rem ,link2Rem);
+        assertNull(link3Rem ,link3Rem);
+        assertNull(dirlinkRem ,dirlinkRem);
 
         assertNotNull("Failed to recreate link1",
                       p.getProperty("test.recreate.link1.recreated"));
@@ -182,10 +167,7 @@ public class SymlinkTest {
                       p.getProperty("test.recreate.dirlink.recreated"));
 
         String doubleRecreate = p.getProperty("test.recreate.dirlink2.recreated.twice");
-
-        if (doubleRecreate != null) {
-            fail(doubleRecreate);
-        }
+        assertNull(doubleRecreate, doubleRecreate);
 
         assertNotNull("Failed to alter dirlink3",
                       p.getProperty("test.recreate.dirlink3.was.altered"));
@@ -274,8 +256,8 @@ public class SymlinkTest {
         assertFalse(f.exists());
         assertFalse(f.isDirectory());
         assertFalse(f.isFile());
-        assertTrue(su.isSymbolicLink(f.getAbsolutePath()) == false);
-        assertTrue(su.isSymbolicLink(f.getParentFile(), f.getName()) == false);
+        assertFalse(su.isSymbolicLink(f.getAbsolutePath()));
+        assertFalse(su.isSymbolicLink(f.getParentFile(), f.getName()));
         assertTrue(su.isDanglingSymbolicLink(f.getAbsolutePath()));
         assertTrue(su.isDanglingSymbolicLink(f.getParentFile(),
                                              f.getName()));
@@ -284,8 +266,8 @@ public class SymlinkTest {
         assertFalse(f.exists());
         assertFalse(f.isDirectory());
         assertFalse(f.isFile());
-        assertTrue(su.isSymbolicLink(f.getAbsolutePath()) == false);
-        assertTrue(su.isSymbolicLink(f.getParentFile(), f.getName()) == false);
+        assertFalse(su.isSymbolicLink(f.getAbsolutePath()));
+        assertFalse(su.isSymbolicLink(f.getParentFile(), f.getName()));
         assertTrue(su.isDanglingSymbolicLink(f.getAbsolutePath()));
         assertTrue(su.isDanglingSymbolicLink(f.getParentFile(),
                                              f.getName()));
@@ -297,8 +279,7 @@ public class SymlinkTest {
      * is {@code false}, then any existing symbolic link at the {@code link} location (whose target is a directory)
      * doesn't end up create a new symbolic link within the target directory.
      *
-     *
-     * @throws Exception
+     * @throws Exception if something goes wrong
      * @see <a href="https://bz.apache.org/bugzilla/show_bug.cgi?id=58683">BZ-58683</a> for more details
      */
     @Test
@@ -306,10 +287,10 @@ public class SymlinkTest {
         buildRule.executeTarget("test-overwrite-link");
         final Project p = buildRule.getProject();
         final String linkTargetResource = p.getProperty("test.overwrite.link.target.dir");
-        Assert.assertNotNull("Property test.overwrite.link.target.dir is not set", linkTargetResource);
+        assertNotNull("Property test.overwrite.link.target.dir is not set", linkTargetResource);
         final Path targetResourcePath = Paths.get(linkTargetResource);
-        Assert.assertTrue(targetResourcePath + " is not a directory", Files.isDirectory(targetResourcePath));
-        Assert.assertEquals(targetResourcePath + " directory was expected to be empty", 0, Files.list(targetResourcePath).count());
+        assertTrue(targetResourcePath + " is not a directory", Files.isDirectory(targetResourcePath));
+        assertEquals(targetResourcePath + " directory was expected to be empty", 0, Files.list(targetResourcePath).count());
     }
 
     @After

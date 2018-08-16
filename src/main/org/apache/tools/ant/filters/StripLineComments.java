@@ -55,7 +55,7 @@ public final class StripLineComments
     private static final String COMMENTS_KEY = "comment";
 
     /** Vector that holds the comment prefixes. */
-    private Vector<String> comments = new Vector<String>();
+    private Vector<String> comments = new Vector<>();
 
     /** The line that has been read ahead. */
     private String line = null;
@@ -186,9 +186,9 @@ public final class StripLineComments
     private void initialize() {
         Parameter[] params = getParameters();
         if (params != null) {
-            for (int i = 0; i < params.length; i++) {
-                if (COMMENTS_KEY.equals(params[i].getType())) {
-                    comments.addElement(params[i].getValue());
+            for (Parameter param : params) {
+                if (COMMENTS_KEY.equals(param.getType())) {
+                    comments.addElement(param.getValue());
                 }
             }
         }

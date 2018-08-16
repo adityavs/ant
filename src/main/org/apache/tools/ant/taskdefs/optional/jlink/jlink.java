@@ -208,7 +208,6 @@ public class jlink {
         }
         try (ZipFile zipf = new ZipFile(f)) {
             Enumeration<? extends ZipEntry> entries = zipf.entries();
-
             while (entries.hasMoreElements()) {
                 ZipEntry inputEntry = entries.nextElement();
                 //Ignore manifest entries.  They're bound to cause conflicts between
@@ -228,7 +227,7 @@ public class jlink {
                         //entry from another mergefile was called "com".
                         //In that case, just ignore the error and go on to the
                         //next entry.
-                        if (ex.getMessage().indexOf("duplicate") >= 0) {
+                        if (ex.getMessage().contains("duplicate")) {
                             //It was the duplicate entry.
                             continue;
                         }
@@ -256,10 +255,7 @@ public class jlink {
      */
     private void addDirContents(ZipOutputStream output, File dir, String prefix,
                                 boolean compress) throws IOException {
-        String[] contents = dir.list();
-
-        for (int i = 0; i < contents.length; ++i) {
-            String name = contents[i];
+        for (String name : dir.list()) {
             File file = new File(dir, name);
 
             if (file.isDirectory()) {
@@ -358,7 +354,7 @@ public class jlink {
         */
         String name = inputEntry.getName();
 
-        if (!(inputEntry.isDirectory() || name.endsWith(".class"))) {
+        if (!inputEntry.isDirectory() && !name.endsWith(".class")) {
             try (InputStream input = zip.getInputStream(zip.getEntry(name))) {
                 String className = ClassNameReader.getClassName(input);
 

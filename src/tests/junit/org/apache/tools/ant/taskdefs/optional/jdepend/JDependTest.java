@@ -18,11 +18,13 @@
 
 package org.apache.tools.ant.taskdefs.optional.jdepend;
 
-import org.apache.tools.ant.AntAssert;
 import org.apache.tools.ant.BuildFileRule;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.Assert.assertThat;
 
 /**
  * Testcase for the JDepend optional task.
@@ -35,8 +37,7 @@ public class JDependTest {
 
     @Before
     public void setUp() {
-        buildRule.configureProject(
-                "src/etc/testcases/taskdefs/optional/jdepend/jdepend.xml");
+        buildRule.configureProject("src/etc/testcases/taskdefs/optional/jdepend/jdepend.xml");
     }
 
     /**
@@ -45,8 +46,8 @@ public class JDependTest {
     @Test
     public void testSimple() {
         buildRule.executeTarget("simple");
-        AntAssert.assertContains("Package: org.apache.tools.ant.util.facade",
-                buildRule.getOutput());
+        assertThat(buildRule.getOutput(),
+                containsString("Package: org.apache.tools.ant.util.facade"));
     }
 
     /**
@@ -55,7 +56,7 @@ public class JDependTest {
     @Test
     public void testXml() {
         buildRule.executeTarget("xml");
-        AntAssert.assertContains("<DependsUpon>", buildRule.getOutput());
+        assertThat(buildRule.getOutput(), containsString("<DependsUpon>"));
     }
 
     /**
@@ -65,7 +66,8 @@ public class JDependTest {
     @Test
     public void testFork() {
         buildRule.executeTarget("fork");
-        AntAssert.assertContains("Package: org.apache.tools.ant.util.facade", buildRule.getLog());
+        assertThat(buildRule.getLog(),
+                containsString("Package: org.apache.tools.ant.util.facade"));
     }
 
     /**
@@ -74,7 +76,7 @@ public class JDependTest {
     @Test
     public void testForkXml() {
         buildRule.executeTarget("fork-xml");
-        AntAssert.assertContains("<DependsUpon>", buildRule.getLog());
+        assertThat(buildRule.getLog(), containsString("<DependsUpon>"));
     }
 
     /**
@@ -82,8 +84,8 @@ public class JDependTest {
      */
     @Test
     public void testTimeout() {
-        buildRule.executeTarget("fork-xml");
-        AntAssert.assertContains("JDepend FAILED - Timed out", buildRule.getLog());
+        buildRule.executeTarget("fork-timeout");
+        assertThat(buildRule.getLog(), containsString("JDepend FAILED - Timed out"));
     }
 
 
@@ -93,7 +95,8 @@ public class JDependTest {
     @Test
     public void testTimeoutNot() {
         buildRule.executeTarget("fork-timeout-not");
-        AntAssert.assertContains("Package: org.apache.tools.ant.util.facade", buildRule.getLog());
+        assertThat(buildRule.getLog(),
+                containsString("Package: org.apache.tools.ant.util.facade"));
     }
 
 }

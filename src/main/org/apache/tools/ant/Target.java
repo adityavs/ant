@@ -145,36 +145,37 @@ public class Target implements TaskContainer {
     public static List<String> parseDepends(String depends,
                                                 String targetName,
                                                 String attributeName) {
-        List<String> list = new ArrayList<>();
-        if (depends.length() > 0) {
-            StringTokenizer tok =
-                new StringTokenizer(depends, ",", true);
-            while (tok.hasMoreTokens()) {
-                String token = tok.nextToken().trim();
+        if (depends.isEmpty()) {
+            return new ArrayList<>();
+        }
 
-                // Make sure the dependency is not empty string
-                if ("".equals(token) || ",".equals(token)) {
+        List<String> list = new ArrayList<>();
+        StringTokenizer tok = new StringTokenizer(depends, ",", true);
+        while (tok.hasMoreTokens()) {
+            String token = tok.nextToken().trim();
+
+            // Make sure the dependency is not empty string
+            if (token.isEmpty() || ",".equals(token)) {
+                throw new BuildException("Syntax Error: "
+                                         + attributeName
+                                         + " attribute of target \""
+                                         + targetName
+                                         + "\" contains an empty string.");
+            }
+
+            list.add(token);
+
+            // Make sure that depends attribute does not
+            // end in a ,
+            if (tok.hasMoreTokens()) {
+                token = tok.nextToken();
+                if (!tok.hasMoreTokens() || !",".equals(token)) {
                     throw new BuildException("Syntax Error: "
                                              + attributeName
-                                             + " attribute of target \""
+                                             + " attribute for target \""
                                              + targetName
-                                             + "\" contains an empty string.");
-                }
-
-                list.add(token);
-
-                // Make sure that depends attribute does not
-                // end in a ,
-                if (tok.hasMoreTokens()) {
-                    token = tok.nextToken();
-                    if (!tok.hasMoreTokens() || !",".equals(token)) {
-                        throw new BuildException("Syntax Error: "
-                                                 + attributeName
-                                                 + " attribute for target \""
-                                                 + targetName
-                                                 + "\" ends with a \",\" "
-                                                 + "character");
-                    }
+                                             + "\" ends with a \",\" "
+                                             + "character");
                 }
             }
         }
@@ -300,7 +301,7 @@ public class Target implements TaskContainer {
      * @since 1.6.2
      */
     public String getIf() {
-        return "".equals(ifString) ? null : ifString;
+        return ifString.isEmpty() ? null : ifString;
     }
 
     /**
@@ -353,7 +354,7 @@ public class Target implements TaskContainer {
      * @since 1.6.2
      */
     public String getUnless() {
-        return "".equals(unlessString) ? null : unlessString;
+        return unlessString.isEmpty() ? null : unlessString;
     }
 
     /**

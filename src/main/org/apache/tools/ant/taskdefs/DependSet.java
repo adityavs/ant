@@ -38,6 +38,7 @@ import org.apache.tools.ant.types.resources.comparators.Reverse;
 import org.apache.tools.ant.types.resources.selectors.Exists;
 import org.apache.tools.ant.types.resources.selectors.Not;
 import org.apache.tools.ant.types.resources.selectors.ResourceSelector;
+import org.apache.tools.ant.util.StreamUtils;
 
 /**
  * Examines and removes out of date target files.  If any of the target files
@@ -205,7 +206,7 @@ public class DependSet extends MatchingTask {
               "At least one set of target files must be specified");
         }
         //no sources = nothing to compare; no targets = nothing to delete:
-        if (!(sources.isEmpty() || targets.isEmpty() || uptodate(sources, targets))) {
+        if (!sources.isEmpty() && !targets.isEmpty() && !uptodate(sources, targets)) {
            log("Deleting all target files.", Project.MSG_VERBOSE);
            if (verbose) {
                for (String t : targets.list()) {
@@ -225,7 +226,7 @@ public class DependSet extends MatchingTask {
         datesel.setMillis(System.currentTimeMillis());
         datesel.setWhen(TimeComparison.AFTER);
         // don't whine because a file has changed during the last
-        // second (or whathever our current granularity may be)
+        // second (or whatever our current granularity may be)
         datesel.setGranularity(0);
         logFuture(targets, datesel);
 
@@ -263,18 +264,7 @@ public class DependSet extends MatchingTask {
     }
 
     private Resource getXest(ResourceCollection rc, ResourceComparator c) {
-        Iterator<Resource> i = rc.iterator();
-        if (!i.hasNext()) {
-            return null;
-        }
-        Resource xest = i.next();
-        while (i.hasNext()) {
-            Resource next = i.next();
-            if (c.compare(xest, next) < 0) {
-                xest = next;
-            }
-        }
-        return xest;
+        return StreamUtils.iteratorAsStream(rc.iterator()).max(c).orElse(null);
     }
 
     private Resource getOldest(ResourceCollection rc) {

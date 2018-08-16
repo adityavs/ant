@@ -18,7 +18,9 @@
 
 package org.apache.tools.ant.taskdefs;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeNotNull;
 
 import java.io.File;
 import java.util.GregorianCalendar;
@@ -29,7 +31,6 @@ import org.apache.tools.ant.BuildListener;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.ProjectHelper;
 import org.apache.tools.ant.util.FileUtils;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -43,8 +44,6 @@ public class ExecTaskTest {
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
 
-    private static final String BUILD_PATH = "src/etc/testcases/taskdefs/exec/";
-    private static final String BUILD_FILE = BUILD_PATH + "exec.xml";
     private static final int TIME_TO_WAIT = 1;
     /** maximum time allowed for the build in milliseconds */
     private static final int MAX_BUILD_TIME = 6000;
@@ -55,25 +54,23 @@ public class ExecTaskTest {
     /** Utilities used for file operations */
     private static final FileUtils FILE_UTILS = FileUtils.getFileUtils();
 
-    private File logFile;
-    private MonitoredBuild myBuild = null;
     private volatile boolean buildFinished = false;
-
 
     @Before
     public void setUp() {
-        buildRule.configureProject(BUILD_FILE);
+        buildRule.configureProject("src/etc/testcases/taskdefs/exec/exec.xml");
     }
 
     @Test
     public void testspawn() throws InterruptedException {
         buildRule.getProject().executeTarget("setUp");
-        Assume.assumeNotNull(buildRule.getProject().getProperty("test.can.run"));
-        myBuild = new MonitoredBuild(new File(System.getProperty("root"), BUILD_FILE), "spawn");
-        logFile = FILE_UTILS.createTempFile("spawn", "log", new File(buildRule.getProject().getProperty("output")),
-                false, false);
+        assumeNotNull(buildRule.getProject().getProperty("test.can.run"));
+        MonitoredBuild myBuild = new MonitoredBuild(new File(
+                buildRule.getProject().getProperty("ant.file")), "spawn");
+        File logFile = FILE_UTILS.createTempFile("spawn", "log",
+                new File(buildRule.getProject().getProperty("output")), false, false);
         // this is guaranteed by FileUtils#createTempFile
-        assertTrue("log file not existing", !logFile.exists());
+        assertFalse("log file not existing", logFile.exists());
         // make the spawned process run 1 seconds
         myBuild.setTimeToWait(TIME_TO_WAIT);
         myBuild.setLogFile(logFile.getAbsolutePath());
@@ -132,7 +129,6 @@ public class ExecTaskTest {
         public MonitoredBuild(File buildFile, String target) {
             myBuildFile = buildFile;
             this.target = target;
-            project = new Project();
             project = new Project();
             project.init();
             project.setUserProperty("ant.file", myBuildFile.getAbsolutePath());

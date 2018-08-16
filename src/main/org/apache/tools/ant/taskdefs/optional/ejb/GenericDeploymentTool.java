@@ -21,7 +21,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.util.Enumeration;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Map;
@@ -262,12 +262,16 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
         }
 
         String analyzerClassName = null;
-        if (analyzer.equals(ANALYZER_SUPER)) {
-            analyzerClassName = ANALYZER_CLASS_SUPER;
-        } else if (analyzer.equals(ANALYZER_FULL)) {
-            analyzerClassName = ANALYZER_CLASS_FULL;
-        } else {
-            analyzerClassName = analyzer;
+        switch (analyzer) {
+            case ANALYZER_SUPER:
+                analyzerClassName = ANALYZER_CLASS_SUPER;
+                break;
+            case ANALYZER_FULL:
+                analyzerClassName = ANALYZER_CLASS_FULL;
+                break;
+            default:
+                analyzerClassName = analyzer;
+                break;
         }
 
         try {
@@ -413,7 +417,7 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
 
             // Lastly create File object for the Jar files. If we are using
             // a flat destination dir, then we need to redefine baseName!
-            if (config.flatDestDir && baseName.length() != 0) {
+            if (config.flatDestDir && !baseName.isEmpty()) {
                 int startName = baseName.lastIndexOf(File.separator);
                 if (startName == -1) {
                     startName = 0;
@@ -834,12 +838,8 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
             }
         }
 
-        Enumeration<String> e = dependencyAnalyzer.getClassDependencies();
-
-        while (e.hasMoreElements()) {
-            String classname = e.nextElement();
-            String location
-                = classname.replace('.', File.separatorChar) + ".class";
+        for (String classname : Collections.list(dependencyAnalyzer.getClassDependencies())) {
+            String location = classname.replace('.', File.separatorChar) + ".class";
             File classFile = new File(config.srcDir, location);
             if (classFile.exists()) {
                 checkEntries.put(location, classFile);
@@ -880,7 +880,7 @@ public class GenericDeploymentTool implements EJBDeploymentTool {
      */
     @Override
     public void validateConfigured() throws BuildException {
-        if ((destDir == null) || (!destDir.isDirectory())) {
+        if (destDir == null || !destDir.isDirectory()) {
             throw new BuildException(
                 "A valid destination directory must be specified using the \"destdir\" attribute.",
                 getLocation());

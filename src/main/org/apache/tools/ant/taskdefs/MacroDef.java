@@ -237,7 +237,7 @@ public class MacroDef extends AntlibDefinition  {
      * @return true if the name consists of valid name characters
      */
     private static boolean isValidName(String name) {
-        if (name.length() == 0) {
+        if (name.isEmpty()) {
             return false;
         }
         for (int i = 0; i < name.length(); ++i) {
@@ -263,9 +263,7 @@ public class MacroDef extends AntlibDefinition  {
                 "the name \"%s\" has already been used by the text element",
                 attribute.getName());
         }
-        final int size = attributes.size();
-        for (int i = 0; i < size; ++i) {
-            Attribute att = attributes.get(i);
+        for (Attribute att : attributes) {
             if (att.getName().equals(attribute.getName())) {
                 throw new BuildException(
                     "the name \"%s\" has already been used in another attribute element",
@@ -428,14 +426,8 @@ public class MacroDef extends AntlibDefinition  {
             } else if (!name.equals(other.name)) {
                 return false;
             }
-            if (defaultValue == null) {
-                if (other.defaultValue != null) {
-                    return false;
-                }
-            } else if (!defaultValue.equals(other.defaultValue)) {
-                return false;
-            }
-            return true;
+            return defaultValue == null ? other.defaultValue == null
+                    : defaultValue.equals(other.defaultValue);
         }
 
         /**
@@ -671,7 +663,7 @@ public class MacroDef extends AntlibDefinition  {
         @Override
         public boolean equals(Object obj) {
             if (obj == this) {
-              return true;
+                return true;
             }
             if (obj == null || !obj.getClass().equals(getClass())) {
                 return false;
@@ -707,12 +699,10 @@ public class MacroDef extends AntlibDefinition  {
             return true;
         }
 
-        if (obj == null) {
+        if (obj == null || !obj.getClass().equals(getClass())) {
             return false;
         }
-        if (!obj.getClass().equals(getClass())) {
-            return false;
-        }
+
         MacroDef other = (MacroDef) obj;
         if (name == null) {
             return other.name == null;
@@ -723,8 +713,8 @@ public class MacroDef extends AntlibDefinition  {
         // Allow two macro definitions with the same location
         // to be treated as similar - bugzilla 31215
         if (other.getLocation() != null
-            && other.getLocation().equals(getLocation())
-            && !same) {
+                && other.getLocation().equals(getLocation())
+                && !same) {
             return true;
         }
         if (text == null) {
@@ -734,26 +724,18 @@ public class MacroDef extends AntlibDefinition  {
         } else if (!text.equals(other.text)) {
             return false;
         }
-        if (getURI() == null || "".equals(getURI())
-            || getURI().equals(ProjectHelper.ANT_CORE_URI)) {
-            if (!(other.getURI() == null || "".equals(other.getURI())
-                  || other.getURI().equals(ProjectHelper.ANT_CORE_URI))) {
+        if (getURI() == null || getURI().isEmpty()
+                || getURI().equals(ProjectHelper.ANT_CORE_URI)) {
+            if (other.getURI() != null && !other.getURI().isEmpty()
+                    && !other.getURI().equals(ProjectHelper.ANT_CORE_URI)) {
                 return false;
             }
         } else if (!getURI().equals(other.getURI())) {
             return false;
         }
 
-        if (!nestedSequential.similar(other.nestedSequential)) {
-            return false;
-        }
-        if (!attributes.equals(other.attributes)) {
-            return false;
-        }
-        if (!elements.equals(other.elements)) {
-            return false;
-        }
-        return true;
+        return nestedSequential.similar(other.nestedSequential)
+                && attributes.equals(other.attributes) && elements.equals(other.elements);
     }
 
     /**

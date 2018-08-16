@@ -66,7 +66,7 @@ public final class TailFilter extends BaseParamFilterReader
     /** the position in the current line */
     private int       linePos   = 0;
 
-    private LinkedList<String> lineList = new LinkedList<String>();
+    private LinkedList<String> lineList = new LinkedList<>();
 
     /**
      * Constructor for "dummy" instances.
@@ -108,7 +108,7 @@ public final class TailFilter extends BaseParamFilterReader
             setInitialized(true);
         }
 
-        while (line == null || line.length() == 0) {
+        while (line == null || line.isEmpty()) {
             line = lineTokenizer.getToken(in);
             line = tailFilter(line);
             if (line == null) {
@@ -187,14 +187,12 @@ public final class TailFilter extends BaseParamFilterReader
     private void initialize() {
         Parameter[] params = getParameters();
         if (params != null) {
-            for (int i = 0; i < params.length; i++) {
-                if (LINES_KEY.equals(params[i].getName())) {
-                    setLines(Long.parseLong(params[i].getValue()));
-                    continue;
-                }
-                if (SKIP_KEY.equals(params[i].getName())) {
-                    skip = Long.parseLong(params[i].getValue());
-                    continue;
+            for (Parameter param : params) {
+                final String paramName = param.getName();
+                if (LINES_KEY.equals(paramName)) {
+                    setLines(Long.parseLong(param.getValue()));
+                } else if (SKIP_KEY.equals(paramName)) {
+                    skip = Long.parseLong(param.getValue());
                 }
             }
         }

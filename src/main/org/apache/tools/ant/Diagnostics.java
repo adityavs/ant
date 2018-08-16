@@ -18,7 +18,6 @@
 package org.apache.tools.ant;
 
 import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -28,7 +27,6 @@ import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.file.Files;
 import java.util.Calendar;
-import java.util.Enumeration;
 import java.util.Properties;
 import java.util.TimeZone;
 
@@ -88,6 +86,7 @@ public final class Diagnostics {
      * @deprecated Obsolete since Ant 1.8.2
      * @return <tt>true</tt>
      */
+    @Deprecated
     public static boolean isOptionalAvailable() {
         return true;
     }
@@ -96,6 +95,7 @@ public final class Diagnostics {
      * Doesn't do anything.
      * @deprecated Obsolete since Ant 1.8.2
      */
+    @Deprecated
     public static void validateVersion() throws BuildException {
     }
 
@@ -120,8 +120,7 @@ public final class Diagnostics {
      * @return array of files (or null for no such directory)
      */
     private static File[] listJarFiles(File libDir) {
-        return libDir
-            .listFiles((FilenameFilter) (dir, name) -> name.endsWith(".jar"));
+        return libDir.listFiles((dir, name) -> name.endsWith(".jar"));
     }
 
     /**
@@ -357,12 +356,8 @@ public final class Diagnostics {
             out.println("Access to System.getProperties() blocked " + "by a security manager");
             return;
         }
-        for (Enumeration<?> keys = sysprops.propertyNames();
-            keys.hasMoreElements();) {
-            String key = (String) keys.nextElement();
-            String value = getProperty(key);
-            out.println(key + " : " + value);
-        }
+        sysprops.stringPropertyNames().stream()
+                .map(key -> key + " : " + getProperty(key)).forEach(out::println);
     }
 
     /**
@@ -408,8 +403,7 @@ public final class Diagnostics {
      */
     private static void doReportAntHomeLibraries(PrintStream out) {
         out.println(MagicNames.ANT_HOME + ": " + System.getProperty(MagicNames.ANT_HOME));
-        File[] libs = listLibraries();
-        printLibraries(libs, out);
+        printLibraries(listLibraries(), out);
     }
 
     /**
@@ -421,8 +415,7 @@ public final class Diagnostics {
         String home = System.getProperty(Launcher.USER_HOMEDIR);
         out.println("user.home: " + home);
         File libDir = new File(home, Launcher.USER_LIBDIR);
-        File[] libs = listJarFiles(libDir);
-        printLibraries(libs, out);
+        printLibraries(listJarFiles(libDir), out);
     }
 
     /**
@@ -435,14 +428,15 @@ public final class Diagnostics {
             out.println("No such directory.");
             return;
         }
-        for (int i = 0; i < libs.length; i++) {
-            out.println(libs[i].getName() + " (" + libs[i].length() + " bytes)");
+        for (File lib : libs) {
+            out.println(lib.getName() + " (" + lib.length() + " bytes)");
         }
     }
 
 
     /**
      * Call org.apache.env.Which if available
+     *
      * @param out the stream to print the content to.
      */
     private static void doReportWhich(PrintStream out) {
@@ -450,7 +444,7 @@ public final class Diagnostics {
         try {
             Class<?> which = Class.forName("org.apache.env.Which");
             Method method = which.getMethod(
-                "main", new Class[] {String[].class});
+                "main", String[].class);
             method.invoke(null, new Object[]{new String[]{}});
         } catch (ClassNotFoundException e) {
             out.println("Not available.");
@@ -484,8 +478,7 @@ public final class Diagnostics {
             Properties props = new Properties();
             try {
                 props.load(is);
-                for (Enumeration<?> keys = props.keys(); keys.hasMoreElements();) {
-                    String key = (String) keys.nextElement();
+                for (String key : props.stringPropertyNames()) {
                     String classname = props.getProperty(key);
                     try {
                         Class.forName(classname);

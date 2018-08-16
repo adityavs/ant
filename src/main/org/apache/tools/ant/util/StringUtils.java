@@ -45,7 +45,8 @@ public final class StringUtils {
     }
 
     /** the line separator for this OS */
-    public static final String LINE_SEP = System.getProperty("line.separator");
+    @Deprecated
+    public static final String LINE_SEP = System.lineSeparator();
 
     /**
      * Splits up a string into a list of lines. It is equivalent
@@ -65,7 +66,7 @@ public final class StringUtils {
      * @return the list of elements.
      */
     public static Vector<String> split(String data, int ch) {
-        Vector<String> elems = new Vector<String>();
+        Vector<String> elems = new Vector<>();
         int pos = -1;
         int i = 0;
         while ((pos = data.indexOf(ch, i)) != -1) {
@@ -85,6 +86,7 @@ public final class StringUtils {
      * @return the new string with replaced occurrences.
      * @deprecated Use {@link String#replace(CharSequence, CharSequence)} now.
      */
+    @Deprecated
     public static String replace(String data, String from, String to) {
         return data.replace(from, to);
     }
@@ -154,8 +156,7 @@ public final class StringUtils {
     public static String resolveBackSlash(String input) {
         StringBuilder b = new StringBuilder();
         boolean backSlashSeen = false;
-        for (int i = 0; i < input.length(); ++i) {
-            char c = input.charAt(i);
+        for (final char c : input.toCharArray()) {
             if (!backSlashSeen) {
                 if (c == '\\') {
                     backSlashSeen = true;
@@ -165,19 +166,19 @@ public final class StringUtils {
             } else {
                 switch (c) {
                     case '\\':
-                        b.append((char) '\\');
+                        b.append('\\');
                         break;
                     case 'n':
-                        b.append((char) '\n');
+                        b.append('\n');
                         break;
                     case 'r':
-                        b.append((char) '\r');
+                        b.append('\r');
                         break;
                     case 't':
-                        b.append((char) '\t');
+                        b.append('\t');
                         break;
                     case 'f':
-                        b.append((char) '\f');
+                        b.append('\f');
                         break;
                     case 's':
                         b.append(" \t\n\r\f");

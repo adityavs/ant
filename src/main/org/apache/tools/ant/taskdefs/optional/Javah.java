@@ -34,7 +34,6 @@ import org.apache.tools.ant.types.Commandline;
 import org.apache.tools.ant.types.FileSet;
 import org.apache.tools.ant.types.Path;
 import org.apache.tools.ant.types.Reference;
-import org.apache.tools.ant.util.StringUtils;
 import org.apache.tools.ant.util.facade.FacadeTaskHelper;
 import org.apache.tools.ant.util.facade.ImplementationSpecificArgument;
 
@@ -150,8 +149,7 @@ public class Javah extends Task {
     public String[] getClasses() {
         Stream<String> stream = Stream.concat(
             files.stream()
-                .map(fs -> fs.getDirectoryScanner(getProject())
-                    .getIncludedFiles())
+                .map(fs -> fs.getDirectoryScanner(getProject()).getIncludedFiles())
                 .flatMap(Stream::of)
                 .map(s -> s.replace('\\', '.').replace('/', '.')
                     .replaceFirst("\\.class$", "")),
@@ -375,8 +373,7 @@ public class Javah extends Task {
      * @since Ant 1.6.3
      */
     public ImplementationSpecificArgument createArg() {
-        ImplementationSpecificArgument arg =
-            new ImplementationSpecificArgument();
+        ImplementationSpecificArgument arg = new ImplementationSpecificArgument();
         facade.addImplementationArgument(arg);
         return arg;
     }
@@ -435,7 +432,8 @@ public class Javah extends Task {
             settings.add(Settings.files);
         }
         if (settings.size() > 1) {
-            throw new BuildException("Exactly one of " + Settings.values() + " attributes is required", getLocation());
+            throw new BuildException("Exactly one of " + Settings.values()
+                    + " attributes is required", getLocation());
         }
 
         if (destDir != null) {
@@ -444,8 +442,8 @@ public class Javah extends Task {
                     + "\" does not exist or is not a directory", getLocation());
             }
             if (outputFile != null) {
-                throw new BuildException("destdir and outputFile are mutually "
-                    + "exclusive", getLocation());
+                throw new BuildException("destdir and outputFile are mutually exclusive",
+                        getLocation());
             }
         }
 
@@ -486,11 +484,10 @@ public class Javah extends Task {
         if (c.length > 1) {
             message.append("es");
         }
-        message.append(" to be compiled:");
-        message.append(StringUtils.LINE_SEP);
+        message.append(String.format(" to be compiled:%n"));
         for (String element : c) {
             cmd.createArgument().setValue(element);
-            message.append("    ").append(element).append(StringUtils.LINE_SEP);
+            message.append(String.format("    %s%n", element));
         }
         log(message.toString(), Project.MSG_VERBOSE);
     }

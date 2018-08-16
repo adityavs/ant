@@ -39,7 +39,7 @@ import org.apache.tools.ant.util.FileUtils;
  * obsoleted by ResourceCollection support in Copy available since Ant
  * 1.7.0.  Don't use it.
  */
-
+@Deprecated
 public class CopyPath extends Task {
 
     // Error messages
@@ -63,6 +63,7 @@ public class CopyPath extends Task {
     private File destDir;
 
     // TODO not read, yet in a public setter
+    @SuppressWarnings("unused")
     private long granularity = FILE_UTILS.getFileTimestampGranularity();
 
     private boolean preserveLastModified = false;
@@ -177,14 +178,15 @@ public class CopyPath extends Task {
             return;
         }
 
-        for (int sources = 0; sources < sourceFiles.length; sources++) {
+        for (String sourceFileName : sourceFiles) {
 
-            String sourceFileName = sourceFiles[sources];
             File sourceFile = new File(sourceFileName);
-            String[] toFiles = (String[]) mapper.mapFileName(sourceFileName);
+            String[] toFiles = mapper.mapFileName(sourceFileName);
+            if (toFiles == null) {
+                continue;
+            }
 
-            for (int i = 0; i < toFiles.length; i++) {
-                String destFileName = toFiles[i];
+            for (String destFileName : toFiles) {
                 File destFile = new File(destDir, destFileName);
 
                 if (sourceFile.equals(destFile)) {

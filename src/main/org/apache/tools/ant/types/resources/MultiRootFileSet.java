@@ -40,7 +40,7 @@ public class MultiRootFileSet extends AbstractFileSet
 
     private SetType type = SetType.file;
     private boolean cache = true;
-    private List<File> baseDirs = new ArrayList<File>();
+    private List<File> baseDirs = new ArrayList<>();
     private Union union;
 
     @Override
@@ -79,9 +79,8 @@ public class MultiRootFileSet extends AbstractFileSet
         if (isReference()) {
             throw tooManyAttributes();
         }
-        if (dirs != null && dirs.length() > 0) {
-            final String[] ds = dirs.split(",");
-            for (final String d : ds) {
+        if (dirs != null && !dirs.isEmpty()) {
+            for (final String d : dirs.split(",")) {
                 baseDirs.add(getProject().resolveFile(d));
             }
         }
@@ -112,9 +111,9 @@ public class MultiRootFileSet extends AbstractFileSet
      * @return the cloned MultiRootFileSet.
      */
     @Override
-    public MultiRootFileSet clone() {
+    public Object clone() {
         if (isReference()) {
-            return ((MultiRootFileSet) getRef(getProject())).clone();
+            return getRef(getProject()).clone();
         }
         final MultiRootFileSet fs = (MultiRootFileSet) super.clone();
         fs.baseDirs = new ArrayList<>(baseDirs);
@@ -163,7 +162,7 @@ public class MultiRootFileSet extends AbstractFileSet
     @Override
     public String toString() {
         if (isReference()) {
-            return ((MultiRootFileSet) getRef(getProject())).toString();
+            return getRef(getProject()).toString();
         }
         return merge().toString();
     }

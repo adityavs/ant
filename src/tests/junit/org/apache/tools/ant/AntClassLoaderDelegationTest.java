@@ -24,7 +24,7 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.List;
+
 import org.apache.tools.ant.types.Path;
 import org.apache.tools.ant.util.FileUtils;
 import org.junit.Before;
@@ -52,8 +52,7 @@ public class AntClassLoaderDelegationTest {
     }
 
     /** Sample resource present in build/testcases/ */
-    private static final String TEST_RESOURCE
-        = "apache/tools/ant/IncludeTest.class";
+    private static final String TEST_RESOURCE = "apache/tools/ant/IncludeTest.class";
 
     @SuppressWarnings("resource")
     @Test
@@ -74,12 +73,12 @@ public class AntClassLoaderDelegationTest {
             FILE_UTILS.toURI(buildTestcases) + "org/" + TEST_RESOURCE);
         URL urlFromParent = new URL("http://ant.apache.org/" + TEST_RESOURCE);
         assertEquals("correct resources (regular delegation order)",
-            Arrays.asList(new URL[] {urlFromParent, urlFromPath}),
-            enum2List(acl.getResources(TEST_RESOURCE)));
+            Arrays.asList(urlFromParent, urlFromPath),
+                Collections.list(acl.getResources(TEST_RESOURCE)));
         acl = new AntClassLoader(parent, p, path, false);
         assertEquals("correct resources (reverse delegation order)",
-            Arrays.asList(new URL[] {urlFromPath, urlFromParent}),
-            enum2List(acl.getResources(TEST_RESOURCE)));
+            Arrays.asList(urlFromPath, urlFromParent),
+                Collections.list(acl.getResources(TEST_RESOURCE)));
     }
 
     @SuppressWarnings("resource")
@@ -98,12 +97,8 @@ public class AntClassLoaderDelegationTest {
         AntClassLoader acl = new AntClassLoader(parent, p, path, false);
         acl.setIsolated(true);
         assertEquals("correct resources (reverse delegation order)",
-            Arrays.asList(new URL[] {urlFromPath}),
-            enum2List(acl.getResources(TEST_RESOURCE)));
-    }
-
-    private static List enum2List(Enumeration e) {
-        return Collections.list(e);
+                Collections.singletonList(urlFromPath),
+                Collections.list(acl.getResources(TEST_RESOURCE)));
     }
 
     /** Special loader that just knows how to find TEST_RESOURCE. */
@@ -112,13 +107,13 @@ public class AntClassLoaderDelegationTest {
         public ParentLoader() {
         }
 
-        protected Enumeration findResources(String name) throws IOException {
+        protected Enumeration<URL> findResources(String name) throws IOException {
             if (name.equals(TEST_RESOURCE)) {
                 return Collections.enumeration(
                     Collections.singleton(
                         new URL("http://ant.apache.org/" + name)));
             } else {
-                return Collections.enumeration(Collections.EMPTY_SET);
+                return Collections.enumeration(Collections.emptySet());
             }
         }
 

@@ -18,17 +18,23 @@
 
 package org.apache.tools.ant.util;
 
+import java.util.Collections;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Map;
 
 import org.junit.Test;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertNull;
+import static org.hamcrest.Matchers.hasKey;
+import static org.hamcrest.Matchers.hasValue;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 public class LinkedHashtableTest {
 
@@ -36,7 +42,7 @@ public class LinkedHashtableTest {
     private static final Object K2 = new Object();
     private static final Object V1 = new Object();
     private static final Object V2 = new Object();
-    private Hashtable h = new LinkedHashtable();
+    private Hashtable<Object, Object> h = new LinkedHashtable<>();
 
     public void testClear() {
         h.put(K1, V1);
@@ -44,20 +50,21 @@ public class LinkedHashtableTest {
         assertTrue(h.isEmpty());
     }
 
+    @SuppressWarnings("unchecked")
     public void testClone() {
         h.put(K1, V1);
-        Hashtable h2 = (Hashtable) h.clone();
-        assertTrue(h2 instanceof LinkedHashtable);
-        assertTrue(h2.containsKey(K1));
+        Hashtable<Object, Object> h2 = (Hashtable<Object, Object>) h.clone();
+        assertThat(h2, instanceOf(LinkedHashtable.class));
+        assertThat(h2, hasKey(K1));
     }
 
     @Test
     public void testContainsAndPut() {
         h.put(K1, V1);
         assertTrue(h.contains(K1));
-        assertTrue(h.containsKey(K1));
-        assertTrue(h.containsValue(V1));
-        assertFalse(h.containsKey(K2));
+        assertThat(h, hasKey(K1));
+        assertThat(h, hasValue(V1));
+        assertThat(h, not(hasKey(K2)));
     }
 
     @Test
@@ -82,10 +89,10 @@ public class LinkedHashtableTest {
 
     @Test
     public void testPutAll() {
-        LinkedHashtable h2 = new LinkedHashtable();
+        LinkedHashtable<Object, Object> h2 = new LinkedHashtable<>();
         h.put(K1, V1);
         h2.putAll(h);
-        assertTrue(h2.containsKey(K1));
+        assertThat(h2, hasKey(K1));
     }
 
     @Test
@@ -106,7 +113,7 @@ public class LinkedHashtableTest {
     @Test
     public void testKeys() {
         multiSetup();
-        assertKeys(CollectionUtils.asIterator(h.keys()));
+        assertKeys(Collections.list(h.keys()).iterator());
     }
 
     @Test
@@ -118,7 +125,7 @@ public class LinkedHashtableTest {
     @Test
     public void testElements() {
         multiSetup();
-        assertValues(CollectionUtils.asIterator(h.elements()));
+        assertValues(Collections.list(h.elements()).iterator());
     }
 
     @Test
@@ -130,13 +137,13 @@ public class LinkedHashtableTest {
     @Test
     public void testEntrySet() {
         multiSetup();
-        Iterator i = h.entrySet().iterator();
+        Iterator<Map.Entry<Object, Object>> i = h.entrySet().iterator();
         assertTrue(i.hasNext());
-        Map.Entry e = (Map.Entry) i.next();
+        Map.Entry<Object, Object> e = i.next();
         assertSame(K1, e.getKey());
         assertSame(V1, e.getValue());
         assertTrue(i.hasNext());
-        e = (Map.Entry) i.next();
+        e = i.next();
         assertSame(K2, e.getKey());
         assertSame(V2, e.getValue());
         assertFalse(i.hasNext());
@@ -147,7 +154,7 @@ public class LinkedHashtableTest {
         h.put(K2, V2);
     }
 
-    private static void assertKeys(Iterator i) {
+    private static void assertKeys(Iterator<Object> i) {
         assertTrue(i.hasNext());
         assertSame(K1, i.next());
         assertTrue(i.hasNext());
@@ -155,7 +162,7 @@ public class LinkedHashtableTest {
         assertFalse(i.hasNext());
     }
 
-    private static void assertValues(Iterator i) {
+    private static void assertValues(Iterator<Object> i) {
         assertTrue(i.hasNext());
         assertSame(V1, i.next());
         assertTrue(i.hasNext());

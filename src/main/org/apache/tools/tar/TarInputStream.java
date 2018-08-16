@@ -30,7 +30,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import org.apache.tools.zip.ZipEncoding;
 import org.apache.tools.zip.ZipEncodingHelper;
@@ -295,9 +294,7 @@ public class TarInputStream extends FilterInputStream {
         try {
             currEntry = new TarEntry(headerBuf, encoding);
         } catch (IllegalArgumentException e) {
-            IOException ioe = new IOException("Error detected parsing the header");
-            ioe.initCause(e);
-            throw ioe;
+            throw new IOException("Error detected parsing the header", e);
         }
         if (debug) {
             System.err.println("TarInputStream: SET CURRENTRY '"
@@ -421,7 +418,7 @@ public class TarInputStream extends FilterInputStream {
     }
 
     Map<String, String> parsePaxHeaders(InputStream i) throws IOException {
-        Map<String, String> headers = new HashMap<String, String>();
+        Map<String, String> headers = new HashMap<>();
         // Format is "length keyword=value\n";
         while (true) { // get length
             int ch;
@@ -482,31 +479,40 @@ public class TarInputStream extends FilterInputStream {
          * uid,uname
          * SCHILY.devminor, SCHILY.devmajor: don't have setters/getters for those
          */
-        for (Entry<String, String> ent : headers.entrySet()) {
-            String key = ent.getKey();
-            String val = ent.getValue();
-            if ("path".equals(key)) {
-                currEntry.setName(val);
-            } else if ("linkpath".equals(key)) {
-                currEntry.setLinkName(val);
-            } else if ("gid".equals(key)) {
-                currEntry.setGroupId(Long.parseLong(val));
-            } else if ("gname".equals(key)) {
-                currEntry.setGroupName(val);
-            } else if ("uid".equals(key)) {
-                currEntry.setUserId(Long.parseLong(val));
-            } else if ("uname".equals(key)) {
-                currEntry.setUserName(val);
-            } else if ("size".equals(key)) {
-                currEntry.setSize(Long.parseLong(val));
-            } else if ("mtime".equals(key)) {
-                currEntry.setModTime((long) (Double.parseDouble(val) * 1000));
-            } else if ("SCHILY.devminor".equals(key)) {
-                currEntry.setDevMinor(Integer.parseInt(val));
-            } else if ("SCHILY.devmajor".equals(key)) {
-                currEntry.setDevMajor(Integer.parseInt(val));
+        headers.forEach((key, val) -> {
+            switch (key) {
+                case "path":
+                    currEntry.setName(val);
+                    break;
+                case "linkpath":
+                    currEntry.setLinkName(val);
+                    break;
+                case "gid":
+                    currEntry.setGroupId(Long.parseLong(val));
+                    break;
+                case "gname":
+                    currEntry.setGroupName(val);
+                    break;
+                case "uid":
+                    currEntry.setUserId(Long.parseLong(val));
+                    break;
+                case "uname":
+                    currEntry.setUserName(val);
+                    break;
+                case "size":
+                    currEntry.setSize(Long.parseLong(val));
+                    break;
+                case "mtime":
+                    currEntry.setModTime((long) (Double.parseDouble(val) * 1000));
+                    break;
+                case "SCHILY.devminor":
+                    currEntry.setDevMinor(Integer.parseInt(val));
+                    break;
+                case "SCHILY.devmajor":
+                    currEntry.setDevMajor(Integer.parseInt(val));
+                    break;
             }
-        }
+        });
     }
 
     /**

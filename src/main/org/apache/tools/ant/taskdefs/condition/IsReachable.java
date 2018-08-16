@@ -125,10 +125,10 @@ public class IsReachable extends ProjectComponent implements Condition {
      *
      * @param string param to check
      *
-     * @return true if it is empty
+     * @return true if it is isNullOrEmpty
      */
-    private boolean empty(final String string) {
-        return string == null || string.length() == 0;
+    private boolean isNullOrEmpty(final String string) {
+        return string == null || string.isEmpty();
     }
 
     /**
@@ -136,27 +136,27 @@ public class IsReachable extends ProjectComponent implements Condition {
      *
      * @return true if the condition is true.
      *
-     * @throws org.apache.tools.ant.BuildException
+     * @throws BuildException
      *          if an error occurs
      */
     @Override
     public boolean eval() throws BuildException {
-        if (empty(host) && empty(url)) {
+        if (isNullOrEmpty(host) && isNullOrEmpty(url)) {
             throw new BuildException(ERROR_NO_HOSTNAME);
         }
         if (timeout < 0) {
             throw new BuildException(ERROR_BAD_TIMEOUT);
         }
         String target = host;
-        if (!empty(url)) {
-            if (!empty(host)) {
+        if (!isNullOrEmpty(url)) {
+            if (!isNullOrEmpty(host)) {
                 throw new BuildException(ERROR_BOTH_TARGETS);
             }
             try {
                 //get the host of a url
                 final URL realURL = new URL(url);
                 target = realURL.getHost();
-                if (empty(target)) {
+                if (isNullOrEmpty(target)) {
                     throw new BuildException(ERROR_NO_HOST_IN_URL + url);
                 }
             } catch (final MalformedURLException e) {
@@ -179,8 +179,8 @@ public class IsReachable extends ProjectComponent implements Condition {
             Method reachableMethod =
                 InetAddress.class.getMethod(METHOD_NAME, Integer.class);
             try {
-                reachable = ((Boolean) reachableMethod.invoke(address,
-                    Integer.valueOf(timeout * SECOND))).booleanValue();
+                reachable = (Boolean) reachableMethod.invoke(address,
+                        timeout * SECOND);
             } catch (final IllegalAccessException e) {
                 //utterly implausible, but catered for anyway
                 throw new BuildException("When calling " + reachableMethod);

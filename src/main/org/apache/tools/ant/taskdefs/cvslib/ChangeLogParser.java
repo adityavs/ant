@@ -146,23 +146,20 @@ class ChangeLogParser {
      * @param line the line
      */
     private void processComment(final String line) {
-        final String lineSeparator = System.getProperty("line.separator");
         if ("============================================================================="
             .equals(line)) {
             //We have ended changelog for that particular file
             //so we can save it
-            final int end
-                = comment.length() - lineSeparator.length(); //was -1
+            final int end = comment.length() - System.lineSeparator().length(); //was -1
             comment = comment.substring(0, end);
             saveEntry();
             status = GET_FILE;
         } else if ("----------------------------".equals(line)) {
-            final int end
-                = comment.length() - lineSeparator.length(); //was -1
+            final int end = comment.length() - System.lineSeparator().length(); //was -1
             comment = comment.substring(0, end);
             status = GET_PREVIOUS_REV;
         } else {
-            comment += line + lineSeparator;
+            comment += line + System.lineSeparator();
         }
     }
 
@@ -174,7 +171,7 @@ class ChangeLogParser {
     private void processFile(final String line) {
         if (!remote && line.startsWith("Working file:")) {
             // CheckStyle:MagicNumber OFF
-            file = line.substring(14, line.length());
+            file = line.substring(14);
             // CheckStyle:MagicNumber ON
             status = GET_REVISION;
         } else if (remote && line.startsWith("RCS file:")) {
@@ -263,9 +260,8 @@ class ChangeLogParser {
      * Utility method that saves the current entry.
      */
     private void saveEntry() {
-        entries.computeIfAbsent(date + author + comment, k -> {
-            return new CVSEntry(parseDate(date), author, comment);
-        }).addFile(file, revision, previousRevision);
+        entries.computeIfAbsent(date + author + comment,
+                k -> new CVSEntry(parseDate(date), author, comment)).addFile(file, revision, previousRevision);
     }
 
     /**

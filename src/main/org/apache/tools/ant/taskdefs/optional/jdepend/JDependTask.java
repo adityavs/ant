@@ -555,7 +555,7 @@ public class JDependTask extends Task {
 
         // not sure whether this test is needed but cost nothing to put.
         // hope it will be reviewed by anybody competent
-        if (getClasspath().toString().length() > 0) {
+        if (!getClasspath().toString().isEmpty()) {
             createJvmarg(commandline).setValue("-classpath");
             createJvmarg(commandline).setValue(getClasspath().toString());
         }
@@ -624,7 +624,7 @@ public class JDependTask extends Task {
         if (getTimeout() == null) {
             return null;
         }
-        return new ExecuteWatchdog(getTimeout().longValue());
+        return new ExecuteWatchdog(getTimeout());
     }
 
     private Optional<Path> getWorkingPath() {

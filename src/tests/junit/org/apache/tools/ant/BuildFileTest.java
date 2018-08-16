@@ -71,6 +71,10 @@ public abstract class BuildFileTest extends TestCase {
      * to clean up after each test. Note that no "setUp" target
      * is automatically called, since it's trivial to have a
      * test target depend on it.
+     *
+     * @throws Exception this implementation doesn't throw any
+     * exception but we've added it to the signature so that
+     * subclasses can throw whatever they need.
      */
     protected void tearDown() throws Exception {
         if (project == null) {
@@ -122,7 +126,7 @@ public abstract class BuildFileTest extends TestCase {
         String realLog = getLog();
         assertTrue("expecting log to contain \"" + substring + "\" log was \""
                    + realLog + "\"",
-                   realLog.indexOf(substring) >= 0);
+                realLog.contains(substring));
     }
 
     /**
@@ -134,7 +138,7 @@ public abstract class BuildFileTest extends TestCase {
         String realLog = getLog();
         assertFalse("didn't expect log to contain \"" + substring + "\" log was \""
                     + realLog + "\"",
-                    realLog.indexOf(substring) >= 0);
+                realLog.contains(substring));
     }
 
     /**
@@ -160,7 +164,7 @@ public abstract class BuildFileTest extends TestCase {
         String realMessage = (message != null)
             ? message
             : "expecting output to contain \"" + substring + "\" output was \"" + realOutput + "\"";
-        assertTrue(realMessage, realOutput.indexOf(substring) >= 0);
+        assertTrue(realMessage, realOutput.contains(substring));
     }
 
     /**
@@ -176,7 +180,7 @@ public abstract class BuildFileTest extends TestCase {
         String realMessage = (message != null)
             ? message
             : "expecting output to not contain \"" + substring + "\" output was \"" + realOutput + "\"";
-        assertFalse(realMessage, realOutput.indexOf(substring) >= 0);
+        assertFalse(realMessage, realOutput.contains(substring));
     }
 
     /**
@@ -237,7 +241,7 @@ public abstract class BuildFileTest extends TestCase {
         assertTrue("expecting debug log to contain \"" + substring
                    + "\" log was \""
                    + realLog + "\"",
-                   realLog.indexOf(substring) >= 0);
+                realLog.contains(substring));
     }
 
     /**
@@ -402,11 +406,10 @@ public abstract class BuildFileTest extends TestCase {
             executeTarget(target);
         } catch (BuildException ex) {
             buildException = ex;
-            if ((null != msg) && (!ex.getMessage().equals(msg))) {
-                fail("Should throw BuildException because '" + cause
-                        + "' with message '" + msg
-                        + "' (actual message '" + ex.getMessage() + "' instead)");
-            }
+            assertTrue("Should throw BuildException because '" + cause
+                    + "' with message '" + msg + "' (actual message '"
+                            + ex.getMessage() + "' instead)",
+                    msg == null || ex.getMessage().equals(msg));
             return;
         }
         fail("Should throw BuildException because: " + cause);
@@ -423,11 +426,12 @@ public abstract class BuildFileTest extends TestCase {
     public void expectBuildExceptionContaining(String target, String cause, String contains) {
         try {
             executeTarget(target);
-        } catch (org.apache.tools.ant.BuildException ex) {
+        } catch (BuildException ex) {
             buildException = ex;
-            if ((null != contains) && (ex.getMessage().indexOf(contains) == -1)) {
-                fail("Should throw BuildException because '" + cause + "' with message containing '" + contains + "' (actual message '" + ex.getMessage() + "' instead)");
-            }
+            assertTrue("Should throw BuildException because '" + cause
+                    + "' with message containing '" + contains + "' (actual message '"
+                            + ex.getMessage() + "' instead)",
+                    null == contains || ex.getMessage().contains(contains));
             return;
         }
         fail("Should throw BuildException because: " + cause);
@@ -472,10 +476,8 @@ public abstract class BuildFileTest extends TestCase {
      */
     public void assertPropertyUnset(String property) {
         String result = project.getProperty(property);
-        if (result != null) {
-            fail("Expected property " + property
-                    + " to be unset, but it is set to the value: " + result);
-        }
+        assertNull("Expected property " + property
+                + " to be unset, but it is set to the value: " + result, result);
     }
 
     /**

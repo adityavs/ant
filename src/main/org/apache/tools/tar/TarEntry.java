@@ -343,10 +343,7 @@ public class TarEntry implements TarConstants {
      */
     @Override
     public boolean equals(Object it) {
-        if (it == null || getClass() != it.getClass()) {
-            return false;
-        }
-        return equals((TarEntry) it);
+        return it != null && getClass() == it.getClass() && equals((TarEntry) it);
     }
 
     /**
@@ -377,7 +374,7 @@ public class TarEntry implements TarConstants {
      * @return This entry's name.
      */
     public String getName() {
-        return name.toString();
+        return name;
     }
 
     /**
@@ -404,7 +401,7 @@ public class TarEntry implements TarConstants {
      * @return This entry's link name.
      */
     public String getLinkName() {
-        return linkName.toString();
+        return linkName;
     }
 
     /**
@@ -425,7 +422,7 @@ public class TarEntry implements TarConstants {
      */
     @Deprecated
     public int getUserId() {
-        return (int) (userId & 0xffffffff);
+        return (int) userId;
     }
 
     /**
@@ -466,7 +463,7 @@ public class TarEntry implements TarConstants {
      */
     @Deprecated
     public int getGroupId() {
-        return (int) (groupId & 0xffffffff);
+        return (int) groupId;
     }
 
     /**
@@ -504,7 +501,7 @@ public class TarEntry implements TarConstants {
      * @return This entry's user name.
      */
     public String getUserName() {
-        return userName.toString();
+        return userName;
     }
 
     /**
@@ -522,7 +519,7 @@ public class TarEntry implements TarConstants {
      * @return This entry's group name.
      */
     public String getGroupName() {
-        return groupName.toString();
+        return groupName;
     }
 
     /**
@@ -745,15 +742,7 @@ public class TarEntry implements TarConstants {
             return file.isDirectory();
         }
 
-        if (linkFlag == LF_DIR) {
-            return true;
-        }
-
-        if (getName().endsWith("/")) {
-            return true;
-        }
-
-        return false;
+        return linkFlag == LF_DIR || getName().endsWith("/");
     }
 
     /**
@@ -761,13 +750,8 @@ public class TarEntry implements TarConstants {
      * @return <i>true</i> if it is a 'normal' file
      */
     public boolean isFile() {
-        if (file != null) {
-            return file.isFile();
-        }
-        if (linkFlag == LF_OLDNORM || linkFlag == LF_NORMAL) {
-            return true;
-        }
-        return !getName().endsWith("/");
+        return file != null ? file.isFile()
+                : linkFlag == LF_OLDNORM || linkFlag == LF_NORMAL || !getName().endsWith("/");
     }
 
     /**
@@ -1009,9 +993,9 @@ public class TarEntry implements TarConstants {
                 // SunOS tar -E does not add / to directory names, so fix
                 // up to be consistent
                 if (isDirectory() && !name.endsWith("/")) {
-                    name = name + "/";
+                    name += "/";
                 }
-                if (prefix.length() > 0) {
+                if (!prefix.isEmpty()) {
                     name = prefix + "/" + name;
                 }
             }
@@ -1042,7 +1026,7 @@ public class TarEntry implements TarConstants {
                         fileName = fileName.substring(2);
                     }
                 }
-            } else if (osname.indexOf("netware") > -1) {
+            } else if (osname.contains("netware")) {
                 int colon = fileName.indexOf(':');
                 if (colon != -1) {
                     fileName = fileName.substring(colon + 1);

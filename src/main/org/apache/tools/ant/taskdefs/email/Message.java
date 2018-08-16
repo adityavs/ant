@@ -109,15 +109,14 @@ public class Message extends ProjectComponent {
      * @param ps The print stream to write to
      * @throws IOException if an error occurs
      */
-    public void print(PrintStream ps)
-         throws IOException {
+    @SuppressWarnings("resource")
+    public void print(PrintStream ps) throws IOException {
         // We need character encoding aware printing here.
         // So, using BufferedWriter over OutputStreamWriter instead of PrintStream
         BufferedWriter out = null;
         try {
-            out
-                = charset != null ? new BufferedWriter(new OutputStreamWriter(ps, charset))
-                : new BufferedWriter(new OutputStreamWriter(ps));
+            out = charset == null ? new BufferedWriter(new OutputStreamWriter(ps))
+                    : new BufferedWriter(new OutputStreamWriter(ps, charset));
             if (messageSource != null) {
                 // Read message from a file
                 try (Reader freader = getReader(messageSource);

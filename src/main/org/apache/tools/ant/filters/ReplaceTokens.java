@@ -21,7 +21,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
-import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Map;
 import java.util.Properties;
@@ -62,10 +61,10 @@ public final class ReplaceTokens
     private static final String DEFAULT_END_TOKEN = "@";
 
     /** Hashtable to holds the original replacee-replacer pairs (String to String). */
-    private Hashtable<String, String> hash = new Hashtable<String, String>();
+    private Hashtable<String, String> hash = new Hashtable<>();
 
     /** This map holds the "resolved" tokens (begin- and end-tokens are added to make searching simpler) */
-    private final TreeMap<String, String> resolvedTokens = new TreeMap<String, String>();
+    private final TreeMap<String, String> resolvedTokens = new TreeMap<>();
     private boolean resolvedTokensBuilt = false;
     /** Used for comparisons and lookup into the resolvedTokens map. */
     private String readBuffer = "";
@@ -134,7 +133,7 @@ public final class ReplaceTokens
         }
 
         // is the read buffer empty?
-        if (readBuffer.length() == 0) {
+        if (readBuffer.isEmpty()) {
             int next = in.read();
             if (next == -1) {
                 return next; // end of stream. all buffers empty.
@@ -169,13 +168,13 @@ public final class ReplaceTokens
      * @return the first character from the read buffer or -1 if read buffer is empty.
      */
     private int getFirstCharacterFromReadBuffer() {
-        if (readBuffer.length() > 0) {
-            int chr = readBuffer.charAt(0);
-            readBuffer = readBuffer.substring(1);
-            return chr;
-        } else {
+        if (readBuffer.isEmpty()) {
             return -1;
         }
+
+        int chr = readBuffer.charAt(0);
+        readBuffer = readBuffer.substring(1);
+        return chr;
     }
 
     /**
@@ -330,11 +329,7 @@ public final class ReplaceTokens
 
     private void makeTokensFromProperties(Resource r) {
         Properties props = getProperties(r);
-        for (Enumeration<?> e = props.keys(); e.hasMoreElements();) {
-            String key = (String) e.nextElement();
-            String value = props.getProperty(key);
-            hash.put(key, value);
-        }
+        props.stringPropertyNames().forEach(key -> hash.put(key, props.getProperty(key)));
     }
 
     /**

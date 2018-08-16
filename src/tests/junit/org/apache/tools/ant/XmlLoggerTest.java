@@ -23,10 +23,13 @@ import org.junit.Test;
 
 public class XmlLoggerTest {
 
+    /**
+     * "NPE in XmlLogger.buildFinished"
+     *
+     * @see <a href="https://issues.apache.org/bugzilla/show_bug.cgi?id=56850">bug 56850</a>
+     */
     @Test
-    // see https://issues.apache.org/bugzilla/show_bug.cgi?id=56850
-    // "NPE in XmlLogger.buildFinished"
-    public void test() throws Throwable {
+    public void test() {
         final XmlLogger logger = new XmlLogger();
         final Cvs task = new Cvs();
         final BuildEvent event = new BuildEvent(task);

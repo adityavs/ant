@@ -25,8 +25,8 @@ import org.apache.tools.ant.types.resources.FileResource;
 import org.apache.tools.ant.types.resources.StringResource;
 import org.junit.Test;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.junit.Assert.assertThat;
 
 /**
  * Testing around the management of the project helpers
@@ -45,61 +45,41 @@ public class ProjectHelperRepositoryTest {
     }
 
     @Test
-    public void testFind() throws Exception {
+    public void testFind() {
         ProjectHelperRepository repo = ProjectHelperRepository.getInstance();
         repo.registerProjectHelper(SomeHelper.class);
 
         Resource r = new FileResource(new File("test.xml"));
-        ProjectHelper helper = repo.getProjectHelperForBuildFile(r);
-        assertTrue(helper instanceof ProjectHelper2);
-        helper = repo.getProjectHelperForAntlib(r);
-        assertTrue(helper instanceof ProjectHelper2);
+        assertThat(repo.getProjectHelperForBuildFile(r), instanceOf(ProjectHelper2.class));
+        assertThat(repo.getProjectHelperForAntlib(r), instanceOf(ProjectHelper2.class));
 
         r = new FileResource(new File("test.myext"));
-        helper = repo.getProjectHelperForBuildFile(r);
-        assertTrue(helper instanceof SomeHelper);
-        helper = repo.getProjectHelperForAntlib(r);
-        assertTrue(helper instanceof SomeHelper);
+        assertThat(repo.getProjectHelperForBuildFile(r), instanceOf(SomeHelper.class));
+        assertThat(repo.getProjectHelperForAntlib(r), instanceOf(SomeHelper.class));
 
         r = new StringResource("test.myext");
-        helper = repo.getProjectHelperForBuildFile(r);
-        assertTrue(helper instanceof ProjectHelper2);
-        helper = repo.getProjectHelperForAntlib(r);
-        assertTrue(helper instanceof ProjectHelper2);
+        assertThat(repo.getProjectHelperForBuildFile(r), instanceOf(ProjectHelper2.class));
+        assertThat(repo.getProjectHelperForAntlib(r), instanceOf(ProjectHelper2.class));
 
         r = new StringResource("test.other");
-        helper = repo.getProjectHelperForBuildFile(r);
-        assertTrue(helper instanceof ProjectHelper2);
-        helper = repo.getProjectHelperForAntlib(r);
-        assertTrue(helper instanceof ProjectHelper2);
+        assertThat(repo.getProjectHelperForBuildFile(r), instanceOf(ProjectHelper2.class));
+        assertThat(repo.getProjectHelperForAntlib(r), instanceOf(ProjectHelper2.class));
     }
 
-    @Test
-    public void testNoDefaultContructor() throws Exception {
+    @Test(expected = BuildException.class)
+    public void testNoDefaultConstructor() {
 
-        class IncrrectHelper extends ProjectHelper {
+        class IncorrectHelper extends ProjectHelper {
             // the default constructor is not visible to ant here
         }
 
-        ProjectHelperRepository repo = ProjectHelperRepository.getInstance();
-        try {
-            repo.registerProjectHelper(IncrrectHelper.class);
-            fail("Registring an helper with no default constructor should fail");
-        } catch (BuildException e) {
-            // ok
-            //TODO we should be asserting a value in here
-        }
+        ProjectHelperRepository.getInstance().registerProjectHelper(IncorrectHelper.class);
+        // TODO we should be asserting a value in here
     }
 
-    @Test
-    public void testUnkwnowHelper() throws Exception {
-        ProjectHelperRepository repo = ProjectHelperRepository.getInstance();
-        try {
-            repo.registerProjectHelper("xxx.yyy.zzz.UnknownHelper");
-            fail("Registring an unknwon helper should fail");
-        } catch (BuildException e) {
-            // ok
-            //TODO we should be asserting a value in here
-        }
+    @Test(expected = BuildException.class)
+    public void testUnknownHelper() {
+        ProjectHelperRepository.getInstance().registerProjectHelper("xxx.yyy.zzz.UnknownHelper");
+        // TODO we should be asserting a value in here
     }
 }

@@ -28,6 +28,8 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Files;
 import java.util.Date;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.tools.ant.BuildException;
@@ -45,9 +47,6 @@ import org.apache.tools.ant.types.resources.URLResource;
 import org.apache.tools.ant.util.FileNameMapper;
 import org.apache.tools.ant.util.FileUtils;
 import org.apache.tools.ant.util.StringUtils;
-
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * Gets a particular file from a URL source.
@@ -94,7 +93,7 @@ public class Get extends Task {
                            DEFAULT_AGENT_PREFIX + "/"
                            + Main.getShortAntVersion());
 
-    // Store headers as key/value pair without duplicate in keyz
+    // Store headers as key/value pair without duplicate in keys
     private Map<String, String> headers = new LinkedHashMap<>();
 
     /**
@@ -181,13 +180,9 @@ public class Get extends Task {
     public boolean doGet(final int logLevel, final DownloadProgress progress)
             throws IOException {
         checkAttributes();
-        for (final Resource r : sources) {
-            final URLProvider up = r.as(URLProvider.class);
-            final URL source = up.getURL();
-            return doGet(source, destination, logLevel, progress);
-        }
-        /*NOTREACHED*/
-        return false;
+        return doGet(sources.iterator().next().as(URLProvider.class).getURL(),
+                destination, logLevel, progress);
+
     }
 
     /**
@@ -217,7 +212,7 @@ public class Get extends Task {
             return true;
         }
 
-        //dont do any progress, unless asked
+        // don't do any progress, unless asked
         if (progress == null) {
             progress = new NullProgress();
         }
@@ -278,7 +273,7 @@ public class Get extends Task {
      */
     private void checkAttributes() {
 
-        if (userAgent == null || userAgent.trim().length() == 0) {
+        if (userAgent == null || userAgent.trim().isEmpty()) {
             throw new BuildException("userAgent may not be null or empty");
         }
 
@@ -698,29 +693,34 @@ public class Get extends Task {
 
 
         private boolean redirectionAllowed(final URL aSource, final URL aDest) {
-            if (aSource.getProtocol().equals(aDest.getProtocol())
-                    && (HTTP.equals(aSource.getProtocol()) || HTTPS.equals(aDest.getProtocol()))) {
-                redirections++;
-                if (redirections > REDIRECT_LIMIT) {
-                    final String message = "More than " + REDIRECT_LIMIT
-                            + " times redirected, giving up";
-                    if (ignoreErrors) {
-                        log(message, logLevel);
-                        return false;
-                    }
+            if (!(aSource.getProtocol().equals(aDest.getProtocol()) || (HTTP
+                    .equals(aSource.getProtocol()) && HTTPS.equals(aDest
+                    .getProtocol())))) {
+                final String message = "Redirection detected from "
+                        + aSource.getProtocol() + " to " + aDest.getProtocol()
+                        + ". Protocol switch unsafe, not allowed.";
+                if (ignoreErrors) {
+                    log(message, logLevel);
+                    return false;
+                } else {
                     throw new BuildException(message);
                 }
-                return true;
             }
 
-            final String message = "Redirection detected from "
-                    + aSource.getProtocol() + " to " + aDest.getProtocol()
-                    + ". Protocol switch unsafe, not allowed.";
-            if (ignoreErrors) {
-                log(message, logLevel);
-                return false;
+            redirections++;
+            if (redirections > REDIRECT_LIMIT) {
+                final String message = "More than " + REDIRECT_LIMIT
+                        + " times redirected, giving up";
+                if (ignoreErrors) {
+                    log(message, logLevel);
+                    return false;
+                } else {
+                    throw new BuildException(message);
+                }
             }
-            throw new BuildException(message);
+
+
+            return true;
         }
 
         private URLConnection openConnection(final URL aSource) throws IOException {

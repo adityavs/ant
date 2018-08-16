@@ -32,7 +32,6 @@ import java.util.Hashtable;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 /**
  * FilterSet testing
@@ -58,22 +57,19 @@ public class FilterSetTest {
     @Test
     public void test1() throws IOException {
         buildRule.executeTarget("test1");
-        assertTrue("Filterset 1 failed", compareFiles("src/etc/testcases/types/gold/filterset1.txt",
-                                                      "src/etc/testcases/types/dest1.txt"));
+        assertTrue("Filterset 1 failed", compareFiles("gold/filterset1.txt", "dest1.txt"));
     }
 
     @Test
     public void test2() throws IOException {
         buildRule.executeTarget("test2");
-        assertTrue("Filterset 2 failed", compareFiles("src/etc/testcases/types/gold/filterset2.txt",
-                                                      "src/etc/testcases/types/dest2.txt"));
+        assertTrue("Filterset 2 failed", compareFiles("gold/filterset2.txt", "dest2.txt"));
     }
 
     @Test
     public void test3() throws IOException {
         buildRule.executeTarget("test3");
-        assertTrue("Filterset 3 failed", compareFiles("src/etc/testcases/types/gold/filterset3.txt",
-                                                      "src/etc/testcases/types/dest3.txt"));
+        assertTrue("Filterset 3 failed", compareFiles("gold/filterset3.txt", "dest3.txt"));
     }
 
     /**
@@ -152,23 +148,23 @@ public class FilterSetTest {
     public void testNestedFilterSets() {
         buildRule.executeTarget("test-nested-filtersets");
 
-        FilterSet fs = (FilterSet) buildRule.getProject().getReference("1");
-        Hashtable filters = fs.getFilterHash();
+        FilterSet fs = buildRule.getProject().getReference("1");
+        Hashtable<String, String> filters = fs.getFilterHash();
         assertEquals(1, filters.size());
         assertEquals("value1", filters.get("token1"));
 
-        fs = (FilterSet) buildRule.getProject().getReference("2");
+        fs = buildRule.getProject().getReference("2");
         filters = fs.getFilterHash();
         assertEquals(2, filters.size());
         assertEquals("1111", filters.get("aaaa"));
         assertEquals("2222", filters.get("bbbb"));
 
-        fs = (FilterSet) buildRule.getProject().getReference("3");
+        fs = buildRule.getProject().getReference("3");
         filters = fs.getFilterHash();
         assertEquals(1, filters.size());
         assertEquals("value4", filters.get("token4"));
 
-        fs = (FilterSet) buildRule.getProject().getReference("5");
+        fs = buildRule.getProject().getReference("5");
         filters = fs.getFilterHash();
         assertEquals(1, filters.size());
         assertEquals("value1", filters.get("token1"));
@@ -189,14 +185,10 @@ public class FilterSetTest {
         buildRule.executeTarget("testMultipleFiltersFiles");
     }
 
-    @Test
+    @Test(expected = BuildException.class)
     public void testMissingFiltersFile() {
-        try {
-            buildRule.executeTarget("testMissingFiltersFile");
-            fail("should fail due to missing  filtersfile");
-        } catch (BuildException ex) {
-            //TODO assert exception text
-        }
+        buildRule.executeTarget("testMissingFiltersFile");
+        // TODO assert exception text
     }
 
     @Test
@@ -205,15 +197,10 @@ public class FilterSetTest {
     }
 
     private boolean compareFiles(String name1, String name2) throws IOException {
-        File file1 = new File(System.getProperty("root"), name1);
-        File file2 = new File(System.getProperty("root"), name2);
+        File file1 = buildRule.getProject().resolveFile(name1);
+        File file2 = buildRule.getProject().resolveFile(name2);
 
-
-        if (!file1.exists() || !file2.exists()) {
-            return false;
-        }
-
-        if (file1.length() != file2.length()) {
+        if (!file1.exists() || !file2.exists() || file1.length() != file2.length()) {
             return false;
         }
 
@@ -221,16 +208,15 @@ public class FilterSetTest {
         byte[] buffer1 = new byte[BUF_SIZE];
         byte[] buffer2 = new byte[BUF_SIZE];
 
-        @SuppressWarnings("resource")
-        FileInputStream fis1 = new FileInputStream(file1);
-        @SuppressWarnings("resource")
-        FileInputStream fis2 = new FileInputStream(file2);
-        int read = 0;
-        while ((read = fis1.read(buffer1)) != -1) {
-            fis2.read(buffer2);
-            for (int i = 0; i < read; ++i) {
-                if (buffer1[i] != buffer2[i]) {
-                    return false;
+        try (FileInputStream fis1 = new FileInputStream(file1);
+             FileInputStream fis2 = new FileInputStream(file2)) {
+            int read = 0;
+            while ((read = fis1.read(buffer1)) != -1) {
+                fis2.read(buffer2);
+                for (int i = 0; i < read; ++i) {
+                    if (buffer1[i] != buffer2[i]) {
+                        return false;
+                    }
                 }
             }
         }

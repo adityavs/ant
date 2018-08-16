@@ -18,8 +18,9 @@
 
 package org.apache.tools.ant.taskdefs.optional.junit;
 
-
 import java.io.File;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Vector;
 import java.util.stream.Stream;
@@ -99,8 +100,7 @@ public final class BatchTest extends BaseTest {
      * a <tt>JUnitTest</tt> instance.
      */
     public Enumeration<JUnitTest> elements() {
-        JUnitTest[] tests = createAllJUnitTest();
-        return Enumerations.fromArray(tests);
+        return Collections.enumeration(Arrays.asList(createAllJUnitTest()));
     }
 
     /**
@@ -112,8 +112,8 @@ public final class BatchTest extends BaseTest {
     void addTestsTo(Vector<? super JUnitTest> v) {
         JUnitTest[] tests = createAllJUnitTest();
         v.ensureCapacity(v.size() + tests.length);
-        for (int i = 0; i < tests.length; i++) {
-            v.addElement(tests[i]);
+        for (JUnitTest test : tests) {
+            v.addElement(test);
         }
     }
 

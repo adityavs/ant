@@ -48,7 +48,6 @@ import org.apache.tools.ant.types.resources.Restrict;
 import org.apache.tools.ant.types.resources.Union;
 import org.apache.tools.ant.types.resources.selectors.Type;
 import org.apache.tools.ant.util.FileUtils;
-import org.apache.tools.ant.util.StringUtils;
 
 /**
  * Used to create or verify file checksums.
@@ -154,7 +153,7 @@ public class Checksum extends MatchingTask implements Condition {
     private int readBufferSize = BUFFER_SIZE;
 
     /**
-     * Formater for the checksum file.
+     * Formatter for the checksum file.
      */
     private MessageFormat format = FormatElement.getDefault().getFormat();
 
@@ -328,7 +327,7 @@ public class Checksum extends MatchingTask implements Condition {
             throw new BuildException(
                 "Specify at least one source - a file or a resource collection.");
         }
-        if (!(resources == null || resources.isFilesystemOnly())) {
+        if (resources != null && !resources.isFilesystemOnly()) {
             throw new BuildException("Can only calculate checksums for file-based resources.");
         }
         if (file != null && file.exists() && file.isDirectory()) {
@@ -371,10 +370,8 @@ public class Checksum extends MatchingTask implements Condition {
         if (provider != null) {
             try {
                 messageDigest = MessageDigest.getInstance(algorithm, provider);
-            } catch (NoSuchAlgorithmException noalgo) {
+            } catch (NoSuchAlgorithmException | NoSuchProviderException noalgo) {
                 throw new BuildException(noalgo, getLocation());
-            } catch (NoSuchProviderException noprovider) {
-                throw new BuildException(noprovider, getLocation());
             }
         } else {
             try {
@@ -394,8 +391,7 @@ public class Checksum extends MatchingTask implements Condition {
         try {
             if (resources != null) {
                 for (Resource r : resources) {
-                    File src = r.as(FileProvider.class)
-                        .getFile();
+                    File src = r.as(FileProvider.class).getFile();
                     if (totalproperty != null || todir != null) {
                         // Use '/' to calculate digest based on file name.
                         // This is required in order to get the same result
@@ -539,7 +535,7 @@ public class Checksum extends MatchingTask implements Condition {
                                                                      src),
                                                     src.getAbsolutePath()
                                                 }).getBytes());
-                        fos.write(StringUtils.LINE_SEP.getBytes());
+                        fos.write(System.lineSeparator().getBytes());
                         fos.close();
                         fos = null;
                     }
@@ -579,12 +575,8 @@ public class Checksum extends MatchingTask implements Condition {
 
     private String createDigestString(byte[] fileDigest) {
         StringBuilder checksumSb = new StringBuilder();
-        for (int i = 0; i < fileDigest.length; i++) {
-            String hexStr = Integer.toHexString(BYTE_MASK & fileDigest[i]);
-            if (hexStr.length() < 2) {
-                checksumSb.append('0');
-            }
-            checksumSb.append(hexStr);
+        for (byte digestByte : fileDigest) {
+            checksumSb.append(String.format("%02x", BYTE_MASK & digestByte));
         }
         return checksumSb.toString();
     }
@@ -613,7 +605,7 @@ public class Checksum extends MatchingTask implements Condition {
         // two characters form the hex value.
         for (int i = 0, j = 0; j < l; i++) {
             int f = Character.digit(data[j++], WORD) << NIBBLE;
-            f = f | Character.digit(data[j++], WORD);
+            f |= Character.digit(data[j++], WORD);
             out[i] = (byte) (f & BYTE_MASK);
         }
 
@@ -658,7 +650,7 @@ public class Checksum extends MatchingTask implements Condition {
      * @since 1.7
      */
     public static class FormatElement extends EnumeratedAttribute {
-        private static HashMap<String, MessageFormat> formatMap = new HashMap<String, MessageFormat>();
+        private static HashMap<String, MessageFormat> formatMap = new HashMap<>();
         private static final String CHECKSUM = "CHECKSUM";
         private static final String MD5SUM = "MD5SUM";
         private static final String SVF = "SVF";

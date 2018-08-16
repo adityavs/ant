@@ -19,7 +19,6 @@ package org.apache.tools.ant.filters;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.util.Enumeration;
 import java.util.Vector;
 
 import org.apache.tools.ant.BuildException;
@@ -59,15 +58,15 @@ public class TokenFilter extends BaseFilterReader
 
 
     /** string filters */
-    private Vector<Filter>    filters   = new Vector<Filter>();
+    private Vector<Filter> filters = new Vector<>();
     /** the tokenizer to use on the input stream */
     private Tokenizer tokenizer = null;
     /** the output token termination */
-    private String    delimOutput = null;
+    private String delimOutput = null;
     /** the current string token from the input stream */
-    private String    line      = null;
+    private String line    = null;
     /** the position in the current string token */
-    private int       linePos   = 0;
+    private int    linePos = 0;
 
     /**
      * Constructor for "dummy" instances.
@@ -105,26 +104,23 @@ public class TokenFilter extends BaseFilterReader
         if (tokenizer == null) {
             tokenizer = new LineTokenizer();
         }
-        while (line == null || line.length() == 0) {
+        while (line == null || line.isEmpty()) {
             line = tokenizer.getToken(in);
             if (line == null) {
                 return -1;
             }
-            for (Enumeration<Filter> e = filters.elements(); e.hasMoreElements();) {
-                Filter filter = e.nextElement();
+            for (Filter filter : filters) {
                 line = filter.filter(line);
                 if (line == null) {
                     break;
                 }
             }
             linePos = 0;
-            if (line != null) {
-                if (tokenizer.getPostToken().length() != 0) {
-                    if (delimOutput != null) {
-                        line = line + delimOutput;
-                    } else {
-                        line = line + tokenizer.getPostToken();
-                    }
+            if (line != null && !tokenizer.getPostToken().isEmpty()) {
+                if (delimOutput != null) {
+                    line += delimOutput;
+                } else {
+                    line += tokenizer.getPostToken();
                 }
             }
         }
@@ -380,7 +376,7 @@ public class TokenFilter extends BaseFilterReader
             while (found >= 0) {
                 // write everything up to the from
                 if (found > start) {
-                    ret.append(line.substring(start, found));
+                    ret.append(line, start, found);
                 }
 
                 // write the replacement to
@@ -395,7 +391,7 @@ public class TokenFilter extends BaseFilterReader
 
             // write the remaining characters
             if (line.length() > start) {
-                ret.append(line.substring(start, line.length()));
+                ret.append(line, start, line.length());
             }
 
             return ret.toString();
@@ -428,7 +424,7 @@ public class TokenFilter extends BaseFilterReader
             if (contains == null) {
                 throw new BuildException("Missing contains in containsstring");
             }
-            if (string.indexOf(contains) > -1) {
+            if (string.contains(contains)) {
                 return string;
             }
             return null;
@@ -594,7 +590,7 @@ public class TokenFilter extends BaseFilterReader
          * @return the trimmed line
          */
         public String filter(String line) {
-            if (line.trim().length() == 0) {
+            if (line.trim().isEmpty()) {
                 return null;
             }
             return line;

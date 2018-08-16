@@ -1,3 +1,193 @@
+Changes from Ant 1.10.5 TO Ant 1.10.6
+=====================================
+
+Changes that could break older environments:
+-------------------------------------------
+
+ * image task no longer works on Java 9+ because internal classes
+   supporting Java Advanced Imaging are removed; imageio task (based on
+   ImageIO and AWT) is provided as a replacement.
+
+Fixed bugs:
+-----------
+
+ * fetch.xml must retrieve runtime rather than compile dependencies for
+   mail task.
+   Bugzilla Report 62621
+
+Other changes:
+--------------
+ * generatekey task now supports SubjectAlternativeName during key
+   generation.
+
+ * the <modified> selector has a new built-in algorithm 'lastmodified'
+   which computes a value based upon the lastmodified time of the file.
+
+ * junitlauncher task now supports forking and can be used with JaCoCo
+   (see https://github.com/jacoco/jacoco/issues/673).
+
+Changes from Ant 1.10.4 TO Ant 1.10.5
+=====================================
+
+Fixed bugs:
+-----------
+
+ * Fixes a regression in the "get" task where redirects
+   from a HTTP resource to a HTTPS resource started throwing
+   an exception.
+   Bugzilla Report 62499
+
+ * the new allowFilesToEscapeDest didn't work when set to false and
+   archive entries contained relative paths with so many ".."
+   segnments that the resulting path would go beyond the file system
+   root.
+   Bugzilla Report 62502
+
+Other changes:
+--------------
+ * Java task now accepts a "sourcefile" attribute to allow single file
+   source program execution, a feature that is introduced in Java 11.
+
+Changes from Ant 1.10.3 TO Ant 1.10.4
+=====================================
+
+Changes that could break older environments:
+-------------------------------------------
+
+ * <unzip>, <unjar> and <untar> will no longer extract entries whose
+   names would make the created files be placed outside of the
+   destination directory anymore by default. A new attribute
+   allowFilesToEscapeDest can be used to override the behavior.
+   Another special case is when stripAbsolutePathSpec is false (which
+   no longer is the default) and the entry's name starts with a
+   (back)slash and allowFilesToEscapeDest hasn't been specified
+   explicitly, in this case the file may be created outside of the
+   dest directory as well.
+   In addition stripAbsolutePathSpec is now true by default.
+   Based on a recommendation by the Snyk Security Research Team.
+
+Fixed bugs:
+-----------
+
+ * Delay the class initialization of the test classes until they are
+   passed to JUnit. This way we can avoid that failing static initializers
+   from non-test classes are reported as error when the 'skipNonTests' option
+   is 'true'.
+   Bugzilla Report 60062
+
+ * The junit task when used with includeantruntime="no" was incorrectly
+   printing a warning about multiple versions of ant detected in path
+
+ * <cab> died with a NullPointerException since Ant 1.10.2.
+   Bugzilla Report 62335
+
+ * The <depend> task would fail with
+   "java.lang.ClassFormatError: Invalid Constant Pool entry Type 19" while
+   parsing a module-info.class. The task is compatible with
+   Java bytecode version 53 now.
+   Bug reported by Simon IJskes https://issues.apache.org/jira/browse/NETBEANS-781
+
+ * Default and SecureInputHandler will now raise an error when then
+   end of the input stream (usually System.in or System.console) are
+   reached before a valid input has been read.
+
+ * junitreport does not list testsuites that fail to start any tests
+   because of an exception inside the all-tests and alltests-errors frames.
+   Bugzilla Report 62443
+
+Other changes:
+--------------
+
+ * AntAssert is deprecated, assertThat from JUnit 4.4+, Hamcrest matchers and/or
+   ExpectedException rule provide equivalent functionality
+
+ * PumpStreamHandler now explicitly verifies the streams for output
+   and error are not null and will throw an exception if they
+   are. This way creating a PumpStreamHandler will fail early as
+   opposed to some obscure errors later when closing streams or
+   finishing threads might fail.
+   Bugzilla Report 62148
+
+ * <property> has a new attribute runtime which can be used to set
+   properties with values taken as snapshots from the
+   availableProcessors, freeMemory, maxMemory and totalMemory methods
+   of the Java Runtime class.
+
+ * linecontains filter now has a new "matchAny" attribute which when
+   set to "true" allows any (instead of all) of the user-specified
+   strings to be present in the line.
+   Bugzilla Report 62313
+
+ * <resourcelist> has a new basedir attribute that can be used to
+   resolve relative names and provides a root for the FileResources
+   generated.
+   Bugzilla Report 62379
+
+ * The <includesfile> and <excludesfile> nested elements of
+   <patternset> and <fileset> now support an encoding attribute that
+   can be used to specify the file's encoding.
+   Bugzilla Report 62379
+
+ * New file selectors, posixGroup and posixPermissions, are available.
+   The new selectors and related ownedBy selector have "followSymlinks"
+   attribute that defaults to "true" for consistency.
+   Bugzilla Report 22370
+
+ * The junitlauncher task now has a "printSummary" attribute which when
+   set to "true" will print the test execution summary to System.out.
+
+Changes from Ant 1.10.2 TO Ant 1.10.3
+=====================================
+
+Changes that could break older environments:
+-------------------------------------------
+
+ * Previous versions of Ant's copy task would throw a BuildException
+   if the "name" of the resource to copy was null. Starting
+   this version, the copy task instead silently skips such resources
+   and no longer throws an exception.
+   ant-dev list https://www.mail-archive.com/dev@ant.apache.org/msg46634.html
+
+ * Reverted the signature change of various clone method
+   implementation in Ant's data-types introduced with 1.10.2 as they
+   broke subclasses of said data-types which tried to override clone.
+
+Fixed bugs:
+-----------
+
+ * Fixed NullPointerException in ChainedMapper
+   Bugzilla Report 62086
+
+ * Fixed NullPointerException when a mappedresource is used in pathconvert
+   Bugzilla Report 62076
+
+ * Fixed an issue where a string, when used as a resource collection, within
+   tokens, would be replaced by property values
+   Bugzilla Report 62147
+
+ * Added a workaround for a bug in the jarsigner tool to <verifyjar>
+   which requires the -storepass command line argument when verifying
+   signatures using -strict together with a PKCS12 keystore. Unlike
+   when signing the jar it will not prompt for the keystore's password
+   and read it from standard input.
+   This means Ant will now pass the keystore's password on the command
+   line when using <verifyjar>, which poses a security risk you should
+   be aware of.
+   Bugzilla Report 62194
+
+Other changes:
+--------------
+
+ * Allow Saxon to be used for junitreport XSL transformation
+   Github Pull Request #57
+
+ * when running on Java 11+ rmic will fail early if iiop or idl are
+   requested. Java 11 removes support for CORBA and the switches have
+   been removed from the rmic tool.
+
+ * A new junitlauncher task which support JUnit 5 test framework.
+   Bugzilla Report 61796
+
 Changes from Ant 1.10.1 TO Ant 1.10.2
 =====================================
 
@@ -22,6 +212,13 @@ Changes that could break older environments:
 
  * Commons Net 3.6 is binary-code, but not source compatible;
    see change list of Commons Net 3.0 for details
+
+ * The Log4jListener is marked as deprecated as the required log4j library
+   (in version 1.x) is not maintained any more.
+
+ * Image task is marked as deprecated as the required JAI library is not
+   maintained any more and internal APIs that JAI depended on are no longer
+   available in Java 9.
 
 Fixed bugs:
 -----------
@@ -56,6 +253,11 @@ Fixed bugs:
  * Fixed an issue where the content redirected from output/error
    streams of a process, could end up being truncated.
    Bugzilla Report 58833, 58451
+
+ * <fileset>/<zipfileset>/<tarfileset> will now throw an exception
+   with a more useful error message when setFile is called twice on
+   the same instance.
+   Bugzilla Report 62071
 
 Other changes:
 --------------

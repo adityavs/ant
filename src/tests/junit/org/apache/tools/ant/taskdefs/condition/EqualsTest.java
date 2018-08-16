@@ -18,8 +18,10 @@
 
 package org.apache.tools.ant.taskdefs.condition;
 
+import org.junit.Before;
 import org.junit.Test;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -28,12 +30,18 @@ import static org.junit.Assert.assertTrue;
  */
 public class EqualsTest {
 
+    private Equals eq;
+
+    @Before
+    public void setUp() {
+        eq = new Equals();
+    }
+
     @Test
     public void testTrim() {
-        Equals eq = new Equals();
         eq.setArg1("a");
         eq.setArg2(" a");
-        assertTrue(!eq.eval());
+        assertFalse(eq.eval());
 
         eq.setTrim(true);
         assertTrue(eq.eval());
@@ -44,10 +52,9 @@ public class EqualsTest {
 
     @Test
     public void testCaseSensitive() {
-        Equals eq = new Equals();
         eq.setArg1("a");
         eq.setArg2("A");
-        assertTrue(!eq.eval());
+        assertFalse(eq.eval());
 
         eq.setCasesensitive(false);
         assertTrue(eq.eval());

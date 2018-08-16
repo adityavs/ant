@@ -25,9 +25,9 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
 import java.nio.file.Files;
-import java.util.Enumeration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Set;
@@ -53,9 +53,6 @@ import org.apache.tools.ant.util.FileUtils;
  * @ant.task category="xml"
  */
 public class AntStructure extends Task {
-
-    private static final String LINE_SEP
-        = System.getProperty("line.separator");
 
     private File output;
     private StructurePrinter printer = new DTDPrinter();
@@ -107,8 +104,8 @@ public class AntStructure extends Task {
             }
 
             printer.printHead(out, getProject(),
-                              new Hashtable<String, Class<?>>(getProject().getTaskDefinitions()),
-                              new Hashtable<String, Class<?>>(getProject().getDataTypeDefinitions()));
+                    new Hashtable<>(getProject().getTaskDefinitions()),
+                    new Hashtable<>(getProject().getDataTypeDefinitions()));
 
             printer.printTargetDecl(out);
 
@@ -190,7 +187,7 @@ public class AntStructure extends Task {
         private static final String TASKS = "%tasks;";
         private static final String TYPES = "%types;";
 
-        private final Hashtable<String, String> visited = new Hashtable<String, String>();
+        private final Hashtable<String, String> visited = new Hashtable<>();
 
         @Override
         public void printTail(final PrintWriter out) {
@@ -293,15 +290,12 @@ public class AntStructure extends Task {
                 return;
             }
 
-            StringBuilder sb =
-                new StringBuilder("<!ELEMENT ").append(name).append(" ");
+            StringBuilder sb = new StringBuilder("<!ELEMENT ").append(name).append(" ");
 
             if (Reference.class.equals(element)) {
-                sb.append("EMPTY>").append(LINE_SEP);
-                sb.append("<!ATTLIST ").append(name);
-                sb.append(LINE_SEP).append("          id ID #IMPLIED");
-                sb.append(LINE_SEP).append("          refid IDREF #IMPLIED");
-                sb.append(">").append(LINE_SEP);
+                sb.append(String.format("EMPTY>%n<!ATTLIST %s%n"
+                                + "          id ID #IMPLIED%n          refid IDREF #IMPLIED>%n",
+                        name));
                 out.println(sb);
                 return;
             }
@@ -315,10 +309,7 @@ public class AntStructure extends Task {
                 v.add(TASKS);
             }
 
-            Enumeration<String> e = ih.getNestedElements();
-            while (e.hasMoreElements()) {
-                v.add(e.nextElement());
-            }
+            v.addAll(Collections.list(ih.getNestedElements()));
 
             final Collector<CharSequence, ?, String> joinAlts =
                 Collectors.joining(" | ", "(", ")");
@@ -334,41 +325,32 @@ public class AntStructure extends Task {
             sb.append(">");
             out.println(sb);
 
-            sb = new StringBuilder("<!ATTLIST ");
-            sb.append(name);
-            sb.append(LINE_SEP).append("          id ID #IMPLIED");
+            sb = new StringBuilder();
+            sb.append(String.format("<!ATTLIST %s%n          id ID #IMPLIED", name));
 
-            e = ih.getAttributes();
-            while (e.hasMoreElements()) {
-                final String attrName = e.nextElement();
+            for (final String attrName : Collections.list(ih.getAttributes())) {
                 if ("id".equals(attrName)) {
                     continue;
                 }
 
-                sb.append(LINE_SEP).append("          ")
-                    .append(attrName).append(" ");
+                sb.append(String.format("%n          %s ", attrName));
                 final Class<?> type = ih.getAttributeType(attrName);
-                if (type.equals(Boolean.class)
-                    || type.equals(Boolean.TYPE)) {
+                if (type.equals(Boolean.class) || type.equals(Boolean.TYPE)) {
                     sb.append(BOOLEAN).append(" ");
                 } else if (Reference.class.isAssignableFrom(type)) {
                     sb.append("IDREF ");
                 } else if (EnumeratedAttribute.class.isAssignableFrom(type)) {
                     try {
                         final EnumeratedAttribute ea =
-                            type.asSubclass(EnumeratedAttribute.class)
-                                .newInstance();
+                            type.asSubclass(EnumeratedAttribute.class).newInstance();
                         final String[] values = ea.getValues();
-                        if (values == null
-                            || values.length == 0
+                        if (values == null || values.length == 0
                             || !areNmtokens(values)) {
                             sb.append("CDATA ");
                         } else {
                             sb.append(Stream.of(values).collect(joinAlts));
                         }
-                    } catch (final InstantiationException ie) {
-                        sb.append("CDATA ");
-                    } catch (final IllegalAccessException ie) {
+                    } catch (final InstantiationException | IllegalAccessException ie) {
                         sb.append("CDATA ");
                     }
                 } else if (Enum.class.isAssignableFrom(type)) {
@@ -389,7 +371,7 @@ public class AntStructure extends Task {
                 }
                 sb.append("#IMPLIED");
             }
-            sb.append(">").append(LINE_SEP);
+            sb.append(String.format(">%n"));
             out.println(sb);
 
             for (String nestedName : v) {
@@ -428,8 +410,8 @@ public class AntStructure extends Task {
          * @return true if all the strings in the array math XML-NMTOKEN
          */
         public static final boolean areNmtokens(final String[] s) {
-            for (int i = 0; i < s.length; i++) {
-                if (!isNmtoken(s[i])) {
+            for (String value : s) {
+                if (!isNmtoken(value)) {
                     return false;
                 }
             }

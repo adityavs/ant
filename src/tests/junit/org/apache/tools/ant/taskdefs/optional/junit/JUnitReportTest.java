@@ -18,9 +18,11 @@
 
 package org.apache.tools.ant.taskdefs.optional.junit;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.apache.tools.ant.AntAssert.assertContains;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assume.assumeTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -35,7 +37,6 @@ import javax.xml.transform.TransformerFactoryConfigurationError;
 
 import org.apache.tools.ant.BuildFileRule;
 import org.apache.tools.ant.util.FileUtils;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -63,8 +64,8 @@ public class JUnitReportTest {
     @Test
     public void testNoFileJUnitNoFrames() {
         buildRule.executeTarget("reports1");
-        assertFalse("No file junit-noframes.html expected", new File(System.getProperty("root"),
-                "src/etc/testcases/taskdefs/optional/junitreport/test/html/junit-noframes.html").exists());
+        assertFalse("No file junit-noframes.html expected", buildRule.getProject().resolveFile(
+                "junitreport/test/html/junit-noframes.html").exists());
     }
 
     public void assertIndexCreated() {
@@ -92,29 +93,32 @@ public class JUnitReportTest {
         try {
             assertTrue("This shouldn't be an empty stream.", reportStream.available() > 0);
         } finally {
-            FileUtils.getFileUtils().close(reportStream);
+            FileUtils.close(reportStream);
         }
     }
 
     @Test
-    public void testEmptyFile() throws Exception {
+    public void testEmptyFile() {
         buildRule.executeTarget("testEmptyFile");
         assertIndexCreated();
-        assertContains("Required text not found in log", XMLResultAggregator.WARNING_EMPTY_FILE, buildRule.getLog());
+        assertThat("Required text not found in log", buildRule.getLog(),
+                containsString(XMLResultAggregator.WARNING_EMPTY_FILE));
     }
 
     @Test
-    public void testIncompleteFile() throws Exception {
+    public void testIncompleteFile() {
         buildRule.executeTarget("testIncompleteFile");
         assertIndexCreated();
-        assertContains("Required text not found in log", XMLResultAggregator.WARNING_IS_POSSIBLY_CORRUPTED, buildRule.getLog());
+        assertThat("Required text not found in log", buildRule.getLog(),
+                containsString(XMLResultAggregator.WARNING_IS_POSSIBLY_CORRUPTED));
     }
 
     @Test
-    public void testWrongElement() throws Exception {
+    public void testWrongElement() {
         buildRule.executeTarget("testWrongElement");
         assertIndexCreated();
-        assertContains("Required text not found in log", XMLResultAggregator.WARNING_INVALID_ROOT_ELEMENT, buildRule.getLog());
+        assertThat("Required text not found in log", buildRule.getLog(),
+                containsString(XMLResultAggregator.WARNING_INVALID_ROOT_ELEMENT));
     }
 
     // Bugzilla Report 34963
@@ -126,8 +130,10 @@ public class JUnitReportTest {
         try {
             r = new FileReader(new File(buildRule.getOutputDir(), "html/sampleproject/coins/0_CoinTest.html"));
             String report = FileUtils.readFully(r);
-            assertContains("output must contain <br>:\n" + report, "junit.framework.AssertionFailedError: DOEG<br>", report);
-            assertContains("#51049: output must translate line breaks:\n" + report, "cur['line.separator'] = '\\r\\n';", report);
+            assertThat("output must contain <br>:\n" + report, report,
+                    containsString("junit.framework.AssertionFailedError: DOEG<br>"));
+            assertThat("#51049: output must translate line breaks:\n" + report, report,
+                    containsString("cur['line.separator'] = '\\r\\n';"));
         } finally {
             FileUtils.close(r);
         }
@@ -179,7 +185,7 @@ public class JUnitReportTest {
     @Test
     public void testWithParams() throws Exception {
         buildRule.executeTarget("testWithParams");
-        assertContains("key1=value1,key2=value2", buildRule.getLog());
+        assertThat(buildRule.getLog(), containsString("key1=value1,key2=value2"));
         commonIndexFileAssertions();
     }
 
@@ -187,9 +193,8 @@ public class JUnitReportTest {
     public void testWithSecurityManagerAndXalanFactory() throws Exception {
         try {
             String factoryName = TransformerFactory.newInstance().getClass().getName();
-            Assume.assumeTrue("TraxFactory is " + factoryName + " and not Xalan",
-                              "org.apache.xalan.processor.TransformerFactoryImpl"
-                              .equals(factoryName));
+            assumeTrue("TraxFactory is " + factoryName + " and not Xalan",
+                    "org.apache.xalan.processor.TransformerFactoryImpl".equals(factoryName));
         } catch (TransformerFactoryConfigurationError exc) {
             throw new RuntimeException(exc);
         }

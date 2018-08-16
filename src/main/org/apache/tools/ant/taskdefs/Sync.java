@@ -226,8 +226,7 @@ public class Sync extends Task {
         ds.addExcludes(excls);
 
         ds.scan();
-        String[] files = ds.getIncludedFiles();
-        for (String file : files) {
+        for (String file : ds.getIncludedFiles()) {
             File f = new File(toDir, file);
             log("Removing orphan file: " + f, Project.MSG_DEBUG);
             f.delete();
@@ -250,7 +249,7 @@ public class Sync extends Task {
         }
 
         Boolean ped = getExplicitPreserveEmptyDirs();
-        if (ped != null && ped.booleanValue() != myCopy.getIncludeEmptyDirs()) {
+        if (ped != null && ped != myCopy.getIncludeEmptyDirs()) {
             FileSet fs = syncTarget.toFileSet(true);
             fs.setDir(toDir);
             String[] preservedDirs =
@@ -286,13 +285,11 @@ public class Sync extends Task {
         int removedCount = 0;
         if (dir.isDirectory()) {
             File[] children = dir.listFiles();
-            for (int i = 0; i < children.length; ++i) {
-                File file = children[i];
+            for (File file : children) {
                 // Test here again to avoid method call for non-directories!
                 if (file.isDirectory()) {
-                    removedCount +=
-                        removeEmptyDirectories(file, true,
-                                               preservedEmptyDirectories);
+                    removedCount += removeEmptyDirectories(file, true,
+                            preservedEmptyDirectories);
                 }
             }
             if (children.length > 0) {
@@ -553,7 +550,7 @@ public class Sync extends Task {
          * @since Ant 1.8.0
          */
         public void setPreserveEmptyDirs(boolean b) {
-            preserveEmptyDirs = Boolean.valueOf(b);
+            preserveEmptyDirs = b;
         }
 
         /**

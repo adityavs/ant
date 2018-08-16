@@ -179,9 +179,8 @@ public abstract class MSVSS extends Task implements MSVSSConstants {
      * @throws BuildException if the command cannot execute.
      */
     public void execute() throws BuildException {
-        int result = 0;
         Commandline commandLine = buildCmdLine();
-        result = run(commandLine);
+        int result = run(commandLine);
         if (Execute.isFailure(result) && getFailOnError()) {
             String msg = "Failed executing: " + formatCommandLine(commandLine)
                      + " With a return code of " + result;
@@ -418,7 +417,7 @@ public abstract class MSVSS extends Task implements MSVSSConstants {
      */
     protected String getLabel() {
         String shortLabel = "";
-        if (label != null && label.length() > 0) {
+        if (label != null && !label.isEmpty()) {
                 shortLabel = FLAG_LABEL + getShortLabel();
         }
         return shortLabel;
@@ -464,7 +463,7 @@ public abstract class MSVSS extends Task implements MSVSSConstants {
             // Use getShortLabel() so labels longer then 30 char are truncated
             // and the user is warned
             String shortLabel = getShortLabel();
-            if (shortLabel != null && !shortLabel.equals("")) {
+            if (shortLabel != null && !shortLabel.isEmpty()) {
                 versionDateLabel = FLAG_VERSION_LABEL + shortLabel;
             }
         }
@@ -640,7 +639,7 @@ public abstract class MSVSS extends Task implements MSVSSConstants {
      * @return    True if the FailOnError flag has been set or if 'writablefiles=skip'.
      */
     private boolean getFailOnError() {
-        return getWritableFiles().equals(WRITABLE_SKIP) ? false : failOnError;
+        return !getWritableFiles().equals(WRITABLE_SKIP) && failOnError;
     }
 
 

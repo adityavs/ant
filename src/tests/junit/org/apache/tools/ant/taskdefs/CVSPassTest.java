@@ -27,17 +27,17 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 /**
  * Tests CVSLogin task.
  *
  */
 public class CVSPassTest {
-    private final String EOL = System.getProperty("line.separator");
+    private final String EOL = System.lineSeparator();
     private static final String JAKARTA_URL =
         ":pserver:anoncvs@jakarta.apache.org:/home/cvspublic Ay=0=h<Z";
     private static final String XML_URL =
@@ -46,37 +46,33 @@ public class CVSPassTest {
         ":pserver:guest@cvs.tigris.org:/cvs AIbdZ,";
 
     @Rule
-    public final BuildFileRule buildRule = new BuildFileRule();
+    public ExpectedException thrown = ExpectedException.none();
 
+    @Rule
+    public final BuildFileRule buildRule = new BuildFileRule();
 
     @Before
     public void setUp() {
         buildRule.configureProject("src/etc/testcases/taskdefs/cvspass.xml");
     }
 
+    @After
+    public void tearDown() {
+        buildRule.executeTarget("cleanup");
+    }
+
     @Test
     public void testNoCVSRoot() {
-        try {
-            buildRule.executeTarget("test1");
-            fail("BuildException not thrown");
-        } catch (BuildException e) {
-            assertEquals("cvsroot is required", e.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("cvsroot is required");
+        buildRule.executeTarget("test1");
     }
 
     @Test
     public void testNoPassword() {
-        try {
-            buildRule.executeTarget("test2");
-            fail("BuildException not thrown");
-        } catch (BuildException e) {
-            assertEquals("password is required", e.getMessage());
-        }
-    }
-
-    @After
-    public void tearDown() {
-        buildRule.executeTarget("cleanup");
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("password is required");
+        buildRule.executeTarget("test2");
     }
 
     @Test

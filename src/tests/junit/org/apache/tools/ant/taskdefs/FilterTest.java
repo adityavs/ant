@@ -20,7 +20,6 @@ package org.apache.tools.ant.taskdefs;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 
@@ -32,8 +31,8 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-
 
 public class FilterTest {
 
@@ -50,34 +49,22 @@ public class FilterTest {
         buildRule.executeTarget("cleanup");
     }
 
-    @Test
+    @Test(expected = BuildException.class)
     public void test1() {
-        try {
-            buildRule.executeTarget("test1");
-            fail("required argument missing");
-        } catch (BuildException ex) {
-            //TODO assert value
-        }
+        buildRule.executeTarget("test1");
+        // TODO assert value
     }
 
-    @Test
+    @Test(expected = BuildException.class)
     public void test2() {
-        try {
-            buildRule.executeTarget("test2");
-            fail("required argument missing");
-        } catch (BuildException ex) {
-            //TODO assert value
-        }
+        buildRule.executeTarget("test2");
+        // TODO assert value
     }
 
-    @Test
+    @Test(expected = BuildException.class)
     public void test3() {
-        try {
-            buildRule.executeTarget("test3");
-            fail("required argument missing");
-        } catch (BuildException ex) {
-            //TODO assert value
-        }
+        buildRule.executeTarget("test3");
+        // TODO assert value
     }
 
     @Test
@@ -122,24 +109,15 @@ public class FilterTest {
     }
 
     private String getFilteredFile(String testNumber, String filteredFile) {
-
         String line = null;
         File f = new File(buildRule.getProject().getBaseDir(), filteredFile);
-        if (!f.exists()) {
-            fail("filter test" + testNumber + " failed");
-        } else {
-            BufferedReader in = null;
-            try {
-                in = new BufferedReader(new FileReader(f));
-            } catch (FileNotFoundException fnfe) {
-                fail("filter test" + testNumber + " failed, filtered file: " + f.toString() + " not found");
-            }
-            try {
-                line = in.readLine();
-                in.close();
-            } catch (IOException ioe) {
-                fail("filter test" + testNumber + " failed.  IOException while reading filtered file: " + ioe);
-            }
+        assertTrue("filter test" + testNumber + " failed", f.exists());
+
+        try (BufferedReader in = new BufferedReader(new FileReader(f))) {
+            line = in.readLine();
+        } catch (IOException ioe) {
+            fail("filter test" + testNumber
+                 + " failed.  IOException while reading filtered file: " + ioe);
         }
         f.delete();
         return line;

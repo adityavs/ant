@@ -18,13 +18,15 @@
 
 package org.apache.tools.ant.types.selectors;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.types.Parameter;
+import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import org.junit.rules.ExpectedException;
 
 /**
  * Tests Filename Selectors
@@ -35,32 +37,41 @@ public class FilenameSelectorTest {
     @Rule
     public final BaseSelectorRule selectorRule = new BaseSelectorRule();
 
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
+    private FilenameSelector s;
+
+    @Before
+    public void setUp() {
+        s = new FilenameSelector();
+    }
+
     /**
-     * Test the code that validates the selector.
+     * Test the code that validates the selector: required attribute.
+     */
+    @Test
+    public void testRequired() {
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("The name or regex attribute is required");
+        s.isSelected(selectorRule.getProject().getBaseDir(), selectorRule.getFilenames()[0],
+                selectorRule.getFiles()[0]);
+    }
+
+    /**
+     * Test the code that validates the selector: invalid parameter.
      */
     @Test
     public void testValidate() {
-        FilenameSelector s = new FilenameSelector();
-        try {
-            s.isSelected(selectorRule.getProject().getBaseDir(),selectorRule.getFilenames()[0],selectorRule.getFiles()[0]);
-            fail("FilenameSelector did not check for required fields");
-        } catch (BuildException be1) {
-            assertEquals("The name or regex attribute is required", be1.getMessage());
-        }
-
-        s = new FilenameSelector();
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("Invalid parameter garbage in");
         Parameter param = new Parameter();
         param.setName("garbage in");
         param.setValue("garbage out");
         Parameter[] params = {param};
         s.setParameters(params);
-        try {
-            s.isSelected(selectorRule.getProject().getBaseDir(),selectorRule.getFilenames()[0],selectorRule.getFiles()[0]);
-            fail("FilenameSelector did not check for valid parameter element");
-        } catch (BuildException be2) {
-            assertEquals("Invalid parameter garbage in", be2.getMessage());
-        }
-
+        s.isSelected(selectorRule.getProject().getBaseDir(), selectorRule.getFilenames()[0],
+                selectorRule.getFiles()[0]);
     }
 
     /**
@@ -68,44 +79,40 @@ public class FilenameSelectorTest {
      */
     @Test
     public void testSelectionBehaviour() {
-        FilenameSelector s;
-        String results;
-
-        s = new FilenameSelector();
         s.setName("no match possible");
-        results = selectorRule.selectionString(s);
-        assertEquals("FFFFFFFFFFFF", results);
+        assertEquals("FFFFFFFFFFFF", selectorRule.selectionString(s));
+    }
 
-        s = new FilenameSelector();
+    @Ignore("Turned off due to a bug: SelectorUtils.matchPattern() is recursive without '**' on Windows")
+    @Test
+    public void testSelectionBehaviourWildcard() {
         s.setName("*.gz");
-        results = selectorRule.selectionString(s);
-        // This is turned off temporarily. There appears to be a bug
-        // in SelectorUtils.matchPattern() where it is recursive on
-        // Windows even if no ** is in pattern.
-        //assertEquals("FFFTFFFFFFFF", results); // Unix
-        // vs
-        //assertEquals("FFFTFFFFTFFF", results); // Windows
+        assertEquals("FFFTFFFFFFFF", selectorRule.selectionString(s)); // Unix
+        assertEquals("FFFTFFFFTFFF", selectorRule.selectionString(s)); // Windows
+    }
 
-        s = new FilenameSelector();
+    @Test
+    public void testSelectionBehaviourNegate() {
         s.setName("**/*.gz");
         s.setNegate(true);
-        results = selectorRule.selectionString(s);
-        assertEquals("TTTFTTTFFTTT", results);
+        assertEquals("TTTFTTTFFTTT", selectorRule.selectionString(s));
+    }
 
-        s = new FilenameSelector();
+    @Test
+    public void testSelectionBehaviourCaseInsensitive() {
         s.setName("**/*.GZ");
         s.setCasesensitive(false);
-        results = selectorRule.selectionString(s);
-        assertEquals("FFFTFFFTTFFF", results);
+        assertEquals("FFFTFFFTTFFF", selectorRule.selectionString(s));
+    }
 
-        s = new FilenameSelector();
+    @Test
+    public void testSelectionBehaviourNamedParameter() {
         Parameter param1 = new Parameter();
         param1.setName("name");
         param1.setValue("**/*.bz2");
         Parameter[] params = {param1};
         s.setParameters(params);
-        results = selectorRule.selectionString(s);
-        assertEquals("FFTFFFFFFTTF", results);
+        assertEquals("FFTFFFFFFTTF", selectorRule.selectionString(s));
     }
 
 }

@@ -18,8 +18,8 @@
 
 package org.apache.tools.ant.taskdefs;
 
-import java.io.IOException;
 import java.io.File;
+import java.io.IOException;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.BuildFileRule;
@@ -29,7 +29,7 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertTrue;
 
 public class TarTest {
 
@@ -42,65 +42,56 @@ public class TarTest {
         buildRule.executeTarget("setUp");
     }
 
-    @Test
+    /**
+     * Expected failure: required argument not specified
+     */
+    @Test(expected = BuildException.class)
     public void test1() {
-        try {
-            buildRule.executeTarget("test1");
-            fail("BuildException expected: required argument not specified");
-        } catch (BuildException ex) {
-            //TODO assert value
-        }
+        buildRule.executeTarget("test1");
+        // TODO assert value
     }
 
-    @Test
+    /**
+     * Expected failure: required argument not specified
+     */
+    @Test(expected = BuildException.class)
     public void test2() {
-        try {
-            buildRule.executeTarget("test2");
-            fail("BuildException expected: required argument not specified");
-        } catch (BuildException ex) {
-            //TODO assert value
-        }
+        buildRule.executeTarget("test2");
+        // TODO assert value
     }
 
-    @Test
+    /**
+     * Expected failure: required argument not specified
+     */
+    @Test(expected = BuildException.class)
     public void test3() {
-        try {
-            buildRule.executeTarget("test3");
-            fail("BuildException expected: required argument not specified");
-        } catch (BuildException ex) {
-            //TODO assert value
-        }
+        buildRule.executeTarget("test3");
+        // TODO assert value
     }
 
-    @Test
+    /**
+     * Expected failure: tar cannot include itself
+     */
+    @Test(expected = BuildException.class)
     public void test4() {
-        try {
-            buildRule.executeTarget("test4");
-            fail("BuildException expected: tar cannot include itself");
-        } catch (BuildException ex) {
-            //TODO assert value
-        }
+        buildRule.executeTarget("test4");
+        // TODO assert value
     }
 
     @Test
     public void test5() {
         buildRule.executeTarget("test5");
-        File f
-            = new File(buildRule.getProject().getProperty("output"), "test5.tar");
-
-        if (!f.exists()) {
-            fail("Tarring a directory failed");
-        }
+        File f = new File(buildRule.getProject().getProperty("output"), "test5.tar");
+        assertTrue("Tarring a directory failed", f.exists());
     }
 
-    @Test
+    /**
+     * Expected failure due to invalid value specified for longfile attribute.
+     */
+    @Test(expected = BuildException.class)
     public void test6() {
-        try {
-            buildRule.executeTarget("test6");
-            fail("BuildException expected: Invalid value specified for longfile attribute.");
-        } catch (BuildException ex) {
-            //TODO assert value
-        }
+        buildRule.executeTarget("test6");
+        // TODO assert value
     }
 
     @Test
@@ -120,19 +111,11 @@ public class TarTest {
 
     private void test7(String target) {
         buildRule.executeTarget(target);
-        File f1
-            = new File(buildRule.getProject().getProperty("output"), "untar/test7-prefix");
-
-        if (!(f1.exists() && f1.isDirectory())) {
-            fail("The prefix attribute is not working properly.");
-        }
-
-        File f2
-            = new File(buildRule.getProject().getProperty("output"), "untar/test7dir");
-
-        if (!(f2.exists() && f2.isDirectory())) {
-            fail("The prefix attribute is not working properly.");
-        }
+        final String output = buildRule.getProject().getProperty("output");
+        File f1 = new File(output, "untar/test7-prefix");
+        assertTrue("The prefix attribute is not working properly.", f1.exists() && f1.isDirectory());
+        File f2 = new File(output, "untar/test7dir");
+        assertTrue("The prefix attribute is not working properly.", f2.exists() && f2.isDirectory());
     }
 
     @Test
@@ -162,41 +145,34 @@ public class TarTest {
 
     private void test8(String target) {
         buildRule.executeTarget(target);
-        File f1
-            = new File(buildRule.getProject().getProperty("output"), "untar/test8.xml");
-        if (! f1.exists()) {
-            fail("The fullpath attribute or the preserveLeadingSlashes attribute does not work properly");
-        }
+        File f1 = new File(buildRule.getProject().getProperty("output"), "untar/test8.xml");
+        assertTrue("The fullpath attribute or the preserveLeadingSlashes attribute does not work properly",
+                f1.exists());
     }
 
-    @Test
+    /**
+     * Expected failure due to invalid value specified for compression attribute.
+     */
+    @Test(expected = BuildException.class)
     public void test9() {
-        try {
-            buildRule.executeTarget("test9");
-            fail("BuildException expected: Invalid value specified for compression attribute.");
-        } catch (BuildException ex) {
-            //TODO assert value
-        }
+        buildRule.executeTarget("test9");
+        // TODO assert value
     }
 
     @Test
     public void test10() {
         buildRule.executeTarget("test10");
-        File f1
-            = new File(buildRule.getProject().getProperty("output"), "untar/test10.xml");
-        if (! f1.exists()) {
-            fail("The fullpath attribute or the preserveLeadingSlashes attribute does not work properly");
-        }
+        File f1 = new File(buildRule.getProject().getProperty("output"), "untar/test10.xml");
+        assertTrue("The fullpath attribute or the preserveLeadingSlashes attribute does not work properly",
+                f1.exists());
     }
 
     @Test
     public void test11() {
         buildRule.executeTarget("test11");
-        File f1
-            = new File(buildRule.getProject().getProperty("output"), "untar/test11.xml");
-        if (! f1.exists()) {
-            fail("The fullpath attribute or the preserveLeadingSlashes attribute does not work properly");
-        }
+        File f1 = new File(buildRule.getProject().getProperty("output"), "untar/test11.xml");
+        assertTrue("The fullpath attribute or the preserveLeadingSlashes attribute does not work properly",
+                f1.exists());
     }
 
     @Test

@@ -21,9 +21,11 @@ package org.apache.tools.ant.types;
 import org.apache.tools.ant.BuildException;
 import org.junit.Test;
 
+import java.util.Arrays;
+
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 /**
  * JUnit testcases for org.apache.tools.ant.EnumeratedAttribute.
@@ -36,52 +38,44 @@ public class EnumeratedAttributeTest {
     public void testContains() {
         EnumeratedAttribute t1 = new TestNormal();
         for (String value : expected) {
-            assertTrue(value + " is in TestNormal",
-                    t1.containsValue(value));
-            assertTrue(value.toUpperCase() + " is in TestNormal",
-                    !t1.containsValue(value.toUpperCase()));
+            assertTrue(value + " is in TestNormal", t1.containsValue(value));
+            assertFalse(value.toUpperCase() + " is in TestNormal",
+                    t1.containsValue(value.toUpperCase()));
         }
-        assertTrue("TestNormal doesn\'t have \"d\" attribute",
-               !t1.containsValue("d"));
-        assertTrue("TestNull doesn\'t have \"d\" attribute and doesn\'t die",
-               !(new TestNull()).containsValue("d"));
+        assertFalse("TestNormal doesn\'t have \"d\" attribute", t1.containsValue("d"));
+        assertFalse("TestNull doesn\'t have \"d\" attribute and doesn\'t die",
+                (new TestNull()).containsValue("d"));
     }
 
-    @Test
+    /**
+     * Expected failure due to attempt to set an illegal value
+     */
+    @Test(expected = BuildException.class)
     public void testFactory() {
         Factory ea = (Factory) EnumeratedAttribute.getInstance(Factory.class, "one");
         assertEquals("Factory did not set the right value.", ea.getValue(), "one");
-        try {
-            EnumeratedAttribute.getInstance(Factory.class, "illegal");
-            fail("Factory should fail when trying to set an illegal value.");
-        } catch (BuildException be) {
-            // was expected
-            //TODO assert exception message
-        }
+        EnumeratedAttribute.getInstance(Factory.class, "illegal");
     }
 
     @Test
-    public void testExceptions() {
-        EnumeratedAttribute t1 = new TestNormal();
-        for (String value : expected) {
-            try {
-                t1.setValue(value);
-            } catch (BuildException be) {
-                fail("unexpected exception for value " + value);
-            }
-        }
-        try {
-            t1.setValue("d");
-            fail("expected exception for value \"d\"");
-        } catch (BuildException be) {
-         //TODO assert build exception
-        }
-        try {
-            (new TestNull()).setValue("d");
-            fail("expected exception for value \"d\" in TestNull");
-        } catch (BuildException be) {
-            //TODO assert exception message
-        }
+    public void testExceptionsNormal() {
+        Arrays.stream(expected).forEach(new TestNormal()::setValue);
+    }
+
+    /**
+     * Expected exception for value "d" in TestNormal
+     */
+    @Test(expected = BuildException.class)
+    public void testExceptionNormal() {
+        new TestNormal().setValue("d");
+    }
+
+    /**
+     * Expected exception for value "d" in TestNull
+     */
+    @Test(expected = BuildException.class)
+    public void testExceptionNull() {
+        new TestNull().setValue("d");
     }
 
     public static class TestNormal extends EnumeratedAttribute {

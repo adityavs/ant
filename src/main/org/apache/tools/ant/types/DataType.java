@@ -47,6 +47,7 @@ public abstract class DataType extends ProjectComponent implements Cloneable {
      *             The user should not be directly referencing
      *             variable. Please use {@link #getRefid} instead.
      */
+    @Deprecated
     protected Reference ref;
 
     /**
@@ -62,6 +63,7 @@ public abstract class DataType extends ProjectComponent implements Cloneable {
      *             variable. Please use {@link #setChecked} or
      *             {@link #isChecked} instead.
      */
+    @Deprecated
     protected boolean checked = true;
     // CheckStyle:VisibilityModifier ON
 
@@ -112,7 +114,7 @@ public abstract class DataType extends ProjectComponent implements Cloneable {
         if (checked || !isReference()) {
             return;
         }
-        dieOnCircularReference(new IdentityStack<Object>(this), p);
+        dieOnCircularReference(new IdentityStack<>(this), p);
     }
 
     /**
@@ -242,6 +244,7 @@ public abstract class DataType extends ProjectComponent implements Cloneable {
      *                        or if <code>project</code> is <code>null</code>.
      * @since Ant 1.7
      */
+    @SuppressWarnings("unchecked")
     protected <T> T getCheckedRef(final Class<T> requiredClass,
                                   final String dataTypeName, final Project project) {
         if (project == null) {
@@ -249,17 +252,14 @@ public abstract class DataType extends ProjectComponent implements Cloneable {
         }
         dieOnCircularReference(project);
         Object o = ref.getReferencedObject(project);
-        if (!(requiredClass.isAssignableFrom(o.getClass()))) {
-            log("Class " + displayName(o.getClass())
-                    + " is not a subclass of "
-                    + displayName(requiredClass),
-                    Project.MSG_VERBOSE);
-            String msg = ref.getRefId() + " doesn\'t denote a " + dataTypeName;
-            throw new BuildException(msg);
+        if (requiredClass.isAssignableFrom(o.getClass())) {
+            return (T) o;
         }
-        @SuppressWarnings("unchecked")
-        final T result = (T) o;
-        return result;
+        log("Class " + displayName(o.getClass())
+                        + " is not a subclass of "
+                        + displayName(requiredClass),
+                Project.MSG_VERBOSE);
+        throw new BuildException(ref.getRefId() + " doesn\'t denote a " + dataTypeName);
     }
 
     /**

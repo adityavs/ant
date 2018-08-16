@@ -58,7 +58,7 @@ public final class LineContainsRegExp
     private static final String CS_KEY = "casesensitive";
 
     /** Vector that holds the expressions that input lines must contain. */
-    private Vector<RegularExpression> regexps = new Vector<RegularExpression>();
+    private Vector<RegularExpression> regexps = new Vector<>();
 
     /**
      * Remaining line to be read from this filter, or <code>null</code> if
@@ -116,15 +116,13 @@ public final class LineContainsRegExp
                 line = line.substring(1);
             }
         } else {
-            final int regexpsSize = regexps.size();
-
             for (line = readLine(); line != null; line = readLine()) {
                 boolean matches = true;
-                for (int i = 0; matches && i < regexpsSize; i++) {
-                    RegularExpression regexp
-                        = (RegularExpression) regexps.elementAt(i);
-                    Regexp re = regexp.getRegexp(getProject());
-                    matches = re.matches(line, regexpOptions);
+                for (RegularExpression regexp : regexps) {
+                    if (!regexp.getRegexp(getProject()).matches(line, regexpOptions)) {
+                        matches = false;
+                        break;
+                    }
                 }
                 if (matches ^ isNegated()) {
                     break;
@@ -188,10 +186,8 @@ public final class LineContainsRegExp
         LineContainsRegExp newFilter = new LineContainsRegExp(rdr);
         newFilter.setRegexps(getRegexps());
         newFilter.setNegate(isNegated());
-        newFilter
-            .setCaseSensitive(!RegexpUtil.hasFlag(regexpOptions,
-                                                  Regexp.MATCH_CASE_INSENSITIVE)
-                              );
+        newFilter.setCaseSensitive(!RegexpUtil.hasFlag(regexpOptions,
+                Regexp.MATCH_CASE_INSENSITIVE));
         return newFilter;
     }
 
@@ -237,13 +233,13 @@ public final class LineContainsRegExp
     private void initialize() {
         Parameter[] params = getParameters();
         if (params != null) {
-            for (int i = 0; i < params.length; i++) {
-                if (REGEXP_KEY.equals(params[i].getType())) {
-                    setRegexp(params[i].getValue());
-                } else if (NEGATE_KEY.equals(params[i].getType())) {
-                    setNegate(Project.toBoolean(params[i].getValue()));
-                } else if (CS_KEY.equals(params[i].getType())) {
-                    setCaseSensitive(Project.toBoolean(params[i].getValue()));
+            for (Parameter param : params) {
+                if (REGEXP_KEY.equals(param.getType())) {
+                    setRegexp(param.getValue());
+                } else if (NEGATE_KEY.equals(param.getType())) {
+                    setNegate(Project.toBoolean(param.getValue()));
+                } else if (CS_KEY.equals(param.getType())) {
+                    setCaseSensitive(Project.toBoolean(param.getValue()));
                 }
             }
         }

@@ -27,7 +27,6 @@ import java.nio.file.Files;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.Vector;
@@ -76,8 +75,9 @@ public class Expand extends Task {
     private Union resources = new Union();
     private boolean resourcesSpecified = false;
     private boolean failOnEmptyArchive = false;
-    private boolean stripAbsolutePathSpec = false;
+    private boolean stripAbsolutePathSpec = true;
     private boolean scanForUnicodeExtraFields = true;
+    private Boolean allowFilesToEscapeDest = null;
 
     private String encoding;
 
@@ -187,14 +187,12 @@ public class Expand extends Task {
                     + " as the file does not exist",
                     getLocation());
         }
-        try (
-            ZipFile
-            zf = new ZipFile(srcF, encoding, scanForUnicodeExtraFields)){
+        try (ZipFile zf = new ZipFile(srcF, encoding, scanForUnicodeExtraFields)) {
             boolean empty = true;
-            Enumeration<ZipEntry> e = zf.getEntries();
-            while (e.hasMoreElements()) {
+            Enumeration<ZipEntry> entries = zf.getEntries();
+            while (entries.hasMoreElements()) {
+                ZipEntry ze = entries.nextElement();
                 empty = false;
-                ZipEntry ze = e.nextElement();
                 InputStream is = null;
                 log("extracting " + ze.getName(), Project.MSG_DEBUG);
                 try {
@@ -259,34 +257,34 @@ public class Expand extends Task {
                                boolean isDirectory, FileNameMapper mapper)
                                throws IOException {
 
-        if (stripAbsolutePathSpec && !entryName.isEmpty()
+        final boolean entryNameStartsWithPathSpec = !entryName.isEmpty()
             && (entryName.charAt(0) == File.separatorChar
                 || entryName.charAt(0) == '/'
-                || entryName.charAt(0) == '\\')) {
+                || entryName.charAt(0) == '\\');
+        if (stripAbsolutePathSpec && entryNameStartsWithPathSpec) {
             log("stripped absolute path spec from " + entryName,
                 Project.MSG_VERBOSE);
             entryName = entryName.substring(1);
         }
+        boolean allowedOutsideOfDest = Boolean.TRUE == getAllowFilesToEscapeDest()
+            || null == getAllowFilesToEscapeDest() && !stripAbsolutePathSpec && entryNameStartsWithPathSpec;
 
-        if (!(patternsets == null || patternsets.isEmpty())) {
+        if (patternsets != null && !patternsets.isEmpty()) {
             String name = entryName.replace('/', File.separatorChar)
                 .replace('\\', File.separatorChar);
 
-            boolean included = false;
             Set<String> includePatterns = new HashSet<>();
             Set<String> excludePatterns = new HashSet<>();
-            final int size = patternsets.size();
-            for (int v = 0; v < size; v++) {
-                PatternSet p = patternsets.get(v);
+            for (PatternSet p : patternsets) {
                 String[] incls = p.getIncludePatterns(getProject());
                 if (incls == null || incls.length == 0) {
                     // no include pattern implicitly means includes="**"
-                    incls = new String[] {"**"};
+                    incls = new String[]{"**"};
                 }
 
-                for (int w = 0; w < incls.length; w++) {
-                    String pattern = incls[w].replace('/', File.separatorChar)
-                        .replace('\\', File.separatorChar);
+                for (String incl : incls) {
+                    String pattern = incl.replace('/', File.separatorChar)
+                            .replace('\\', File.separatorChar);
                     if (pattern.endsWith(File.separator)) {
                         pattern += "**";
                     }
@@ -295,10 +293,9 @@ public class Expand extends Task {
 
                 String[] excls = p.getExcludePatterns(getProject());
                 if (excls != null) {
-                    for (int w = 0; w < excls.length; w++) {
-                        String pattern = excls[w]
-                            .replace('/', File.separatorChar)
-                            .replace('\\', File.separatorChar);
+                    for (String excl : excls) {
+                        String pattern = excl.replace('/', File.separatorChar)
+                                .replace('\\', File.separatorChar);
                         if (pattern.endsWith(File.separator)) {
                             pattern += "**";
                         }
@@ -307,20 +304,23 @@ public class Expand extends Task {
                 }
             }
 
-            for (Iterator<String> iter = includePatterns.iterator();
-                 !included && iter.hasNext();) {
-                String pattern = iter.next();
-                included = SelectorUtils.matchPath(pattern, name);
+            boolean included = false;
+            for (String pattern : includePatterns) {
+                if (SelectorUtils.matchPath(pattern, name)) {
+                    included = true;
+                    break;
+                }
             }
 
-            for (Iterator<String> iter = excludePatterns.iterator();
-                 included && iter.hasNext();) {
-                String pattern = iter.next();
-                included = !SelectorUtils.matchPath(pattern, name);
+            for (String pattern : excludePatterns) {
+                if (SelectorUtils.matchPath(pattern, name)) {
+                    included = false;
+                    break;
+                }
             }
 
             if (!included) {
-                //Do not process this file
+                // Do not process this file
                 log("skipping " + entryName
                     + " as it is excluded or not included.",
                     Project.MSG_VERBOSE);
@@ -332,6 +332,12 @@ public class Expand extends Task {
             mappedNames = new String[] {entryName};
         }
         File f = fileUtils.resolveFile(dir, mappedNames[0]);
+        if (!allowedOutsideOfDest && !fileUtils.isLeadingPath(dir, f, true)) {
+            log("skipping " + entryName + " as its target " + f.getCanonicalPath()
+                + " is outside of " + dir.getCanonicalPath() + ".", Project.MSG_VERBOSE);
+                return;
+        }
+
         try {
             if (!overwrite && f.exists()
                 && f.lastModified() >= entryDate.getTime()) {
@@ -522,6 +528,27 @@ public class Expand extends Task {
      */
     public boolean getScanForUnicodeExtraFields() {
         return scanForUnicodeExtraFields;
+    }
+
+    /**
+     * Whether to allow the extracted file or directory to be outside of the dest directory.
+     *
+     * @param b the flag
+     * @since Ant 1.10.4
+     */
+    public void setAllowFilesToEscapeDest(boolean b) {
+        allowFilesToEscapeDest = b;
+    }
+
+    /**
+     * Whether to allow the extracted file or directory to be outside of the dest directory.
+     *
+     * @return {@code null} if the flag hasn't been set explicitly,
+     * otherwise the value set by the user.
+     * @since Ant 1.10.4
+     */
+    public Boolean getAllowFilesToEscapeDest() {
+        return allowFilesToEscapeDest;
     }
 
 }

@@ -32,7 +32,7 @@ import javax.media.jai.PlanarImage;
 public class Text extends ImageOperation implements DrawOperation {
     private static final int DEFAULT_POINT = 10;
 
-    private String strText = "";
+    private String string = "";
     private String font = "Arial";
     private int point = DEFAULT_POINT;
     private boolean bold = false;
@@ -44,7 +44,7 @@ public class Text extends ImageOperation implements DrawOperation {
      * @param str the string to be used.
      */
     public void setString(String str) {
-        strText = str;
+        string = str;
     }
 
     /**
@@ -93,7 +93,7 @@ public class Text extends ImageOperation implements DrawOperation {
      */
     @Override
     public PlanarImage executeDrawOperation() {
-        log("\tCreating Text \"" + strText + "\"");
+        log("\tCreating Text \"" + string + "\"");
 
         int width = 1;
         int height = 1;
@@ -107,7 +107,7 @@ public class Text extends ImageOperation implements DrawOperation {
         Font f = createFont();
         FontMetrics fmetrics = graphics.getFontMetrics(f);
         height = fmetrics.getMaxAscent() + fmetrics.getMaxDescent();
-        width = fmetrics.stringWidth(strText);
+        width = fmetrics.stringWidth(string);
 
         bi = new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR_PRE);
         graphics = bi.createGraphics();
@@ -119,7 +119,7 @@ public class Text extends ImageOperation implements DrawOperation {
 
         graphics.setFont(f);
         graphics.setColor(ColorMapper.getColorByName(color));
-        graphics.drawString(strText, 0, height - fmetrics.getMaxDescent());
+        graphics.drawString(string, 0, height - fmetrics.getMaxDescent());
         return PlanarImage.wrapRenderedImage(bi);
     }
 

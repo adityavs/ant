@@ -21,8 +21,10 @@ package org.apache.tools.ant.taskdefs.optional.ejb;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Files;
+import java.util.Collections;
 import java.util.Hashtable;
 import java.util.Map;
 
@@ -168,7 +170,7 @@ public class DescriptorHandler extends HandlerBase {
                 URL urldtd = new URL(location);
                 urlDTDs.put(publicId, urldtd);
             }
-        } catch (java.net.MalformedURLException e) {
+        } catch (MalformedURLException e) {
             //ignored
         }
 
@@ -233,7 +235,7 @@ public class DescriptorHandler extends HandlerBase {
      * @return the map of files
      */
     public Hashtable<String, File> getFiles() {
-        return ejbFiles == null ? new Hashtable<>() : ejbFiles;
+        return ejbFiles == null ? new Hashtable<>(Collections.emptyMap()) : ejbFiles;
     }
 
     /**

@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
  *
  * @since Ant 1.5
  */
+@Deprecated
 public class CollectionUtils {
 
     @SuppressWarnings("rawtypes")
@@ -50,6 +51,7 @@ public class CollectionUtils {
      * @since Ant 1.5
      * @deprecated since 1.6.x.
      */
+    @Deprecated
     public static boolean equals(Vector<?> v1, Vector<?> v2) {
         return Objects.equals(v1, v2);
     }
@@ -65,6 +67,7 @@ public class CollectionUtils {
      * @since Ant 1.5
      * @deprecated since 1.6.x.
      */
+    @Deprecated
     public static boolean equals(Dictionary<?, ?> d1, Dictionary<?, ?> d2) {
         if (d1 == d2) {
             return true;
@@ -78,20 +81,10 @@ public class CollectionUtils {
             return false;
         }
 
-        Enumeration<?> e1 = d1.keys();
-        while (e1.hasMoreElements()) {
-            Object key = e1.nextElement();
-            Object value1 = d1.get(key);
-            Object value2 = d2.get(key);
-            if (value2 == null || !value1.equals(value2)) {
-                return false;
-            }
-        }
-
         // don't need the opposite check as the Dictionaries have the
         // same size, so we've also covered all keys of d2 already.
-
-        return true;
+        return StreamUtils.enumerationAsStream(d1.keys())
+                .allMatch(key -> d1.get(key).equals(d2.get(key)));
     }
 
     /**
@@ -101,7 +94,9 @@ public class CollectionUtils {
      * @param c collection to transform
      * @return string representation of the collection
      * @since Ant 1.8.0
+     * @deprecated use stream().collect(Collectors.joining(","))
      */
+    @Deprecated
     public static String flattenToString(Collection<?> c) {
         return c.stream().map(String::valueOf).collect(Collectors.joining(","));
     }
@@ -115,12 +110,10 @@ public class CollectionUtils {
      * @since Ant 1.6
      * @deprecated since 1.6.x.
      */
+    @Deprecated
     public static <K, V> void putAll(Dictionary<? super K, ? super V> m1,
         Dictionary<? extends K, ? extends V> m2) {
-        for (Enumeration<? extends K> it = m2.keys(); it.hasMoreElements();) {
-            K key = it.nextElement();
-            m1.put(key, m2.get(key));
-        }
+        StreamUtils.enumerationAsStream(m2.keys()).forEach(key -> m1.put(key, m2.get(key)));
     }
 
     /**
@@ -156,7 +149,10 @@ public class CollectionUtils {
      * @param <E> element type
      * @return an enumeration representing e1 followed by e2.
      * @since Ant 1.6.3
+     * @deprecated use Stream.concat(Collections.list(e1).stream(), Collections.list(e2).stream())
+     *                 .collect(Collectors.collectingAndThen(Collectors.toList(), Collections::enumeration))
      */
+    @Deprecated
     public static <E> Enumeration<E> append(Enumeration<E> e1, Enumeration<E> e2) {
         return new CompoundEnumeration<>(e1, e2);
     }
@@ -166,7 +162,9 @@ public class CollectionUtils {
      * @param iter the Iterator to adapt.
      * @param <E> element type
      * @return an Enumeration.
+     * @deprecated use Collections.enumeration()
      */
+    @Deprecated
     public static <E> Enumeration<E> asEnumeration(final Iterator<E> iter) {
         return new Enumeration<E>() {
             @Override
@@ -185,7 +183,9 @@ public class CollectionUtils {
      * @param e the Enumeration to adapt.
      * @param <E> element type
      * @return an Iterator.
+     * @deprecated use Collections.list(e).iterator()
      */
+    @Deprecated
     public static <E> Iterator<E> asIterator(final Enumeration<E> e) {
         return new Iterator<E>() {
             @Override
@@ -210,7 +210,9 @@ public class CollectionUtils {
      * @param <T> element type
      * @return the collection
      * @since Ant 1.8.0
+     * @deprecated instantiate a list and use forEachRemaining(list::add)
      */
+    @Deprecated
     public static <T> Collection<T> asCollection(final Iterator<? extends T> iter) {
         List<T> l = new ArrayList<>();
         iter.forEachRemaining(l::add);
@@ -252,7 +254,7 @@ public class CollectionUtils {
      */
     @Deprecated
     public static int frequency(Collection<?> c, Object o) {
-        return Collections.frequency(c, o);
+        return c == null ? 0 : Collections.frequency(c, o);
     }
 
     private CollectionUtils() {

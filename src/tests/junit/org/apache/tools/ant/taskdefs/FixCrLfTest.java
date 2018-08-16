@@ -26,15 +26,15 @@ import java.io.InputStream;
 
 import junit.framework.AssertionFailedError;
 
-import org.apache.tools.ant.AntAssert;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.BuildFileRule;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertTrue;
 
 /**
  */
@@ -43,119 +43,119 @@ public class FixCrLfTest {
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
 
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
     @Before
     public void setUp() {
         buildRule.configureProject("src/etc/testcases/taskdefs/fixcrlf/build.xml");
     }
 
     @Test
-    public void test1() throws IOException {
+    public void test1() {
         buildRule.executeTarget("test1");
     }
 
     @Test
-    public void test2() throws IOException {
+    public void test2() {
         buildRule.executeTarget("test2");
     }
 
     @Test
-    public void test3() throws IOException {
+    public void test3() {
         buildRule.executeTarget("test3");
     }
 
     @Test
-    public void test4() throws IOException {
+    public void test4() {
         buildRule.executeTarget("test4");
     }
 
     @Test
-    public void test5() throws IOException {
+    public void test5() {
         buildRule.executeTarget("test5");
     }
 
     @Test
-    public void test6() throws IOException {
+    public void test6() {
         buildRule.executeTarget("test6");
     }
 
     @Test
-    public void test7() throws IOException {
+    public void test7() {
         buildRule.executeTarget("test7");
     }
 
     @Test
-    public void test8() throws IOException {
+    public void test8() {
         buildRule.executeTarget("test8");
     }
 
     @Test
-    public void test9() throws IOException {
+    public void test9() {
         buildRule.executeTarget("test9");
     }
 
     @Test
-    public void testMacLines() throws IOException {
+    public void testMacLines() {
         buildRule.executeTarget("testMacLines");
     }
 
     @Test
-    public void testNoOverwrite() throws IOException {
+    public void testNoOverwrite() {
         buildRule.executeTarget("testNoOverwrite");
     }
 
     @Test
-    public void testEncoding() throws IOException {
+    public void testEncoding() {
         buildRule.executeTarget("testEncoding");
     }
 
     @Test
-    public void testOutputEncoding() throws IOException {
+    public void testOutputEncoding() {
         buildRule.executeTarget("testOutputEncoding");
     }
 
     @Test
-    public void testLongLines() throws IOException {
+    public void testLongLines() {
         buildRule.executeTarget("testLongLines");
     }
 
     @Test
-    public void testCrCrLfSequenceUnix() throws IOException {
+    public void testCrCrLfSequenceUnix() {
         buildRule.executeTarget("testCrCrLfSequence-unix");
     }
 
     @Test
-    public void testCrCrLfSequenceDos() throws IOException {
+    public void testCrCrLfSequenceDos() {
         buildRule.executeTarget("testCrCrLfSequence-dos");
     }
 
     @Test
-    public void testCrCrLfSequenceMac() throws IOException {
+    public void testCrCrLfSequenceMac() {
         buildRule.executeTarget("testCrCrLfSequence-mac");
     }
 
     @Test
-    public void testFixlastDos() throws IOException {
+    public void testFixlastDos() {
         buildRule.executeTarget("testFixlastDos");
     }
 
     @Test
-    public void testFixlastFalseMac() throws IOException {
+    public void testFixlastFalseMac() {
         buildRule.executeTarget("testFixlastFalseMac");
     }
 
     @Test
-    public void testFixFile() throws Exception {
+    public void testFixFile() {
         buildRule.executeTarget("testFixFile");
     }
 
     @Test
-    public void testFixFileExclusive() throws Exception {
-        try {
-            buildRule.executeTarget("testFixFileExclusive");
-            fail(FixCRLF.ERROR_FILE_AND_SRCDIR);
-        } catch (BuildException ex) {
-            AntAssert.assertContains(FixCRLF.ERROR_FILE_AND_SRCDIR, ex.getMessage());
-        }
+    public void testFixFileExclusive() {
+        thrown.expect(BuildException.class);
+        thrown.expectMessage(FixCRLF.ERROR_FILE_AND_SRCDIR);
+        buildRule.executeTarget("testFixFileExclusive");
     }
 
     /**
@@ -231,17 +231,11 @@ public class FixCrLfTest {
 
     // not used, but public so theoretically must remain for BC?
     @Deprecated
-    public void assertEqualContent(File expect, File result)
-        throws AssertionFailedError, IOException {
-        if (!result.exists()) {
-            fail("Expected file " + result + " doesn\'t exist");
-        }
+    public void assertEqualContent(File expect, File result) throws AssertionFailedError, IOException {
+        assertTrue("Expected file " + result + " doesn\'t exist", result.exists());
 
-        InputStream inExpect = null;
-        InputStream inResult = null;
-        try {
-            inExpect = new BufferedInputStream(new FileInputStream(expect));
-            inResult = new BufferedInputStream(new FileInputStream(result));
+        try (InputStream inExpect = new BufferedInputStream(new FileInputStream(expect));
+             InputStream inResult = new BufferedInputStream(new FileInputStream(result))) {
 
             int expectedByte = inExpect.read();
             while (expectedByte != -1) {
@@ -249,13 +243,6 @@ public class FixCrLfTest {
                 expectedByte = inExpect.read();
             }
             assertEquals("End of file", -1, inResult.read());
-        } finally {
-            if (inResult != null) {
-                inResult.close();
-            }
-            if (inExpect != null) {
-                inExpect.close();
-            }
         }
     }
 

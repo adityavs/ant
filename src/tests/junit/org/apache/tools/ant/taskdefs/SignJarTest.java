@@ -22,15 +22,16 @@ import java.io.File;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.BuildFileRule;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeFalse;
 
 /**
  * Testcase for the Signjar task
@@ -40,6 +41,9 @@ public class SignJarTest {
 
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
+
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     @Before
     public void setUp() {
@@ -61,8 +65,7 @@ public class SignJarTest {
         sj.setAlias("testonly");
         sj.setKeystore("testkeystore");
         sj.setStorepass("apacheant");
-        File jar = new File(buildRule.getProject().getProperty("test.jar"));
-        sj.setJar(jar);
+        sj.setJar(new File(buildRule.getProject().getProperty("test.jar")));
         assertFalse("mustn't find signature without sigfile attribute",
                     sj.isSigned());
         sj.setSigfile("TEST");
@@ -77,8 +80,7 @@ public class SignJarTest {
         sj.setAlias("test@nly");
         sj.setKeystore("testkeystore");
         sj.setStorepass("apacheant");
-        File jar = new File(buildRule.getProject().getProperty("test.jar"));
-        sj.setJar(jar);
+        sj.setJar(new File(buildRule.getProject().getProperty("test.jar")));
         assertTrue(sj.isSigned());
     }
 
@@ -99,18 +101,15 @@ public class SignJarTest {
 
     @Test
     public void testURLKeystoreHTTP() {
-        Assume.assumeFalse("Test is set offline", isOffline());
+        assumeFalse("Test is set offline", isOffline());
         buildRule.executeTarget("urlKeystoreHTTP");
     }
 
     @Test
     public void testTsaLocalhost() {
-        try {
-            buildRule.executeTarget("testTsaLocalhost");
-            fail("Should have thrown exception - no TSA at localhost:0");
-        } catch(BuildException ex) {
-            assertEquals("jarsigner returned: 1", ex.getMessage());
-        }
+         thrown.expect(BuildException.class);
+         thrown.expectMessage("jarsigner returned: 1");
+         buildRule.executeTarget("testTsaLocalhost");
     }
 
     /**
@@ -124,7 +123,7 @@ public class SignJarTest {
         File f = new File(testJarParent,
                           "../" + testJarParent.getName() + "/"
                           + testJar.getName());
-        assertFalse(testJar.equals(f));
+        assertNotEquals(testJar, f);
         assertEquals(testJar.getCanonicalPath(), f.getCanonicalPath());
         SignJar s = new SignJar();
         s.setProject(buildRule.getProject());

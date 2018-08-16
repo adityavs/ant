@@ -28,10 +28,10 @@ import org.junit.Test;
 import java.io.File;
 import java.io.FilenameFilter;
 
-import static org.apache.tools.ant.AntAssert.assertContains;
-import static org.apache.tools.ant.AntAssert.assertNotContains;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertThat;
 
 /**
  * If you want to run tests, it is highly recommended
@@ -46,35 +46,31 @@ import static org.junit.Assert.fail;
  */
 public class ANTLRTest {
 
-    private static final String TASKDEFS_DIR = "src/etc/testcases/taskdefs/optional/antlr/";
-
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
 
     @Before
     public void setUp() {
-        buildRule.configureProject(TASKDEFS_DIR + "antlr.xml");
+        buildRule.configureProject("src/etc/testcases/taskdefs/optional/antlr/antlr.xml");
     }
 
-    @Test
+    /**
+     * Expected failure due to missing required argument, target
+     */
+    @Test(expected = BuildException.class)
     public void test1() {
-        try {
-            buildRule.executeTarget("test1");
-            fail("required argument, target, missing");
-        } catch (BuildException ex) {
-            //TODO should check exception message
-        }
+        buildRule.executeTarget("test1");
+        // TODO Check exception message
     }
 
-    @Test
+    /**
+     * Expected failure due to invalid output directory
+     */
+    @Test(expected = BuildException.class)
     public void test2() {
-        try {
-            buildRule.executeTarget("test2");
-            fail("Invalid output directory");
-        } catch (BuildException ex) {
-            //TODO should check exception message
-        }
-    }
+        buildRule.executeTarget("test2");
+        // TODO Check exception message
+     }
 
     @Test
     public void test3() {
@@ -86,16 +82,14 @@ public class ANTLRTest {
         buildRule.executeTarget("test4");
     }
 
-    @Test
+    /**
+     * should print "panic: Cannot find importVocab file 'JavaTokenTypes.txt'"
+     * since it needs to run java.g first before java.tree.g
+     */
+    @Test(expected = BuildException.class)
     public void test5() {
-        // should print "panic: Cannot find importVocab file 'JavaTokenTypes.txt'"
-        // since it needs to run java.g first before java.tree.g
-        try {
-            buildRule.executeTarget("test5");
-            fail("ANTLR returned: 1");
-        } catch (BuildException ex) {
-            //TODO should check exception message
-        }
+        buildRule.executeTarget("test5");
+        // TODO Check exception message
     }
 
     @Test
@@ -103,27 +97,22 @@ public class ANTLRTest {
         buildRule.executeTarget("test6");
     }
 
-    @Test
+    /**
+     * Expected failure due to inability to determine generated class
+     */
+    @Test(expected = BuildException.class)
     public void test7() {
-        try {
-            buildRule.executeTarget("test7");
-            fail("Unable to determine generated class");
-        } catch (BuildException ex) {
-            //TODO should check exception message
-        }
+        buildRule.executeTarget("test7");
+        // TODO Check exception message
     }
 
     /**
-     * This is a negative test for the super grammar (glib) option.
+     * Expected failure due to invalid super grammar (glib) option.
      */
-    @Test
+    @Test(expected = BuildException.class)
     public void test8() {
-        try {
-            buildRule.executeTarget("test8");
-            fail("Invalid super grammar file");
-        } catch (BuildException ex) {
-            //TODO should check exception message
-        }
+        buildRule.executeTarget("test8");
+        // TODO Check exception message
     }
 
     /**
@@ -143,8 +132,7 @@ public class ANTLRTest {
     public void test10() {
         buildRule.executeTarget("test10");
         File outputDirectory = new File(buildRule.getProject().getProperty("output"));
-        String[] calcFiles = outputDirectory.list(new HTMLFilter());
-        assertTrue(calcFiles.length > 0);
+        assertNotEquals(outputDirectory.list(new HTMLFilter()).length, 0);
     }
 
     /**
@@ -178,32 +166,32 @@ public class ANTLRTest {
     @Test
     public void testNoRecompile() {
         buildRule.executeTarget("test9");
-        assertNotContains("Skipped grammar file.", buildRule.getFullLog());
+        assertThat(buildRule.getFullLog(), not(containsString("Skipped grammar file.")));
         buildRule.executeTarget("noRecompile");
-        assertContains("Skipped grammar file.", buildRule.getFullLog());
+        assertThat(buildRule.getFullLog(), containsString("Skipped grammar file."));
     }
 
     @Test
     public void testNormalRecompile() {
         buildRule.executeTarget("test9");
-        assertNotContains("Skipped grammar file.", buildRule.getFullLog());
+        assertThat(buildRule.getFullLog(), not(containsString("Skipped grammar file.")));
 
         FileUtilities.rollbackTimestamps(buildRule.getOutputDir(), 5);
 
         buildRule.executeTarget("normalRecompile");
-        assertNotContains("Skipped grammar file.", buildRule.getFullLog());
+        assertThat(buildRule.getFullLog(), not(containsString("Skipped grammar file.")));
     }
 
     @Test
     // Bugzilla Report 12961
     public void testSupergrammarChangeRecompile() {
         buildRule.executeTarget("test9");
-        assertNotContains("Skipped grammar file.", buildRule.getFullLog());
+        assertThat(buildRule.getFullLog(), not(containsString("Skipped grammar file.")));
 
         FileUtilities.rollbackTimestamps(buildRule.getOutputDir(), 5);
 
         buildRule.executeTarget("supergrammarChangeRecompile");
-        assertNotContains("Skipped grammar file.", buildRule.getFullLog());
+        assertThat(buildRule.getFullLog(), not(containsString("Skipped grammar file.")));
 
     }
 

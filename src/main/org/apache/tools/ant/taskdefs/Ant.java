@@ -22,10 +22,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.Method;
-import java.util.HashMap;
 import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -33,7 +32,6 @@ import java.util.Set;
 import java.util.Vector;
 
 import org.apache.tools.ant.BuildException;
-import org.apache.tools.ant.BuildListener;
 import org.apache.tools.ant.DefaultLogger;
 import org.apache.tools.ant.MagicNames;
 import org.apache.tools.ant.Main;
@@ -197,10 +195,7 @@ public class Ant extends Task {
     private void initializeProject() {
         newProject.setInputHandler(getProject().getInputHandler());
 
-        Iterator<BuildListener> iter = getBuildListeners();
-        while (iter.hasNext()) {
-            newProject.addBuildListener(iter.next());
-        }
+        getProject().getBuildListeners().forEach(bl -> newProject.addBuildListener(bl));
 
         if (output != null) {
             File outfile;
@@ -376,26 +371,22 @@ public class Ant extends Task {
             antFile = file.getAbsolutePath();
 
             log("calling target(s) "
-                + (!locals.isEmpty() ? locals.toString() : "[default]")
+                + (locals.isEmpty() ? "[default]" : locals.toString())
                 + " in build file " + antFile, Project.MSG_VERBOSE);
             newProject.setUserProperty(MagicNames.ANT_FILE, antFile);
 
             String thisAntFile = getProject().getProperty(MagicNames.ANT_FILE);
             // Are we trying to call the target in which we are defined (or
             // the build file if this is a top level task)?
-            if (thisAntFile != null
-                && file.equals(getProject().resolveFile(thisAntFile))
-                && getOwningTarget() != null) {
-
-                if ("".equals(getOwningTarget().getName())) {
-                    if ("antcall".equals(getTaskName())) {
-                        throw new BuildException(
-                            "antcall must not be used at the top level.");
-                    }
+            if (thisAntFile != null && file.equals(getProject().resolveFile(thisAntFile))
+                    && getOwningTarget() != null && getOwningTarget().getName().isEmpty()) {
+                if ("antcall".equals(getTaskName())) {
                     throw new BuildException(
+                            "antcall must not be used at the top level.");
+                }
+                throw new BuildException(
                         "%s task at the top level must not invoke its own build file.",
                         getTaskName());
-                }
             }
 
             try {
@@ -438,7 +429,7 @@ public class Ant extends Task {
             addReferences();
 
             if (!locals.isEmpty() && !(locals.size() == 1
-                                       && "".equals(locals.get(0)))) {
+                    && locals.get(0) != null && locals.get(0).isEmpty())) {
                 BuildException be = null;
                 try {
                     log("Entering " + antFile + "...", Project.MSG_VERBOSE);
@@ -471,8 +462,8 @@ public class Ant extends Task {
     /**
      * Get the default build file name to use when launching the task.
      * <p>
-     * This function may be overriden by providers of custom ProjectHelper so they can implement easily their sub
-     * launcher.
+     * This function may be overridden by providers of custom ProjectHelper so they can easily
+     * implement their sublauncher.
      *
      * @return the name of the default file
      * @since Ant 1.8.0
@@ -492,7 +483,7 @@ public class Ant extends Task {
         Set<String> set = new HashSet<>();
         for (int i = properties.size() - 1; i >= 0; --i) {
             Property p = properties.get(i);
-            if (p.getName() != null && !"".equals(p.getName())) {
+            if (p.getName() != null && !p.getName().isEmpty()) {
                 if (set.contains(p.getName())) {
                     properties.remove(i);
                 } else {
@@ -674,7 +665,7 @@ public class Ant extends Task {
      * @param targetToAdd the name of the target to invoke.
      */
     public void setTarget(String targetToAdd) {
-        if ("".equals(targetToAdd)) {
+        if (targetToAdd.isEmpty()) {
             throw new BuildException("target attribute must not be empty");
         }
         targets.add(targetToAdd);
@@ -724,7 +715,7 @@ public class Ant extends Task {
                 "nested target is incompatible with the target attribute");
         }
         String name = t.getName();
-        if ("".equals(name)) {
+        if (name.isEmpty()) {
             throw new BuildException("target name must not be empty");
         }
         targets.add(name);
@@ -750,13 +741,6 @@ public class Ant extends Task {
             reinit();
         }
         return newProject;
-    }
-
-    /**
-     * @since Ant 1.6.2
-     */
-    private Iterator<BuildListener> getBuildListeners() {
-        return getProject().getBuildListeners().iterator();
     }
 
     /**

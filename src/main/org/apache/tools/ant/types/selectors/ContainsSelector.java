@@ -57,12 +57,8 @@ public class ContainsSelector extends BaseExtendSelector implements ResourceSele
      * @return a string describing this object
      */
     public String toString() {
-        StringBuilder buf = new StringBuilder("{containsselector text: ");
-        buf.append('"').append(contains).append('"');
-        buf.append(" casesensitive: ").append(casesensitive);
-        buf.append(" ignorewhitespace: ").append(ignorewhitespace);
-        buf.append("}");
-        return buf.toString();
+        return String.format("{containsselector text: \"%s\" casesensitive: %s ignorewhitespace: %s}",
+                contains, casesensitive, ignorewhitespace);
     }
 
     /**
@@ -111,16 +107,16 @@ public class ContainsSelector extends BaseExtendSelector implements ResourceSele
     public void setParameters(Parameter... parameters) {
         super.setParameters(parameters);
         if (parameters != null) {
-            for (int i = 0; i < parameters.length; i++) {
-                String paramname = parameters[i].getName();
+            for (Parameter parameter : parameters) {
+                String paramname = parameter.getName();
                 if (CONTAINS_KEY.equalsIgnoreCase(paramname)) {
-                    setText(parameters[i].getValue());
+                    setText(parameter.getValue());
                 } else if (CASE_KEY.equalsIgnoreCase(paramname)) {
                     setCasesensitive(Project.toBoolean(
-                            parameters[i].getValue()));
+                            parameter.getValue()));
                 } else if (WHITESPACE_KEY.equalsIgnoreCase(paramname)) {
                     setIgnorewhitespace(Project.toBoolean(
-                            parameters[i].getValue()));
+                            parameter.getValue()));
                 } else {
                     setError("Invalid parameter " + paramname);
                 }
@@ -186,7 +182,7 @@ public class ContainsSelector extends BaseExtendSelector implements ResourceSele
                     if (ignorewhitespace) {
                         teststr = SelectorUtils.removeWhitespace(teststr);
                     }
-                    if (teststr.indexOf(userstr) > -1) {
+                    if (teststr.contains(userstr)) {
                         return true;
                     }
                     teststr = in.readLine();

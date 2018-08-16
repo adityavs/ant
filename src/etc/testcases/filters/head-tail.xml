@@ -23,7 +23,6 @@
     <mkdir dir="${output}" />
   </target>
 
-
   <!-- Testcases for HeadFilter -->
 
   <target name="testHead" depends="setUp">
@@ -135,7 +134,7 @@
   <!-- Testcases for combined scenarios -->
 
   <target name="testHeadTail" depends="setUp">
-    <copy file="input/head-tail.test" tofile="${output}/head-tail.headtail.test">
+    <copy file="input/head-tail.test" tofile="${output}/head-tail.headTail.test">
       <filterchain>
         <headfilter lines="4"/>
         <tailfilter lines="2"/>

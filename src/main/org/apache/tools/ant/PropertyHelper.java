@@ -20,10 +20,10 @@ package org.apache.tools.ant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
 
@@ -238,21 +238,21 @@ public class PropertyHelper implements GetProperty {
     private final Hashtable<Class<? extends Delegate>, List<Delegate>> delegates = new Hashtable<>();
 
     /** Project properties map (usually String to String). */
-    private Hashtable<String, Object> properties = new Hashtable<>();
+    private final Hashtable<String, Object> properties = new Hashtable<>();
 
     /**
      * Map of "user" properties (as created in the Ant task, for example).
      * Note that these key/value pairs are also always put into the
      * project properties, so only the project properties need to be queried.
      */
-    private Hashtable<String, Object> userProperties = new Hashtable<>();
+    private final Hashtable<String, Object> userProperties = new Hashtable<>();
 
     /**
      * Map of inherited "user" properties - that are those "user"
      * properties that have been created by tasks and not been set
      * from the command line or a GUI tool.
      */
-    private Hashtable<String, Object> inheritedProperties = new Hashtable<>();
+    private final Hashtable<String, Object> inheritedProperties = new Hashtable<>();
 
     /**
      * Default constructor.
@@ -347,6 +347,7 @@ public class PropertyHelper implements GetProperty {
      * @param next the next property helper in the chain.
      * @deprecated use the delegate mechanism instead
      */
+    @Deprecated
     public void setNext(PropertyHelper next) {
         this.next = next;
     }
@@ -362,6 +363,7 @@ public class PropertyHelper implements GetProperty {
      * @return the next property helper.
      * @deprecated use the delegate mechanism instead
      */
+    @Deprecated
     public PropertyHelper getNext() {
         return next;
     }
@@ -379,8 +381,7 @@ public class PropertyHelper implements GetProperty {
     public static synchronized PropertyHelper getPropertyHelper(Project project) {
         PropertyHelper helper = null;
         if (project != null) {
-            helper = (PropertyHelper) project.getReference(MagicNames
-                                                           .REFID_PROPERTY_HELPER);
+            helper = project.getReference(MagicNames.REFID_PROPERTY_HELPER);
         }
         if (helper != null) {
             return helper;
@@ -432,16 +433,14 @@ public class PropertyHelper implements GetProperty {
      *    has a good reason not to).
      * @deprecated PropertyHelper chaining is deprecated.
      */
+    @Deprecated
     public boolean setPropertyHook(String ns, String name,
                                    Object value,
                                    boolean inherited, boolean user,
                                    boolean isNew) {
         if (getNext() != null) {
-            boolean subst = getNext().setPropertyHook(ns, name, value, inherited, user, isNew);
             // If next has handled the property
-            if (subst) {
-                return true;
-            }
+            return getNext().setPropertyHook(ns, name, value, inherited, user, isNew);
         }
         return false;
     }
@@ -459,6 +458,7 @@ public class PropertyHelper implements GetProperty {
      * @return The property, if returned by a hook, or null if none.
      * @deprecated PropertyHelper chaining is deprecated.
      */
+    @Deprecated
     public Object getPropertyHook(String ns, String name, boolean user) {
         if (getNext() != null) {
             Object o = getNext().getPropertyHook(ns, name, user);
@@ -506,6 +506,7 @@ public class PropertyHelper implements GetProperty {
      *                           <code>}</code>
      * @deprecated use the other mechanisms of this class instead
      */
+    @Deprecated
     public void parsePropertyString(String value, Vector<String> fragments,
                                     Vector<String> propertyRefs) throws BuildException {
         parsePropertyStringDefault(value, fragments, propertyRefs);
@@ -605,6 +606,7 @@ public class PropertyHelper implements GetProperty {
      * @return true if the property is set.
      * @deprecated namespaces are unnecessary.
      */
+    @Deprecated
     public boolean setProperty(String ns, String name, Object value, boolean verbose) {
         return setProperty(name, value, verbose);
     }
@@ -662,6 +664,7 @@ public class PropertyHelper implements GetProperty {
      * @since Ant 1.6
      * @deprecated namespaces are unnecessary.
      */
+    @Deprecated
     public void setNewProperty(String ns, String name, Object value) {
         setNewProperty(name, value);
     }
@@ -713,6 +716,7 @@ public class PropertyHelper implements GetProperty {
      *              Must not be <code>null</code>.
      * @deprecated namespaces are unnecessary.
      */
+    @Deprecated
     public void setUserProperty(String ns, String name, Object value) {
         setUserProperty(name, value);
     }
@@ -755,6 +759,7 @@ public class PropertyHelper implements GetProperty {
      *              Must not be <code>null</code>.
      * @deprecated namespaces are unnecessary.
      */
+    @Deprecated
     public void setInheritedProperty(String ns, String name, Object value) {
         setInheritedProperty(name, value);
     }
@@ -801,6 +806,7 @@ public class PropertyHelper implements GetProperty {
      *         or if a <code>null</code> name is provided.
      * @deprecated namespaces are unnecessary.
      */
+    @Deprecated
     public Object getProperty(String ns, String name) {
         return getProperty(name);
     }
@@ -849,6 +855,7 @@ public class PropertyHelper implements GetProperty {
      *         or if a <code>null</code> name is provided.
      * @deprecated namespaces are unnecessary.
      */
+    @Deprecated
     public Object getUserProperty(String ns, String name) {
         return getUserProperty(name);
     }
@@ -967,14 +974,11 @@ public class PropertyHelper implements GetProperty {
     public void copyInheritedProperties(Project other) {
         //avoid concurrent modification:
         synchronized (inheritedProperties) {
-            Enumeration<String> e = inheritedProperties.keys();
-            while (e.hasMoreElements()) {
-                String arg = e.nextElement();
-                if (other.getUserProperty(arg) != null) {
-                    continue;
+            for (Map.Entry<String, Object> entry : inheritedProperties.entrySet()) {
+                String arg = entry.getKey();
+                if (other.getUserProperty(arg) == null) {
+                    other.setInheritedProperty(arg, entry.getValue().toString());
                 }
-                Object value = inheritedProperties.get(arg);
-                other.setInheritedProperty(arg, value.toString());
             }
         }
     }
@@ -997,14 +1001,11 @@ public class PropertyHelper implements GetProperty {
     public void copyUserProperties(Project other) {
         //avoid concurrent modification:
         synchronized (userProperties) {
-            Enumeration<String> e = userProperties.keys();
-            while (e.hasMoreElements()) {
-                Object arg = e.nextElement();
-                if (inheritedProperties.containsKey(arg)) {
-                    continue;
+            for (Map.Entry<String, Object> entry : userProperties.entrySet()) {
+                String arg = entry.getKey();
+                if (!inheritedProperties.containsKey(arg)) {
+                    other.setUserProperty(arg, entry.getValue().toString());
                 }
-                Object value = userProperties.get(arg);
-                other.setUserProperty(arg.toString(), value.toString());
             }
         }
     }
@@ -1107,7 +1108,7 @@ public class PropertyHelper implements GetProperty {
     protected <D extends Delegate> List<D> getDelegates(Class<D> type) {
         @SuppressWarnings("unchecked")
         final List<D> result = (List<D>) delegates.get(type);
-        return result == null ? Collections.<D> emptyList() : result;
+        return result == null ? Collections.emptyList() : result;
     }
 
     /**
@@ -1116,16 +1117,14 @@ public class PropertyHelper implements GetProperty {
      * @return Set&lt;Class&gt;
      * @since Ant 1.8.0
      */
+    @SuppressWarnings("unchecked")
     protected static Set<Class<? extends Delegate>> getDelegateInterfaces(Delegate d) {
         final HashSet<Class<? extends Delegate>> result = new HashSet<>();
         Class<?> c = d.getClass();
         while (c != null) {
-            Class<?>[] ifs = c.getInterfaces();
-            for (int i = 0; i < ifs.length; i++) {
-                if (Delegate.class.isAssignableFrom(ifs[i])) {
-                    @SuppressWarnings("unchecked")
-                    final Class<? extends Delegate> delegateInterface = (Class<? extends Delegate>) ifs[i];
-                    result.add(delegateInterface);
+            for (Class<?> ifc : c.getInterfaces()) {
+                if (Delegate.class.isAssignableFrom(ifc)) {
+                    result.add((Class<? extends Delegate>) ifc);
                 }
             }
             c = c.getSuperclass();
@@ -1168,7 +1167,6 @@ public class PropertyHelper implements GetProperty {
      */
     private static boolean nullOrEmpty(Object value) {
         return value == null || "".equals(value);
-
     }
 
     /**
@@ -1182,7 +1180,7 @@ public class PropertyHelper implements GetProperty {
     private boolean evalAsBooleanOrPropertyName(Object value) {
         Boolean b = toBoolean(value);
         if (b != null) {
-            return b.booleanValue();
+            return b;
         }
         return getProperty(String.valueOf(value)) != null;
     }

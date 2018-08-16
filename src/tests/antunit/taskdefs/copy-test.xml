@@ -83,12 +83,12 @@ public class NullByteStreamResource extends Resource {
   </target>
 
   <target name="testResourceWithoutName"
-          depends="-setupNullByteStreamResource">
-    <au:expectfailure>
-      <copy todir="${output}">
-        <nullstream/>
-      </copy>
-    </au:expectfailure>
+          depends="-setupNullByteStreamResource" description="Tests that a
+          copy operation, of a resource without a name, doesn't run into (NPE)
+           exceptions. The resource itself will however be silently ignored">
+    <copy todir="${output}">
+      <nullstream/>
+    </copy>
   </target>
 
   <target name="testResourceWithoutNameWithMergeMapper"
@@ -459,5 +459,39 @@ public class NullByteStreamResource extends Resource {
     </au:expectfailure>
     <au:assertFileExists file="${input}/somefile"/>
     <au:assertFileExists file="${output}/somefile"/>
+  </target>
+
+
+  <target name="test-with-some-resources-mapped-away"
+          description="https://bz.apache.org/bugzilla/show_bug.cgi?id=62076">
+    <mkdir dir="${input}"/>
+    <touch file="${input}/a.filea"/>
+    <touch file="${input}/b.fileb"/>
+    <mkdir dir="${output}"/>
+    <copy todir="${output}">
+      <mappedresources>
+	<fileset dir="${input}" />
+	<globmapper from="a.*" to="*" />
+      </mappedresources>
+    </copy>
+    <au:assertFileExists file="${output}/filea"/>
+  </target>
+
+  <target name="testCopyOfResourceListDoesntFlatten"
+          description="https://issues.apache.org/bugzilla/show_bug.cgi?id=62379">
+    <mkdir dir="${input}/dir"/>
+    <touch file="${input}/a"/>
+    <touch file="${input}/b"/>
+    <touch file="${input}/c"/>
+    <echo file="${input}/dir/c">Testfile</echo>
+    <mkdir dir="${output}"/>
+    <copy todir="${output}">
+      <resourcelist basedir="${input}">
+        <string value="${input}/dir/c"/>
+      </resourcelist>
+    </copy>
+    <au:assertFileDoesntExist file="${output}/c"/>
+    <au:assertFileExists file="${output}/dir/c"/>
+    <au:assertFilesMatch expected="${input}/dir/c" actual="${output}/dir/c"/>
   </target>
 </project>

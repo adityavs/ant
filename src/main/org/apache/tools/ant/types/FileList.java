@@ -70,7 +70,7 @@ public class FileList extends DataType implements ResourceCollection {
      */
     @Override
     public void setRefid(Reference r) throws BuildException {
-        if ((dir != null) || (!filenames.isEmpty())) {
+        if (dir != null || !filenames.isEmpty()) {
             throw tooManyAttributes();
         }
         super.setRefid(r);
@@ -106,7 +106,7 @@ public class FileList extends DataType implements ResourceCollection {
      */
     public void setFiles(String filenames) {
         checkAttributesAllowed();
-        if (!(filenames == null || filenames.isEmpty())) {
+        if (filenames != null && !filenames.isEmpty()) {
             StringTokenizer tok = new StringTokenizer(
                 filenames, ", \t\n\r\f", false);
             while (tok.hasMoreTokens()) {

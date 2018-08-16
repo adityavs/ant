@@ -23,6 +23,7 @@ import org.apache.tools.ant.util.FileUtils;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Arrays;
 
 import static org.junit.Assume.assumeTrue;
 
@@ -46,15 +47,8 @@ public class FileUtilities {
      * @throws IOException on error reading the file (not existing, not readable etc)
      */
     public static String getFileContents(File file) throws IOException {
-            FileReader rdr = null;
-            try {
-                rdr = new FileReader(file);
-                return FileUtils.readFully(rdr);
-            }
-            finally {
-                if (rdr != null) {
-                rdr.close();
-            }
+        try (FileReader rdr = new FileReader(file)) {
+            return FileUtils.readFully(rdr);
         }
     }
 
@@ -78,9 +72,7 @@ public class FileUtilities {
             if (children == null) {
                 return;
             }
-            for (File child : children) {
-                rollbackTimestamps(child, seconds);
-            }
+            Arrays.stream(children).forEach(child -> rollbackTimestamps(child, seconds));
         }
     }
 

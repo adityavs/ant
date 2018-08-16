@@ -23,7 +23,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 
 /**
- * UUEncoding of an input stream placed into an outputstream.
+ * UUEncoding of an input stream placed into an OutputStream.
  * This class is meant to be a drop in replacement for
  * sun.misc.UUEncoder, which was previously used by Ant.
  * The uuencode algorithm code has been copied from the
@@ -87,11 +87,11 @@ public class UUEncoder {
         writer.flush();
     }
 
-    private void encodeBegin() throws IOException {
+    private void encodeBegin() {
         encodeString("begin " + DEFAULT_MODE + " " + name + "\n");
     }
 
-    private void encodeEnd() throws IOException {
+    private void encodeEnd() {
         encodeString(" \nend\n");
     }
 

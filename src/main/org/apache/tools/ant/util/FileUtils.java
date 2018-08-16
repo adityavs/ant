@@ -634,7 +634,7 @@ public class FileUtils {
      * @since Ant 1.7
      */
     public static boolean isContextRelativePath(String filename) {
-        if (!(ON_DOS || ON_NETWARE) || filename.length() == 0) {
+        if (!(ON_DOS || ON_NETWARE) || filename.isEmpty()) {
             return false;
         }
         char sep = File.separatorChar;
@@ -658,19 +658,19 @@ public class FileUtils {
      * @since Ant 1.6.3
      */
     public static boolean isAbsolutePath(String filename) {
-        int len = filename.length();
-        if (len == 0) {
+        if (filename.isEmpty()) {
             return false;
         }
+        int len = filename.length();
         char sep = File.separatorChar;
         filename = filename.replace('/', sep).replace('\\', sep);
         char c = filename.charAt(0);
-        if (!(ON_DOS || ON_NETWARE)) {
-            return (c == sep);
+        if (!ON_DOS && !ON_NETWARE) {
+            return c == sep;
         }
         if (c == sep) {
             // CheckStyle:MagicNumber OFF
-            if (!(ON_DOS && len > 4 && filename.charAt(1) == sep)) {
+            if (!ON_DOS || len <= 4 || filename.charAt(1) != sep) {
                 return false;
             }
             // CheckStyle:MagicNumber ON
@@ -710,7 +710,7 @@ public class FileUtils {
             String pathComponent = tokenizer.nextToken();
             pathComponent = pathComponent.replace('/', File.separatorChar);
             pathComponent = pathComponent.replace('\\', File.separatorChar);
-            if (path.length() != 0) {
+            if (path.length() > 0) {
                 path.append(File.pathSeparatorChar);
             }
             path.append(pathComponent);
@@ -729,8 +729,12 @@ public class FileUtils {
      *   <li>DOS style paths that start with a drive letter will have
      *     \ as the separator.</li>
      * </ul>
-     * Unlike {@link File#getCanonicalPath()} this method
-     * specifically does not resolve symbolic links.
+     * <p>Unlike {@link File#getCanonicalPath()} this method
+     * specifically does not resolve symbolic links.</p>
+     *
+     * <p>If the path tries to go beyond the file system root (i.e. it
+     * contains more ".." segments than can be travelled up) the
+     * method will return the original path unchanged.</p>
      *
      * @param path the path to be normalized.
      * @return the normalized version of the path.
@@ -854,12 +858,12 @@ public class FileUtils {
         if (isDirectory) {
             directory = new StringBuilder(path.substring(index).replace(File.separatorChar, '.'));
         } else {
-            int dirEnd = path.lastIndexOf(File.separatorChar, path.length());
+            int dirEnd = path.lastIndexOf(File.separatorChar);
             if (dirEnd == -1 || dirEnd < index) {
                 file = path.substring(index);
             } else {
-                directory = new StringBuilder(path.substring(index, dirEnd).
-                                             replace(File.separatorChar, '.'));
+                directory = new StringBuilder(path.substring(index, dirEnd)
+                        .replace(File.separatorChar, '.'));
                 index = dirEnd + 1;
                 if (path.length() > index) {
                     file = path.substring(index);
@@ -1073,15 +1077,14 @@ public class FileUtils {
         }
         final char[] buffer = new char[bufferSize];
         int bufferLength = 0;
-        StringBuilder textBuffer = null;
+        StringBuilder textBuffer = new StringBuilder();
         while (bufferLength != -1) {
             bufferLength = rdr.read(buffer);
             if (bufferLength > 0) {
-                textBuffer = (textBuffer == null) ? new StringBuilder() : textBuffer;
                 textBuffer.append(buffer, 0, bufferLength);
             }
         }
-        return (textBuffer == null) ? null : textBuffer.toString();
+        return (textBuffer.length() == 0) ? null : textBuffer.toString();
     }
 
     /**
@@ -1156,6 +1159,9 @@ public class FileUtils {
     /**
      * Removes a leading path from a second path.
      *
+     * <p>This method uses {@link #normalize} under the covers and
+     * does not resolve symbolic links.</p>
+     *
      * @param leading The leading path, must not be null, must be absolute.
      * @param path The path to remove from, must not be null, must be absolute.
      *
@@ -1180,8 +1186,16 @@ public class FileUtils {
 
     /**
      * Learn whether one path "leads" another.
+     *
+     * <p>This method uses {@link #normalize} under the covers and
+     * does not resolve symbolic links.</p>
+     *
+     * <p>If either path tries to go beyond the file system root
+     * (i.e. it contains more ".." segments than can be travelled up)
+     * the method will return false.</p>
+     *
      * @param leading The leading path, must not be null, must be absolute.
-     * @param path The path to remove from, must not be null, must be absolute.
+     * @param path The path to check, must not be null, must be absolute.
      * @return true if path starts with leading; false otherwise.
      * @since Ant 1.7
      */
@@ -1196,7 +1210,40 @@ public class FileUtils {
         if (!l.endsWith(File.separator)) {
             l += File.separator;
         }
+        // ensure "/foo/"  is not considered a parent of "/foo/../../bar"
+        String up = File.separator + ".." + File.separator;
+        if (l.contains(up) || p.contains(up) || (p + File.separator).contains(up)) {
+            return false;
+        }
         return p.startsWith(l);
+    }
+
+    /**
+     * Learn whether one path "leads" another.
+     *
+     * @param leading The leading path, must not be null, must be absolute.
+     * @param path The path to check, must not be null, must be absolute.
+     * @param resolveSymlinks whether symbolic links shall be resolved
+     * prior to comparing the paths.
+     * @return true if path starts with leading; false otherwise.
+     * @since Ant 1.10.5
+     * @throws IOException if resolveSymlinks is true and invoking
+     * getCanonicaPath on either argument throws an exception
+     */
+    public boolean isLeadingPath(File leading, File path, boolean resolveSymlinks)
+        throws IOException {
+        if (!resolveSymlinks) {
+            return isLeadingPath(leading, path);
+        }
+        final File l = leading.getCanonicalFile();
+        File p = path.getCanonicalFile();
+        do {
+            if (l.equals(p)) {
+                return true;
+            }
+            p = p.getParentFile();
+        } while (p != null);
+        return false;
     }
 
     /**
@@ -1615,7 +1662,6 @@ public class FileUtils {
         if (0 < toPathStack.length && 0 < fromPathStack.length) {
             if (!fromPathStack[0].equals(toPathStack[0])) {
                 // not the same device (would be "" on Linux/Unix)
-
                 return getPath(Arrays.asList(toPathStack));
             }
         } else {
@@ -1623,14 +1669,11 @@ public class FileUtils {
             return getPath(Arrays.asList(toPathStack));
         }
 
-        int minLength = Math.min(fromPathStack.length, toPathStack.length);
-        int same = 1; // Used outside the for loop
-
         // get index of parts which are equal
-        for (;
-             same < minLength && fromPathStack[same].equals(toPathStack[same]);
-             same++) {
-            // Do nothing
+        int minLength = Math.min(fromPathStack.length, toPathStack.length);
+        int same = 1;
+        while (same < minLength && fromPathStack[same].equals(toPathStack[same])) {
+            same++;
         }
 
         List<String> relativePathStack = new ArrayList<>();
@@ -1642,9 +1685,7 @@ public class FileUtils {
         }
 
         // fill it up path with parts which were not equal
-        for (int i = same; i < toPathStack.length; i++) {
-            relativePathStack.add(toPathStack[i]);
-        }
+        relativePathStack.addAll(Arrays.asList(toPathStack).subList(same, toPathStack.length));
 
         return getPath(relativePathStack);
     }

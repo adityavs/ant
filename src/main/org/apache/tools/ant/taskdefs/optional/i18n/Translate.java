@@ -365,12 +365,9 @@ public class Translate extends MatchingTask {
                                    bundleCountry,
                                    bundleVariant);
 
-        String language = locale.getLanguage().length() > 0
-            ? "_" + locale.getLanguage() : "";
-        String country = locale.getCountry().length() > 0
-            ? "_" + locale.getCountry() : "";
-        String variant = locale.getVariant().length() > 0
-            ? "_" + locale.getVariant() : "";
+        String language = locale.getLanguage().isEmpty() ? "" : "_" + locale.getLanguage();
+        String country = locale.getCountry().isEmpty() ? "" : "_" + locale.getCountry();
+        String variant = locale.getVariant().isEmpty() ? "" : "_" + locale.getVariant();
 
         processBundle(bundle + language + country + variant, BUNDLE_SPECIFIED_LANGUAGE_COUNTRY_VARIANT, false);
         processBundle(bundle + language + country, BUNDLE_SPECIFIED_LANGUAGE_COUNTRY, false);
@@ -381,12 +378,9 @@ public class Translate extends MatchingTask {
         //using default file encoding scheme.
         locale = Locale.getDefault();
 
-        language = locale.getLanguage().length() > 0
-            ? "_" + locale.getLanguage() : "";
-        country = locale.getCountry().length() > 0
-            ? "_" + locale.getCountry() : "";
-        variant = locale.getVariant().length() > 0
-            ? "_" + locale.getVariant() : "";
+        language = locale.getLanguage().isEmpty() ? "" : "_" + locale.getLanguage();
+        country = locale.getCountry().isEmpty() ? "" : "_" + locale.getCountry();
+        variant = locale.getVariant().isEmpty() ? "" : "_" + locale.getVariant();
         bundleEncoding = System.getProperty("file.encoding");
 
         processBundle(bundle + language + country + variant, BUNDLE_DEFAULT_LANGUAGE_COUNTRY_VARIANT, false);
@@ -451,16 +445,14 @@ public class Translate extends MatchingTask {
                             value = value.substring(0, value.length() - 1);
                             line = in.readLine();
                             if (line != null) {
-                                value = value + line.trim();
+                                value += line.trim();
                             } else {
                                 break;
                             }
                         }
-                        if (key.length() > 0) {
+                        if (!key.isEmpty()) {
                             //Has key already been loaded into resourceMap?
-                            if (resourceMap.get(key) == null) {
-                                resourceMap.put(key, value);
-                            }
+                            resourceMap.putIfAbsent(key, value);
                         }
                     }
                 }
@@ -486,10 +478,9 @@ public class Translate extends MatchingTask {
         int filesProcessed = 0;
         for (FileSet fs : filesets) {
             DirectoryScanner ds = fs.getDirectoryScanner(getProject());
-            String[] srcFiles = ds.getIncludedFiles();
-            for (int j = 0; j < srcFiles.length; j++) {
+            for (String srcFile : ds.getIncludedFiles()) {
                 try {
-                    File dest = FILE_UTILS.resolveFile(toDir, srcFiles[j]);
+                    File dest = FILE_UTILS.resolveFile(toDir, srcFile);
                     //Make sure parent dirs exist, else, create them.
                     try {
                         File destDir = new File(dest.getParent());
@@ -502,7 +493,7 @@ public class Translate extends MatchingTask {
                             Project.MSG_DEBUG);
                     }
                     destLastModified = dest.lastModified();
-                    File src = FILE_UTILS.resolveFile(ds.getBasedir(), srcFiles[j]);
+                    File src = FILE_UTILS.resolveFile(ds.getBasedir(), srcFile);
                     srcLastModified = src.lastModified();
                     //Check to see if dest file has to be recreated
                     boolean needsWork = forceOverwrite
@@ -516,14 +507,12 @@ public class Translate extends MatchingTask {
                         }
                     }
                     if (needsWork) {
-                        log("Processing " + srcFiles[j],
-                            Project.MSG_DEBUG);
+                        log("Processing " + srcFile, Project.MSG_DEBUG);
                         translateOneFile(src, dest);
                         ++filesProcessed;
                     } else {
-                        log("Skipping " + srcFiles[j]
-                            + " as destination file is up to date",
-                            Project.MSG_VERBOSE);
+                        log("Skipping " + srcFile + " as destination file is up to date",
+                                Project.MSG_VERBOSE);
                     }
                 } catch (IOException ioe) {
                     throw new BuildException(ioe.getMessage(), getLocation());

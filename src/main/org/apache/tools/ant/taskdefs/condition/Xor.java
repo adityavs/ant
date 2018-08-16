@@ -17,9 +17,8 @@
  */
 package org.apache.tools.ant.taskdefs.condition;
 
-import java.util.Enumeration;
-
 import org.apache.tools.ant.BuildException;
+import org.apache.tools.ant.util.StreamUtils;
 
 /**
  * The <tt>Xor</tt> condition type to exclusive or operations.
@@ -31,20 +30,14 @@ public class Xor extends ConditionBase implements Condition {
     /**
      * Evaluate the contained conditions.
      * @return the result of xoring the conditions together.
-     * @throws org.apache.tools.ant.BuildException
+     * @throws BuildException
      *          if an error occurs.
      */
     @Override
     public boolean eval() throws BuildException {
-        Enumeration<Condition> e = getConditions();
-        //initial state is false.
-        boolean state = false;
-        while (e.hasMoreElements()) {
-            Condition c = e.nextElement();
-            //every condition is xored against the previous one
-            state ^= c.eval();
-        }
-        return state;
+        // initial state is false
+        return StreamUtils.enumerationAsStream(getConditions()).map(Condition::eval)
+                .reduce((a, b) -> a ^ b).orElse(Boolean.FALSE);
     }
 
 }

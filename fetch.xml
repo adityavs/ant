@@ -109,6 +109,7 @@ Set -Ddest=LOCATION on the command line
       <attribute name="project"/>
       <attribute name="archive" default="@{project}"/>
       <attribute name="repository" default="${m2.repo}"/>
+      <attribute name="id" default="central"/>
       <sequential>
         <fail>
           Unknown archive @{archive} -no property @{archive}.version defined in ${lib.dir}/libraries.properties.
@@ -118,7 +119,6 @@ Set -Ddest=LOCATION on the command line
             </not>
           </condition>
         </fail>
-        <artifact:remoteRepository url="@{repository}" id="central"/>
         <artifact:dependencies pathID="@{archive}.path" useScope="runtime">
           <dependency groupId="@{project}"
                       artifactId="@{archive}"
@@ -127,6 +127,7 @@ Set -Ddest=LOCATION on the command line
             <exclusion groupId="org.apache.ant" artifactId="ant"/>
             <exclusion groupId="org.apache.ant" artifactId="ant-launcher"/>
           </dependency>
+          <artifact:remoteRepository url="@{repository}" id="@{id}"/>
         </artifact:dependencies>
         <!-- now we are left with the problem of getting the files into our directory -->
         <copy todir="${dest.dir}">
@@ -231,6 +232,24 @@ Set -Ddest=LOCATION on the command line
     <f2 project="org.hamcrest" archive="hamcrest-library"/>
   </target>
 
+  <target name="junitlauncher"
+    description="load junitlauncher libraries"
+    depends="init">
+    <f2 project="org.junit.platform" archive="junit-platform-launcher" />
+  </target>
+
+  <target name="junit-engine-jupiter"
+          description="load junit jupiter engine libraries (necessary only for internal Ant project tests)"
+          depends="init">
+    <f2 project="org.junit.jupiter" archive="junit-jupiter-engine" />
+  </target>
+
+  <target name="junit-engine-vintage"
+          description="load junit vintage engine libraries (necessary only for internal Ant project tests)"
+          depends="init">
+    <f2 project="org.junit.vintage" archive="junit-vintage-engine" />
+  </target>
+
   <target name="xml"
           description="load full XML libraries (Xalan and xml-resolver)"
           depends="init">
@@ -314,7 +333,11 @@ Set -Ddest=LOCATION on the command line
   <target name="javamail"
           description="load Java Mail"
           depends="init">
-    <f2 project="javax.mail" archive="javax.mail-api"/>
+    <!-- We only need this one dependency as per
+      the project doc https://javaee.github.io/javamail/#Download_JavaMail_Release
+      This alone should bring in all necessary dependencies (including the API
+       jars and the activation jars -->
+    <f2 project="com.sun.mail" archive="javax.mail"/>
   </target>
 
   <target name="jspc"
@@ -328,9 +351,9 @@ Set -Ddest=LOCATION on the command line
   <target name="jai"
           description="load Java Advanced Imaging"
           depends="init">
-    <f2 project="javax.media" archive="jai-core"
+    <f2 project="javax.media" archive="jai-core" id="jboss"
         repository="https://repository.jboss.org/nexus/content/groups/public/"/>
-    <f2 project="com.sun.media" archive="jai-codec"
+    <f2 project="com.sun.media" archive="jai-codec" id="jboss"
         repository="https://repository.jboss.org/nexus/content/groups/public/"/>
   </target>
 
@@ -366,5 +389,6 @@ Set -Ddest=LOCATION on the command line
 
   <target name="all"
     description="load all the libraries (except jython)"
-    depends="antunit,ivy,logging,junit,xml,networking,regexp,antlr,bcel,jdepend,bsf,debugging,script,javamail,jspc,jai,xz,netrexx"/>
+    depends="antunit,ivy,logging,junit,junitlauncher,xml,networking,regexp,antlr,bcel,jdepend,bsf,debugging,script,
+      javamail,jspc,jai,xz,netrexx,junit-engine-vintage,junit-engine-jupiter"/>
 </project>

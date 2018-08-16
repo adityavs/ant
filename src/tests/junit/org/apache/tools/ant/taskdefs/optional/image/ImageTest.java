@@ -18,19 +18,23 @@
 
 package org.apache.tools.ant.taskdefs.optional.image;
 
-import org.apache.tools.ant.AntAssert;
 import org.apache.tools.ant.BuildFileRule;
 import org.apache.tools.ant.util.FileUtils;
+import org.apache.tools.ant.util.JavaEnvUtils;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import java.io.File;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
-
 
 /**
  * Tests the Image task.
@@ -40,43 +44,47 @@ import static org.junit.Assume.assumeTrue;
 public class ImageTest {
 
     private static final FileUtils FILE_UTILS = FileUtils.getFileUtils();
-    private static final String TASKDEFS_DIR = "src/etc/testcases/taskdefs/optional/image/";
     private static final String LARGEIMAGE = "largeimage.jpg";
 
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
 
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
     @Before
     public void setUp() {
-        buildRule.configureProject(TASKDEFS_DIR + "image.xml");
+        /* JAI depends on internal API removed in Java 9 */
+        assumeFalse(JavaEnvUtils.isAtLeastJavaVersion(JavaEnvUtils.JAVA_9));
+        buildRule.configureProject("src/etc/testcases/taskdefs/optional/image/image.xml");
     }
 
 
     @Test
     public void testEchoToLog() {
         buildRule.executeTarget("testEchoToLog");
-        AntAssert.assertContains("Processing File", buildRule.getLog());
+        assertThat(buildRule.getLog(), containsString("Processing File"));
     }
 
     @Test
-    public void testSimpleScale(){
+    public void testSimpleScale() {
         buildRule.executeTarget("testSimpleScale");
-        AntAssert.assertContains("Processing File", buildRule.getLog());
+        assertThat(buildRule.getLog(), containsString("Processing File"));
 
         File f = new File(buildRule.getOutputDir(), LARGEIMAGE);
         assertTrue("Did not create " + f.getAbsolutePath(), f.exists());
     }
 
     @Test
-    public void testOverwriteTrue() throws InterruptedException {
+    public void testOverwriteTrue() {
         buildRule.executeTarget("testSimpleScale");
-        AntAssert.assertContains("Processing File", buildRule.getLog());
+        assertThat(buildRule.getLog(), containsString("Processing File"));
         File f = new File(buildRule.getOutputDir(), LARGEIMAGE);
-        assumeTrue("Could not change file modificaiton date",
+        assumeTrue("Could not change file modification date",
                 f.setLastModified(f.lastModified() - FILE_UTILS.getFileTimestampGranularity() * 2));
         long lastModified = f.lastModified();
         buildRule.executeTarget("testOverwriteTrue");
-        AntAssert.assertContains("Processing File", buildRule.getLog());
+        assertThat(buildRule.getLog(), containsString("Processing File"));
         f = new File(buildRule.getOutputDir(), LARGEIMAGE);
         long overwrittenLastModified = f.lastModified();
         assertTrue("File was not overwritten.", lastModified < overwrittenLastModified);
@@ -85,20 +93,20 @@ public class ImageTest {
     @Test
     public void testOverwriteFalse() {
         buildRule.executeTarget("testSimpleScale");
-        AntAssert.assertContains("Processing File", buildRule.getLog());
+        assertThat(buildRule.getLog(), containsString("Processing File"));
         File f = new File(buildRule.getOutputDir(), LARGEIMAGE);
         long lastModified = f.lastModified();
         buildRule.executeTarget("testOverwriteFalse");
-        AntAssert.assertContains("Processing File", buildRule.getLog());
+        assertThat(buildRule.getLog(), containsString("Processing File"));
         f = new File(buildRule.getOutputDir(), LARGEIMAGE);
         long overwrittenLastModified = f.lastModified();
-        assertTrue("File was overwritten.", lastModified == overwrittenLastModified);
+        assertEquals("File was overwritten.", lastModified, overwrittenLastModified);
     }
 
     @Test
     public void testSimpleScaleWithMapper() {
         buildRule.executeTarget("testSimpleScaleWithMapper");
-        AntAssert.assertContains("Processing File", buildRule.getLog());
+        assertThat(buildRule.getLog(), containsString("Processing File"));
         File f = new File(buildRule.getOutputDir(), "scaled-" + LARGEIMAGE);
         assertTrue("Did not create " + f.getAbsolutePath(), f.exists());
     }
@@ -106,13 +114,13 @@ public class ImageTest {
     @Test
     @Ignore("Previously named in a manner to prevent execution")
     public void testFailOnError() {
+        final String message = "Unable to render RenderedOp for this operation.";
+        thrown.expect(RuntimeException.class);
+        thrown.expectMessage(message);
         try {
             buildRule.executeTarget("testFailOnError");
-            AntAssert.assertContains("Unable to process image stream", buildRule.getLog());
-        } catch (RuntimeException re){
-            assertTrue("Run time exception should say 'Unable to process image stream'. :"
-                       + re.toString(),
-                       re.toString().indexOf("Unable to process image stream") > -1);
+        } finally {
+            assertThat(buildRule.getLog(), containsString(message));
         }
     }
 

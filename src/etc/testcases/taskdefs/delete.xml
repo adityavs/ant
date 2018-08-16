@@ -20,7 +20,6 @@
 
   <import file="../buildfiletest-base.xml"/>
 
-
   <property name="dir" location="${output}" />
   <basename property="dirname" file="${output}"/>
 

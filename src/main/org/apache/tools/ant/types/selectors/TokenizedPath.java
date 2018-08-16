@@ -64,9 +64,8 @@ public class TokenizedPath {
      * @param child the child, must not contain the file separator
      */
     public TokenizedPath(TokenizedPath parent, String child) {
-        if (parent.path.length() > 0
-            && parent.path.charAt(parent.path.length() - 1)
-               != File.separatorChar) {
+        if (!parent.path.isEmpty()
+            && parent.path.charAt(parent.path.length() - 1) != File.separatorChar) {
             path = parent.path + File.separatorChar + child;
         } else {
             path = parent.path + child;
@@ -77,7 +76,8 @@ public class TokenizedPath {
         tokenizedPath[parent.tokenizedPath.length] = child;
     }
 
-    /* package */ TokenizedPath(String path, String[] tokens) {
+    /* package */
+    TokenizedPath(String path, String[] tokens) {
         this.path = path;
         this.tokenizedPath = tokens;
     }
@@ -139,17 +139,17 @@ public class TokenizedPath {
      * @return boolean
      */
     public boolean isSymlink(File base) {
-        for (int i = 0; i < tokenizedPath.length; i++) {
+        for (String token : tokenizedPath) {
             final Path pathToTraverse;
             if (base == null) {
-                pathToTraverse = Paths.get(tokenizedPath[i]);
+                pathToTraverse = Paths.get(token);
             } else {
-                pathToTraverse = Paths.get(base.toPath().toString(), tokenizedPath[i]);
+                pathToTraverse = Paths.get(base.toPath().toString(), token);
             }
             if (Files.isSymbolicLink(pathToTraverse)) {
                 return true;
             }
-            base = new File(base, tokenizedPath[i]);
+            base = new File(base, token);
         }
         return false;
     }
@@ -180,7 +180,7 @@ public class TokenizedPath {
      */
     private static File findFile(File base, final String[] pathElements,
                                  final boolean cs) {
-        for (int current = 0; current < pathElements.length; current++) {
+        for (String pathElement : pathElements) {
             if (!base.isDirectory()) {
                 return null;
             }
@@ -194,8 +194,8 @@ public class TokenizedPath {
             for (int i = 0; !found && i < matchCase.length; i++) {
                 for (int j = 0; !found && j < files.length; j++) {
                     if (matchCase[i]
-                        ? files[j].equals(pathElements[current])
-                        : files[j].equalsIgnoreCase(pathElements[current])) {
+                            ? files[j].equals(pathElement)
+                            : files[j].equalsIgnoreCase(pathElement)) {
                         base = new File(base, files[j]);
                         found = true;
                     }

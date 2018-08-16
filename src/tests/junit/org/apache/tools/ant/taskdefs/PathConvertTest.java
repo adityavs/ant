@@ -33,13 +33,11 @@ public class PathConvertTest {
     @Rule
     public final BuildFileRule buildRule = new BuildFileRule();
 
-    private static final String BUILD_PATH = "src/etc/testcases/taskdefs/";
     private static final String BUILD_FILENAME = "pathconvert.xml";
-    private static final String BUILD_FILE = BUILD_PATH + BUILD_FILENAME;
 
     @Before
     public void setUp() {
-        buildRule.configureProject(BUILD_FILE);
+        buildRule.configureProject("src/etc/testcases/taskdefs/" + BUILD_FILENAME);
     }
 
     @Test
@@ -55,6 +53,17 @@ public class PathConvertTest {
     @Test
     public void testNoTargetOs() {
         buildRule.executeTarget("testnotargetos");
+    }
+
+    /**
+     * Tests that if a {@code mappedresource}, that excludes certain resources, is used in a {@code pathconvert},
+     * then it doesn't lead to a {@link NullPointerException}.
+     *
+     * @see <a href="https://bz.apache.org/bugzilla/show_bug.cgi?id=62076">bz-62076</a> for more details
+     */
+    @Test
+    public void testNonMatchingMapper() {
+        buildRule.executeTarget("test-nonmatching-mapper");
     }
 
     private void test(String target) {

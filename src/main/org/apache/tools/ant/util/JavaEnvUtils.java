@@ -111,11 +111,13 @@ public final class JavaEnvUtils {
      * Version constant for Java 1.9
      * @deprecated use #JAVA_9 instead
      */
+    @Deprecated
     public static final String JAVA_1_9 = "1.9";
     /**
      * Number Version constant for Java 1.9
      * @deprecated use #VERSION_9 instead
      */
+    @Deprecated
     public static final int VERSION_1_9 = 19;
 
     /**
@@ -250,6 +252,7 @@ public final class JavaEnvUtils {
      * be 0 for all versions of Java starting with Java 9.
      * @deprecated use #getParsedJavaVersion instead
      */
+    @Deprecated
     public static int getJavaVersionNumber() {
         return javaVersionNumber;
     }
@@ -460,7 +463,7 @@ public final class JavaEnvUtils {
      */
 
     private static void buildJrePackages() {
-        jrePackages = new Vector<String>();
+        jrePackages = new Vector<>();
         if (isAtLeastJavaVersion(JAVA_1_1)) {
             //things like sun.reflection, sun.misc, sun.net
             jrePackages.addElement("sun");
@@ -576,8 +579,8 @@ public final class JavaEnvUtils {
             throws IOException {
         File script = FILE_UTILS.createTempFile("ANT", ".JAVA_OPTS", null, false, true);
         try (BufferedWriter out = new BufferedWriter(new FileWriter(script))) {
-            for (int i = 0; i < cmds.length; i++) {
-                out.write(cmds[i]);
+            for (String cmd : cmds) {
+                out.write(cmd);
                 out.newLine();
             }
         }

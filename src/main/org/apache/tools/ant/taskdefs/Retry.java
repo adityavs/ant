@@ -21,7 +21,6 @@ import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
 import org.apache.tools.ant.TaskContainer;
-import org.apache.tools.ant.util.StringUtils;
 
 /**
  * Retries the nested task a set number of times
@@ -91,13 +90,9 @@ public class Retry extends Task implements TaskContainer {
             } catch (Exception e) {
                 errorMessages.append(e.getMessage());
                 if (i >= retryCount) {
-                    StringBuilder exceptionMessage = new StringBuilder();
-                    exceptionMessage.append("Task [").append(nestedTask.getTaskName());
-                    exceptionMessage.append("] failed after [").append(retryCount);
-                    exceptionMessage.append("] attempts; giving up.").append(StringUtils.LINE_SEP);
-                    exceptionMessage.append("Error messages:").append(StringUtils.LINE_SEP);
-                    exceptionMessage.append(errorMessages);
-                    throw new BuildException(exceptionMessage.toString(), getLocation());
+                    throw new BuildException(String.format(
+                            "Task [%s] failed after [%d] attempts; giving up.%nError messages:%n%s",
+                            nestedTask.getTaskName(), retryCount, errorMessages), getLocation());
                 }
                 String msg;
                 if (retryDelay > 0) {
@@ -106,7 +101,7 @@ public class Retry extends Task implements TaskContainer {
                     msg = "Attempt [" + i + "]: error occurred; retrying...";
                 }
                 log(msg, e, Project.MSG_INFO);
-                errorMessages.append(StringUtils.LINE_SEP);
+                errorMessages.append(System.lineSeparator());
                 if (retryDelay > 0) {
                     try {
                         Thread.sleep(retryDelay);

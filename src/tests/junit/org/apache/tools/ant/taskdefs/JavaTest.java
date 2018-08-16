@@ -32,19 +32,23 @@ import java.io.PipedOutputStream;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.BuildFileRule;
 import org.apache.tools.ant.input.DefaultInputHandler;
+import org.apache.tools.ant.taskdefs.condition.JavaVersion;
 import org.apache.tools.ant.util.FileUtils;
 import org.apache.tools.ant.util.TeeOutputStream;
 import org.junit.Assume;
+import org.junit.AssumptionViolatedException;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.internal.AssumptionViolatedException;
+import org.junit.rules.ExpectedException;
 
-import static org.apache.tools.ant.AntAssert.assertContains;
-import org.junit.Assert;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 
 /**
  * stress out java task
@@ -54,6 +58,9 @@ public class JavaTest {
     @Rule
     public BuildFileRule buildRule = new BuildFileRule();
 
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
     private static final int TIME_TO_WAIT = 1;
     // wait 1 second extra to allow for java to start ...
     // this time was OK on a Win NT machine and on nagoya
@@ -62,7 +69,7 @@ public class JavaTest {
     /** Utilities used for file operations */
     private static final FileUtils FILE_UTILS = FileUtils.getFileUtils();
 
-    private boolean runFatalTests=false;
+    private boolean runFatalTests = false;
 
 
     /**
@@ -86,62 +93,44 @@ public class JavaTest {
 
     @Test
     public void testNoJarNoClassname() {
-        try {
-            buildRule.executeTarget("testNoJarNoClassname");
-            fail("Build exception should have been thrown - parameter validation");
-        } catch (BuildException ex) {
-            assertContains("Classname must not be null.", ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("Classname must not be null.");
+        buildRule.executeTarget("testNoJarNoClassname");
     }
 
     @Test
     public void testJarNoFork() {
-        try {
-            buildRule.executeTarget("testJarNoFork");
-            fail("Build exception should have been thrown - parameter validation");
-        } catch (BuildException ex) {
-            assertContains("Cannot execute a jar in non-forked mode. Please set fork='true'. ", ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("Cannot execute a jar in non-forked mode. Please set fork='true'. ");
+        buildRule.executeTarget("testJarNoFork");
     }
 
     @Test
     public void testJarAndClassName() {
-        try {
-            buildRule.executeTarget("testJarAndClassName");
-            fail("Build exception should have been thrown - both classname and JAR are not allowed");
-        } catch (BuildException ex) {
-            assertEquals("Cannot use 'jar' and 'classname' attributes in same command", ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("Cannot use combination of ");
+        buildRule.executeTarget("testJarAndClassName");
     }
 
     @Test
     public void testClassnameAndJar() {
-        try {
-            buildRule.executeTarget("testClassnameAndJar");
-            fail("Build exception should have been thrown - both classname and JAR are not allowed");
-        } catch (BuildException ex) {
-            assertEquals("Cannot use 'jar' with 'classname' or 'module' attributes in same command.", ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("Cannot use combination of ");
+        buildRule.executeTarget("testClassnameAndJar");
     }
 
     @Test
     public void testJarAndModule() {
-        try {
-            buildRule.executeTarget("testJarAndModule");
-            fail("Build exception should have been thrown - both module and JAR are not allowed");
-        } catch (BuildException ex) {
-            assertEquals("Cannot use 'jar' and 'module' attributes in same command", ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("Cannot use combination of ");
+        buildRule.executeTarget("testJarAndModule");
     }
 
     @Test
     public void testModuleAndJar() {
-        try {
-            buildRule.executeTarget("testModuleAndJar");
-            fail("Build exception should have been thrown - both module and JAR are not allowed");
-        } catch (BuildException ex) {
-            assertEquals("Cannot use 'jar' with 'classname' or 'module' attributes in same command.", ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("Cannot use combination of ");
+        buildRule.executeTarget("testModuleAndJar");
     }
 
     @Test
@@ -169,7 +158,7 @@ public class JavaTest {
         java.setJvmargs("-Xmx128M");
         java.setArgs(arg);
         final String[] cmdLine = java.getCommandLine().getCommandline();
-        Assert.assertNotNull("Has command line.", cmdLine);
+        assertNotNull("Has command line.", cmdLine);
         assertEquals("Command line should have 5 elements", 5, cmdLine.length);
         assertEquals("Last command line element should be java argument: " + arg,
                 arg,
@@ -195,7 +184,7 @@ public class JavaTest {
         java.setJvmargs("-Xmx128M");    //NOI18N
         java.setArgs(arg);
         final String[] cmdLine = java.getCommandLine().getCommandline();
-        Assert.assertNotNull("Has command line.", cmdLine);
+        assertNotNull("Has command line.", cmdLine);
         assertEquals("Command line should have 5 elements", 5, cmdLine.length);
         assertEquals("Last command line element should be java argument: " + arg,
                 arg,
@@ -213,68 +202,54 @@ public class JavaTest {
         buildRule.executeTarget("testRun");
     }
 
-
-
     /** this test fails but we ignore the return value;
      *  we verify that failure only matters when failonerror is set
      */
     @Test
     public void testRunFail() {
-        Assume.assumeTrue("Fatal tests have not been set to run", runFatalTests);
+        assumeTrue("Fatal tests have not been set to run", runFatalTests);
         buildRule.executeTarget("testRunFail");
     }
 
     @Test
     public void testRunFailFoe() {
-        Assume.assumeTrue("Fatal tests have not been set to run", runFatalTests);
-        try {
-            buildRule.executeTarget("testRunFailFoe");
-            fail("Build exception should have been thrown - " + "java failures being propagated");
-        } catch (BuildException ex) {
-            assertContains("Java returned:", ex.getMessage());
-        }
+        assumeTrue("Fatal tests have not been set to run", runFatalTests);
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("Java returned:");
+        buildRule.executeTarget("testRunFailFoe");
     }
 
     @Test
     public void testRunFailFoeFork() {
-        try {
-            buildRule.executeTarget("testRunFailFoeFork");
-            fail("Build exception should have been thrown - " + "java failures being propagated");
-        } catch (BuildException ex) {
-            assertContains("Java returned:", ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("Java returned:");
+        buildRule.executeTarget("testRunFailFoeFork");
     }
 
     @Test
     public void testExcepting() {
         buildRule.executeTarget("testExcepting");
-        assertContains("Exception raised inside called program", buildRule.getLog());
+        assertThat(buildRule.getLog(), containsString("Exception raised inside called program"));
     }
 
     @Test
     public void testExceptingFork() {
         buildRule.executeTarget("testExceptingFork");
-        assertContains("Java Result:", buildRule.getLog());
+        assertThat(buildRule.getLog(), containsString("Java Result:"));
     }
 
     @Test
     public void testExceptingFoe() {
-        try {
-            buildRule.executeTarget("testExceptingFoe");
-            fail("Build exception should have been thrown - " + "passes exception through");
-        } catch (BuildException ex) {
-            assertContains("Exception raised inside called program", ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("Exception raised inside called program");
+        buildRule.executeTarget("testExceptingFoe");
     }
 
     @Test
     public void testExceptingFoeFork() {
-        try {
-            buildRule.executeTarget("testExceptingFoeFork");
-            fail("Build exception should have been thrown - " + "exceptions turned into error codes");
-        } catch (BuildException ex) {
-            assertContains("Java returned:", ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("Java returned:");
+        buildRule.executeTarget("testExceptingFoeFork");
     }
 
     @Test
@@ -303,12 +278,9 @@ public class JavaTest {
 
     @Test
     public void testRunFailWithFailOnError() {
-        try {
-            buildRule.executeTarget("testRunFailWithFailOnError");
-            fail("Build exception should have been thrown - " + "non zero return code");
-        } catch (BuildException ex) {
-            assertContains("Java returned:", ex.getMessage());
-        }
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("Java returned:");
+        buildRule.executeTarget("testRunFailWithFailOnError");
     }
 
     @Test
@@ -321,13 +293,12 @@ public class JavaTest {
         File logFile = FILE_UTILS.createTempFile("spawn", "log",
                 new File(buildRule.getProject().getProperty("output")), false, false);
         // this is guaranteed by FileUtils#createTempFile
-        assertTrue("log file not existing", !logFile.exists());
+        assertFalse("log file not existing", logFile.exists());
         buildRule.getProject().setProperty("logFile", logFile.getAbsolutePath());
         buildRule.getProject().setProperty("timeToWait", Long.toString(TIME_TO_WAIT));
         buildRule.getProject().executeTarget("testSpawn");
 
         Thread.sleep(TIME_TO_WAIT * 1000 + SECURITY_MARGIN);
-
 
         // let's be nice with the next generation of developers
         if (!logFile.exists()) {
@@ -382,13 +353,11 @@ public class JavaTest {
         // reader will be read
         java.execute();
 
-        Thread inputThread = new Thread(new Runnable() {
-            public void run() {
-                Input input = new Input();
-                input.setProject(buildRule.getProject());
-                input.setAddproperty("input.value");
-                input.execute();
-            }
+        Thread inputThread = new Thread(() -> {
+            Input input = new Input();
+            input.setProject(buildRule.getProject());
+            input.setAddproperty("input.value");
+            input.execute();
         });
         inputThread.start();
 
@@ -424,25 +393,95 @@ public class JavaTest {
         final boolean[] timeout = new boolean[1];
         timeout[0] = false;
 
-        Thread writingThread = new Thread(new Runnable() {
-            public void run() {
-                try {
-                    // wait a little bit to have the target executed
-                    Thread.sleep(500);
-                } catch (InterruptedException e) {
-                    throw new AssumptionViolatedException("Thread interrupted", e);
-                }
-                try {
-                    out.write("foo-FlushedInput\n".getBytes());
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+        Thread writingThread = new Thread(() -> {
+            try {
+                // wait a little bit to have the target executed
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                throw new AssumptionViolatedException("Thread interrupted", e);
+            }
+            try {
+                out.write("foo-FlushedInput\n".getBytes());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
         });
         writingThread.setDaemon(true);
 
         writingThread.start();
         buildRule.executeTarget("flushedInput");
+    }
+
+    /**
+     * Test that the Java single file source program feature introduced in Java 11 works fine
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testSimpleSourceFile() throws Exception {
+        requireJava11();
+        buildRule.executeTarget("simpleSourceFile");
+    }
+
+    /**
+     * Test that the sourcefile option of the Java task can only be run when fork attribute is set
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testSourceFileRequiresFork() throws Exception {
+        requireJava11();
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("Cannot execute sourcefile in non-forked mode. Please set fork='true'");
+        buildRule.executeTarget("sourceFileRequiresFork");
+    }
+
+    /**
+     * Tests that the sourcefile attribute and the classname attribute of the Java task cannot be used
+     * together
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testSourceFileCantUseClassname() throws Exception {
+        requireJava11();
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("Cannot use 'sourcefile' in combination with");
+        buildRule.executeTarget("sourceFileCantUseClassname");
+    }
+
+    /**
+     * Tests that the sourcefile attribute and the jar attribute of the Java task cannot be used
+     * together
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testSourceFileCantUseJar() throws Exception {
+        requireJava11();
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("Cannot use 'sourcefile' in combination with");
+        buildRule.executeTarget("sourceFileCantUseJar");
+    }
+
+    /**
+     * Tests that the sourcefile attribute and the module attribute of the Java task cannot be used
+     * together
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testSourceFileCantUseModule() throws Exception {
+        requireJava11();
+        thrown.expect(BuildException.class);
+        thrown.expectMessage("Cannot use 'sourcefile' in combination with");
+        buildRule.executeTarget("sourceFileCantUseModule");
+    }
+
+    private static void requireJava11() {
+        final JavaVersion javaVersion = new JavaVersion();
+        javaVersion.setAtLeast("11");
+        Assume.assumeTrue("Skipping test which requires a minimum of Java 11 runtime", javaVersion.eval());
     }
 
     /**
@@ -506,22 +545,13 @@ public class JavaTest {
             if (argv.length >= 2) {
                 logFile = argv[1];
             }
-            OutputStreamWriter out = null;
             Thread.sleep(sleepTime * 1000);
 
-            try {
-                File dest = new File(logFile);
-                FileOutputStream fos = new FileOutputStream(dest);
-                out = new OutputStreamWriter(fos);
+            File dest = new File(logFile);
+            try (OutputStreamWriter out = new OutputStreamWriter(new FileOutputStream(dest))) {
                 out.write("bye bye\n");
             } catch (Exception ex) {
-            } finally {
-                try {
-                    out.close();
-                } catch (IOException ioe) {
-                }
             }
-
         }
     }
 

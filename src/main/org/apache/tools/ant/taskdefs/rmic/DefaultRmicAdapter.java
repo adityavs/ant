@@ -176,6 +176,18 @@ public abstract class DefaultRmicAdapter implements RmicAdapter {
     }
 
     /**
+     * Whether the iiop and idl switches are supported.
+     *
+     * <p>This implementation returns false if running on Java 11
+     * onwards and true otherwise.</p>
+     * @return true if the iiop and idl switches are supported
+     * @since Ant 1.10.3
+     */
+    protected boolean areIiopAndIdlSupported() {
+        return !JavaEnvUtils.isAtLeastJavaVersion("11");
+    }
+
+    /**
      * Setup rmic argument for rmic.
      * @return the command line
      */
@@ -193,8 +205,8 @@ public abstract class DefaultRmicAdapter implements RmicAdapter {
         Commandline cmd = new Commandline();
 
         if (options != null) {
-            for (int i = 0; i < options.length; i++) {
-                cmd.createArgument().setValue(options[i]);
+            for (String option : options) {
+                cmd.createArgument().setValue(option);
             }
         }
 
@@ -222,6 +234,9 @@ public abstract class DefaultRmicAdapter implements RmicAdapter {
         }
 
         if (attributes.getIiop()) {
+            if (!areIiopAndIdlSupported()) {
+                throw new BuildException("this rmic implementation doesn't support the -iiop switch");
+            }
             attributes.log("IIOP has been turned on.", Project.MSG_INFO);
             cmd.createArgument().setValue("-iiop");
             if (attributes.getIiopopts() != null) {
@@ -232,6 +247,9 @@ public abstract class DefaultRmicAdapter implements RmicAdapter {
         }
 
         if (attributes.getIdl())  {
+            if (!areIiopAndIdlSupported()) {
+                throw new BuildException("this rmic implementation doesn't support the -idl switch");
+            }
             cmd.createArgument().setValue("-idl");
             attributes.log("IDL has been turned on.", Project.MSG_INFO);
             if (attributes.getIdlopts() != null) {
@@ -311,8 +329,7 @@ public abstract class DefaultRmicAdapter implements RmicAdapter {
     protected String[] filterJvmCompilerArgs(String[] compilerArgs) {
         int len = compilerArgs.length;
         List<String> args = new ArrayList<>(len);
-        for (int i = 0; i < len; i++) {
-            String arg = compilerArgs[i];
+        for (String arg : compilerArgs) {
             if (arg.startsWith("-J")) {
                 attributes.log("Dropping " + arg + " from compiler arguments");
             } else {
@@ -334,15 +351,11 @@ public abstract class DefaultRmicAdapter implements RmicAdapter {
         attributes.log("Compilation " + cmd.describeArguments(),
                        Project.MSG_VERBOSE);
 
-        StringBuilder niceSourceList =
-            new StringBuilder(compileList.size() == 1 ? "File" : "Files")
-                .append(" to be compiled:");
-
-        niceSourceList.append(
-            compileList.stream().peek(arg -> cmd.createArgument().setValue(arg))
-                .collect(Collectors.joining("    ")));
-
-        attributes.log(niceSourceList.toString(), Project.MSG_VERBOSE);
+        String niceSourceList = (compileList.size() == 1 ? "File" : "Files") +
+                " to be compiled:" +
+                compileList.stream().peek(arg -> cmd.createArgument().setValue(arg))
+                        .collect(Collectors.joining("    "));
+        attributes.log(niceSourceList, Project.MSG_VERBOSE);
     }
 
     private void verifyArguments(Commandline cmd) {

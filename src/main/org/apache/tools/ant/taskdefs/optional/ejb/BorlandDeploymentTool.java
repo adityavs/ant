@@ -16,9 +16,7 @@
  *
  */
 
-
 package org.apache.tools.ant.taskdefs.optional.ejb;
-
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -31,6 +29,7 @@ import java.util.Collection;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
+
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.ExecTask;
@@ -40,7 +39,6 @@ import org.apache.tools.ant.taskdefs.Java;
 import org.apache.tools.ant.taskdefs.optional.ejb.EjbJar.DTDLocation;
 import org.apache.tools.ant.types.Commandline;
 import org.apache.tools.ant.types.Path;
-
 
 /**
  * BorlandDeploymentTool is dedicated to the Borland Application Server 4.5 and 4.5.1
@@ -60,7 +58,7 @@ import org.apache.tools.ant.types.Path;
  * <li>version (int)       : tell what is the Borland appserver version 4 or 5 </li>
  * </ul>
  *
- *<PRE>
+ *<pre>
  *
  *      &lt;ejbjar srcdir=&quot;${build.classes}&quot;
  *               basejarname=&quot;vsmp&quot;
@@ -74,7 +72,7 @@ import org.apache.tools.ant.types.Path;
  *          &lt;include name=&quot;demo\helper\*.class&quot;/&gt;
  *         &lt;/support&gt;
  *     &lt;/ejbjar&gt;
- *</PRE>
+ *</pre>
  *
  */
 public class BorlandDeploymentTool extends GenericDeploymentTool
@@ -204,23 +202,17 @@ public class BorlandDeploymentTool extends GenericDeploymentTool
      * @return the descriptor.
      */
     protected DescriptorHandler getBorlandDescriptorHandler(final File srcDir) {
-        DescriptorHandler handler =
-            new DescriptorHandler(getTask(), srcDir) {
-                    @Override
-                    protected void processElement() {
-                        if ("type-storage".equals(currentElement)) {
-                            // Get the filename of vendor specific descriptor
-                            String fileNameWithMETA = currentText;
-                            //trim the META_INF\ off of the file name
-                            String fileName
-                                = fileNameWithMETA.substring(META_DIR.length(),
-                                    fileNameWithMETA.length());
-                            File descriptorFile = new File(srcDir, fileName);
-
-                            ejbFiles.put(fileNameWithMETA, descriptorFile);
-                        }
-                    }
-                };
+        DescriptorHandler handler = new DescriptorHandler(getTask(), srcDir) {
+            @Override
+            protected void processElement() {
+                if ("type-storage".equals(currentElement)) {
+                    // Get the filename of vendor specific descriptor
+                    // trim the META_INF\ off of the file name
+                    ejbFiles.put(currentText, new File(srcDir,
+                            currentText.substring(META_DIR.length())));
+                }
+            }
+        };
         handler.registerDTD(PUBLICID_BORLAND_EJB,
                             borlandDTD == null ? DEFAULT_BAS_DTD_LOCATION : borlandDTD);
 
@@ -240,7 +232,7 @@ public class BorlandDeploymentTool extends GenericDeploymentTool
     protected void addVendorFiles(Hashtable<String, File> ejbFiles, String ddPrefix) {
 
         //choose the right vendor DD
-        if (!(version == BES || version == BAS)) {
+        if (version != BES && version != BAS) {
             throw new BuildException("version " + version + " is not supported");
         }
 
@@ -321,7 +313,7 @@ public class BorlandDeploymentTool extends GenericDeploymentTool
      * @param sourceJar java.io.File representing the produced jar file
      */
     private void verifyBorlandJarV4(File sourceJar) {
-        org.apache.tools.ant.taskdefs.Java javaTask = null;
+        Java javaTask = null;
         log("verify BAS " + sourceJar, Project.MSG_INFO);
         try  {
             String args = verifyArgs;

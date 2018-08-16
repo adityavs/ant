@@ -29,7 +29,6 @@ import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
 import org.apache.tools.ant.util.FileUtils;
-import org.apache.tools.ant.util.StringUtils;
 
 /**
  * Adds an new entry to a CVS password file.
@@ -107,7 +106,7 @@ public class CVSPass extends Task {
 
                 while ((line = reader.readLine()) != null) {
                     if (!line.startsWith(cvsRoot)) {
-                        buf.append(line).append(StringUtils.LINE_SEP);
+                        buf.append(line).append(System.lineSeparator());
                     }
                 }
             }
@@ -131,8 +130,8 @@ public class CVSPass extends Task {
 
     private final String mangle(String password) {
         StringBuilder buf = new StringBuilder();
-        for (int i = 0; i < password.length(); i++) {
-            buf.append(shifts[password.charAt(i)]);
+        for (final char ch : password.toCharArray()) {
+            buf.append(shifts[ch]);
         }
         return buf.toString();
     }
